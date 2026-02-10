@@ -7,8 +7,9 @@ Projeto de fórum desenvolvido em Django.
 - Django
 
 ## Autores
-Toddynho
-Xavijonson
-Perneta
-Doido
-Baleia
+Toddynho,
+Xavijonson,
+Perneta,
+Doido e
+Baleia.
+
