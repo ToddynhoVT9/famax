@@ -1,0 +1,248 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FAMAX - Criar uma conta</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            background-color: #222222;
+            font-family: system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+            color: #ffffff;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            position: relative;
+        }
+
+        .header {
+            position: absolute;
+            top: 30px;
+            left: 50px;
+            display: flex;
+            flex-direction: column;
+            align-items: flex-end;
+        }
+
+        .header h1 {
+            font-size: 3.5rem;
+            font-weight: 700;
+            margin: 0;
+            line-height: 1;
+            letter-spacing: 1px;
+        }
+
+        .header .subtitle {
+            font-size: 1.5rem;
+            font-weight: 300;
+            margin-top: 2px;
+            margin-right: 5px;
+        }
+
+        .register-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            flex: 1;
+            width: 100%;
+        }
+
+        .register-title {
+            font-size: 1.6rem;
+            font-weight: 400;
+            margin-bottom: 25px;
+            text-align: center;
+        }
+
+        .form-group {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            width: 380px;
+        }
+
+        .input-field {
+            width: 100%;
+            padding: 14px;
+            border: none;
+            border-radius: 6px;
+            background-color: #7b7b7b;
+            color: #ffffff;
+            font-size: 0.95rem;
+            box-sizing: border-box;
+            text-align: center;
+            margin-bottom: 12px;
+            font-family: inherit;
+        }
+
+        .input-field::placeholder {
+            color: #e0e0e0;
+        }
+
+        .input-field:focus {
+            outline: 2px solid #ffffff;
+            background-color: #888888;
+        }
+
+        .checkbox-container {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 100%;
+            margin: 10px 0 20px 0;
+            font-size: 0.95rem;
+        }
+
+        .checkbox-container input[type="checkbox"] {
+            width: 20px;
+            height: 20px;
+            margin-right: 12px;
+            cursor: pointer;
+            accent-color: #444;
+        }
+
+        .terms-text {
+            cursor: pointer;
+            text-decoration: underline;
+        }
+
+        .btn-register {
+            width: 80%;
+            padding: 12px;
+            border: none;
+            border-radius: 6px;
+            background-color: #7b7b7b;
+            color: #ffffff;
+            font-size: 0.95rem;
+            cursor: pointer;
+            transition: background-color 0.2s ease, transform 0.1s ease;
+            text-align: center;
+            box-sizing: border-box;
+            font-family: inherit;
+        }
+
+        .btn-register:active {
+            transform: scale(0.98);
+        }
+
+        .btn-register:hover {
+            background-color: #888888;
+        }
+
+        /* Modal Styles */
+        .modal-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.75);
+            z-index: 1000;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .modal-content {
+            background-color: #444444;
+            width: 80%;
+            max-width: 900px;
+            max-height: 80vh;
+            border-radius: 8px;
+            padding: 30px;
+            overflow-y: auto;
+            position: relative;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.5);
+            color: #ffffff;
+        }
+
+        .modal-title {
+            text-align: center;
+            font-size: 1.8rem;
+            margin-top: 0;
+            margin-bottom: 25px;
+            font-weight: 400;
+        }
+
+        .modal-body p {
+            font-size: 0.95rem;
+            line-height: 1.6;
+            margin-bottom: 15px;
+            text-align: justify;
+            color: #e0e0e0;
+        }
+
+        .close-btn {
+            position: absolute;
+            top: 15px;
+            right: 20px;
+            font-size: 1.5rem;
+            color: #ffffff;
+            cursor: pointer;
+            background: none;
+            border: none;
+            outline: none;
+        }
+        
+        .close-btn:hover {
+            color: #aaaaaa;
+        }
+        
+        .error-message {
+            color: #ff6b6b;
+            font-size: 0.85rem;
+            text-align: center;
+            margin-top: 10px;
+            display: none;
+        }
+
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>FAMAX</h1>
+        <div class="subtitle">Logo</div>
+    </div>
+    
+    <div class="register-container">
+        <div class="register-title">Criar uma conta</div>
+        
+        <div class="form-group">
+            <input type="email" id="email" class="input-field" placeholder="E-mail">
+            <input type="password" id="password" class="input-field" placeholder="Senha">
+            <input type="password" id="confirm-password" class="input-field" placeholder="Confirmar senha">
+            <input type="text" id="username" class="input-field" placeholder="Nome de usuário">
+            
+            <div class="checkbox-container">
+                <input type="checkbox" id="terms-checkbox">
+                <label for="terms-checkbox">Aceitar <span class="terms-text" id="termsTrigger">termos de usuário</span></label>
+            </div>
+            
+            <button class="btn-register" id="registerButton">Cadastrar</button>
+            <div id="register-error" class="error-message"></div>
+        </div>
+    </div>
+
+    <!--Termos de Uso -->
+    <div class="modal-overlay" id="terms-modal">
+        <div class="modal-content">
+            <button class="close-btn" id="closeModalButton">&times;</button>
+            <div class="modal-title">Tela de termo</div>
+            <div class="modal-body">
+                <p>Persona 2: Innocent Sin começa três anos após os eventos do primeiro Persona, em 1999. A história se passa em Sumaru City, uma grande metrópole fictícia situada no Japão contemporâneo. Sumaru City é amaldiçoada após eventos ocorridos no início do jogo, fazendo com que qualquer boato que se espalhe o suficiente se torne verdade.</p>
+                
+                <p>O protagonista silencioso do jogo é Tatsuya Suou. Tatsuya é arrastado para a trama por Lisa Silverman, uma colega que o idolatra, quando o conflito entre a Escola Secundária Seven Sisters (Sevens) e a Escola Secundária Kasugayama (Cuss High) começa. Os dois encontram Eikichi Mishina, o autoproclamado chefe da Cuss High. Após uma briga, os três jogam um jogo para invocar o Coringa, um misterioso antagonista que, segundo rumores, aparece para qualquer um que o invoque. Quem não revela seus desejos ao Coringa, seja por não os ter ou por se recusar a fazê-lo, tem sua "energia ideal" roubada, reduzindo-os a cascas vazias e sem ambição chamadas Sombras. Uma vez invocado, o Coringa afirma que os três estudantes lhe fizeram algo terrível no passado e fica furioso quando eles não o reconhecem. Jurando vingança e empunhando uma estranha Caveira de Cristal, ele parte, deixando o trio confuso e ansioso para saber mais sobre ele. Mais tarde, eles fazem questão de dizer que Tatsuya e o Coringa se parecem.</p>
+                
+                <p>Eventualmente, os três estudantes são acompanhados por Maya Amano e sua amiga, Yukino Mayuzumi, que retorna do primeiro jogo e já está familiarizada com demônios e capaz de usar sua Persona. Os cinco então partem em busca de Joker, a fonte de todos os rumores que se espalham e se tornam realidade. Sua busca leva o grupo a confrontar um grupo de seguidores fanáticos conhecido como Círculo Mascarado. Mais tarde, é revelado que o Círculo Mascarado original era o grupo de amigos formado por Tatsuya, Maya, Lisa, Eikichi e Jun quando crianças. Após desmentirem inúmeros rumores e derrotarem vários membros do Círculo Mascarado, o grupo encontra Joker, que então se revela como Jun Kurosu, o quinto amigo de infância e membro do Círculo Mascarado original. Eventualmente, o rumor amplamente difundido de que o Führer sobreviveu à Segunda Guerra Mundial com suas forças secretas, o Último Batalhão, vem à tona e suas tropas invadem a Cidade de Sumaru. Tatsuya e os outros lutam contra os dois membros restantes do Círculo Mascarado e os soldados do Último Batalhão para obter as caveiras de cristal, derrotando suas próprias Sombras no processo.</p>
+                
+                <p>Perto do final de Pecado Inocente, Tatsuya e os outros embarcam em uma nave espacial alienígena conhecida como Xibalba, outro rumor que se tornou realidade. Nas profundezas de Xibalba, o grupo encontra o Führer, empunhando a Lança do Destino (a lança que perfurou Jesus Cristo e que, segundo a lenda, causa uma ferida mortal ao atingir a carne) e o derrota, destruindo o mundo. Tatsuya concorda em criar uma nova linha do tempo na qual Nyarlathotep não seja bem-sucedido, em troca das memórias de todos.</p>
+            </div>
+        </div>
+    </div>
+
+    <script type="module" src="../../scripts/user-script/register.ts"></script>
+</body>
+</html>
