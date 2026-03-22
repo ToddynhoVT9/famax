@@ -77,7 +77,7 @@ if (
     }
 
     alert("Conta cadastrada com sucesso!");
-    window.location.href = "../index.html";
+    window.location.href = "../../index.html";
   };
 
   termsTrigger.addEventListener("click", openModal);
