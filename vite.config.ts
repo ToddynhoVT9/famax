@@ -7,29 +7,15 @@ const resolvePath = (path: string): string =>
 export default defineConfig({
   root: "src",
   server: {
-    open: "/html/index.html",
+    open: "/index.html",
   },
-  plugins: [
-    {
-      name: "redirect",
-      configureServer(server) {
-        server.middlewares.use((req, res, next) => {
-          if (req.url === "/" || req.url === "/index.html") {
-            res.writeHead(302, { Location: "/html/index.html" });
-            res.end();
-          } else {
-            next();
-          }
-        });
-      },
-    },
-  ],
+  plugins: [],
   build: {
     outDir: "../dist",
     emptyOutDir: true,
     rollupOptions: {
       input: {
-        index: resolvePath("./src/html/index.html"),
+        index: resolvePath("./src/index.html"),
         home: resolvePath("./src/html/home.html"),
         login: resolvePath("./src/html/user-pages/login.html"),
         register: resolvePath("./src/html/user-pages/register.html"),
