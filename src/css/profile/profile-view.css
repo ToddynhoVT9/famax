@@ -1,0 +1,161 @@
+/* ===================================
+   FAMAX — Profile View (Perfil Público)
+   =================================== */
+
+.perfil-container {
+    max-width: 1000px;
+    margin: 0 auto;
+    display: flex;
+    flex-direction: column;
+}
+
+/* BANNER */
+.banner {
+    width: 100%;
+    height: 220px;
+    background-color: #ffffff;
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 8px 8px 0 0;
+}
+
+/* IMAGEM DE USUÁRIO */
+.profile-picture {
+    position: absolute;
+    width: 150px;
+    height: 150px;
+    background-color: #828282;
+    border-radius: 50%;
+    bottom: -75px;
+    left: 30px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #111111;
+    font-size: 1rem;
+    font-weight: 500;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
+    border: 4px solid #222222;
+}
+
+/* Botão de edição */
+.profile-header-actions {
+    display: flex;
+    justify-content: flex-end;
+    padding: 15px 30px;
+    height: 75px;
+}
+
+.btn-edit-profile {
+    background-color: transparent;
+    color: #ffffff;
+    border: 1px solid #ffffff;
+    padding: 10px 20px;
+    border-radius: 20px;
+    font-size: 1rem;
+    font-weight: 600;
+    text-decoration: none;
+    cursor: pointer;
+    transition: background-color 0.2s, color 0.2s;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.btn-edit-profile:hover {
+    background-color: #ffffff;
+    color: #222222;
+}
+
+/* INFORMAÇÕES DO USUÁRIO */
+.profile-info-section {
+    padding: 10px 30px 20px;
+}
+
+.profile-name {
+    font-size: 2rem;
+    font-weight: 800;
+    margin-bottom: 2px;
+}
+
+.profile-username {
+    font-size: 1.1rem;
+    font-weight: 400;
+    color: #aaaaaa;
+    margin-bottom: 15px;
+}
+
+.profile-bio {
+    font-size: 1.05rem;
+    line-height: 1.5;
+    margin-bottom: 15px;
+    max-width: 800px;
+}
+
+.profile-stats {
+    display: flex;
+    gap: 20px;
+    font-size: 1.05rem;
+    color: #aaaaaa;
+}
+
+.profile-stats strong {
+    color: #ffffff;
+    font-weight: 700;
+}
+
+/* ABAS DE NAVEGAÇÃO DO PERFIL */
+.profile-tabs {
+    display: flex;
+    border-bottom: 1px solid #444444;
+    margin-top: 10px;
+}
+
+.tab-btn {
+    background: transparent;
+    border: none;
+    color: #aaaaaa;
+    padding: 15px 30px;
+    font-size: 1.1rem;
+    font-weight: 600;
+    cursor: pointer;
+    position: relative;
+    transition: color 0.2s;
+}
+
+.tab-btn:hover {
+    color: #ffffff;
+    background-color: rgba(255, 255, 255, 0.05);
+}
+
+.tab-btn.active {
+    color: #ffffff;
+}
+
+.tab-btn.active::after {
+    content: '';
+    position: absolute;
+    bottom: 0;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 60%;
+    height: 4px;
+    background-color: #ffffff;
+    border-radius: 4px 4px 0 0;
+}
+
+/* FEED DO PERFIL */
+.profile-feed {
+    padding: 30px 0;
+}
+
+.empty-state {
+    text-align: center;
+    padding: 50px 20px;
+    color: #aaaaaa;
+    font-size: 1.2rem;
+    background-color: rgba(255, 255, 255, 0.02);
+    border-radius: 8px;
+}

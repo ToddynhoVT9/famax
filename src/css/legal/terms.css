@@ -1,0 +1,60 @@
+/* ===================================
+   FAMAX — Terms of Use Page
+   =================================== */
+
+body {
+    line-height: 1.6;
+    padding: 40px 20px;
+}
+
+.container {
+    max-width: 800px;
+    margin: 0 auto;
+    background-color: #333333;
+    padding: 40px;
+    border-radius: 8px;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+}
+
+h1 {
+    font-size: 2.5rem;
+    margin-bottom: 20px;
+    color: #fff;
+    text-align: center;
+}
+
+h2 {
+    font-size: 1.3rem;
+    margin-top: 30px;
+    margin-bottom: 12px;
+    color: #e0e0e0;
+    border-bottom: 1px solid #555;
+    padding-bottom: 5px;
+}
+
+p, li {
+    font-size: 1.05rem;
+    color: #cccccc;
+    margin-bottom: 15px;
+}
+
+ul {
+    margin-left: 20px;
+    margin-bottom: 15px;
+}
+
+.btn-voltar {
+    display: inline-block;
+    margin-bottom: 20px;
+    color: #ffffff;
+    text-decoration: none;
+    background-color: #555555;
+    padding: 10px 20px;
+    border-radius: 6px;
+    transition: background 0.2s;
+    font-weight: 500;
+}
+
+.btn-voltar:hover {
+    background-color: #666666;
+}

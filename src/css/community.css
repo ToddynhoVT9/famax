@@ -1,0 +1,426 @@
+/* ===================================
+   FAMAX — Community Page
+   =================================== */
+
+/* ----- TABS SUPERIORES ----- */
+.tf-tabs {
+    display: flex;
+    gap: 20px;
+    border-bottom: 2px solid #444;
+    margin-bottom: 30px;
+    padding: 0 10px;
+    position: relative;
+}
+
+.tf-tab {
+    color: #aaaaaa;
+    text-decoration: none;
+    font-size: 1.1rem;
+    font-weight: 500;
+    padding-bottom: 10px;
+    position: relative;
+    transition: color 0.2s;
+}
+
+.tf-tab:hover {
+    color: #ffffff;
+}
+
+.tf-tab.active {
+    color: #ffffff;
+}
+
+.tf-tab-indicator {
+    position: absolute;
+    bottom: -2px;
+    left: 0;
+    height: 2px;
+    background-color: #ffffff;
+    transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1), width 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* ----- LAYOUT GRID ----- */
+.tf-layout {
+    display: grid;
+    grid-template-columns: 1fr 320px;
+    gap: 30px;
+    align-items: start;
+}
+
+/* ----- POSTS ----- */
+.tf-posts-header {
+    display: flex;
+    justify-content: flex-end;
+    padding-bottom: 15px;
+    border-bottom: 1px solid #444;
+    margin-bottom: 0;
+}
+
+.tf-posts-list {
+    display: flex;
+    flex-direction: column;
+    background-color: #ffffff;
+    border-radius: 8px;
+    border: 1px solid #444;
+    overflow: hidden;
+}
+
+.tf-post {
+    display: flex;
+    padding: 25px 20px;
+    color: #000000;
+    border-bottom: 1px solid #e0e0e0;
+    transition: background-color 0.2s;
+}
+
+.tf-post:hover {
+    background-color: #f9f9f9;
+}
+
+.tf-post:last-child {
+    border-bottom: none;
+}
+
+.tf-post-avatar-container {
+    margin-right: 20px;
+    flex-shrink: 0;
+    cursor: pointer;
+}
+
+.tf-post-avatar-container:hover .tf-avatar {
+    filter: brightness(0.9);
+}
+
+.tf-avatar {
+    width: 48px;
+    height: 48px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #ffffff;
+    font-weight: bold;
+    font-size: 1.1rem;
+}
+
+/* Avatar colors */
+.bg-blue { background-color: #0073e6; }
+.bg-pink { background-color: #e65c9c; }
+.bg-gray { background-color: #c4c4c4; }
+.bg-orange { background-color: #f69c5e; }
+.bg-lightb { background-color: #72bde8; }
+.bg-teal { background-color: #55c5ac; }
+
+.tf-post-body {
+    display: flex;
+    flex-direction: column;
+    flex-grow: 1;
+}
+
+.tf-post-meta {
+    font-size: 0.9rem;
+    color: #666666;
+    margin-bottom: 8px;
+}
+
+.tf-post-meta strong {
+    color: #222222;
+    cursor: pointer;
+}
+
+.tf-post-meta strong:hover {
+    text-decoration: underline;
+}
+
+.tf-post-title {
+    font-size: 1.3rem;
+    font-weight: 700;
+    color: #111111;
+    margin-bottom: 12px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.tf-post-snippet {
+    font-size: 0.95rem;
+    color: #555555;
+    line-height: 1.5;
+    margin-bottom: 15px;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+}
+
+.tf-post-stats {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+    font-size: 0.9rem;
+    color: #666666;
+}
+
+.tf-stat {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    cursor: pointer;
+}
+
+.tf-stat:hover {
+    color: #111111;
+}
+
+.tf-stat-user {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-left: auto;
+}
+
+.tf-avatar-small {
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    background-color: #333;
+    color: #fff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.7rem;
+    font-weight: bold;
+}
+
+/* ----- WIDGETS (coluna direita) ----- */
+.tf-sidebar-col {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+}
+
+.tf-widget {
+    background-color: #ffffff;
+    color: #000000;
+    border-radius: 8px;
+    padding: 30px 20px;
+    border: 1px solid #e0e0e0;
+}
+
+.tf-greeting-widget {
+    text-align: center;
+}
+
+.tf-widget-title-center {
+    font-size: 1.3rem;
+    font-weight: 700;
+    margin-bottom: 20px;
+    color: #111;
+}
+
+.tf-btn-dark {
+    background-color: #222222;
+    color: #ffffff;
+    border: none;
+    padding: 12px 20px;
+    font-size: 1rem;
+    font-weight: 600;
+    border-radius: 6px;
+    cursor: pointer;
+    width: 100%;
+    margin-bottom: 5px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 8px;
+    transition: background 0.2s;
+}
+
+.tf-btn-dark:hover {
+    background-color: #111111;
+}
+
+.tf-widget-title {
+    font-size: 1.1rem;
+    font-weight: 700;
+    margin-bottom: 20px;
+    color: #111;
+}
+
+.tf-widget-tabs {
+    display: flex;
+    gap: 15px;
+    border-bottom: 1px solid #e0e0e0;
+    margin-bottom: 20px;
+    position: relative;
+}
+
+.tf-w-tab {
+    font-size: 0.9rem;
+    color: #666;
+    padding-bottom: 5px;
+    cursor: pointer;
+    position: relative;
+}
+
+.tf-w-tab.active {
+    color: #111;
+    font-weight: 600;
+}
+
+.tf-w-tab-indicator {
+    position: absolute;
+    bottom: -1px;
+    left: 0;
+    height: 2px;
+    background-color: #111;
+    transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1), width 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* ----- LEADERBOARD ----- */
+.tf-leaderboard {
+    list-style: none;
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+}
+
+.tf-lead-item {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+}
+
+.tf-rank {
+    font-weight: 700;
+    font-size: 1rem;
+    color: #111;
+    width: 15px;
+}
+
+.tf-lead-avatar {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    background-color: #ddd;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.9rem;
+    font-weight: bold;
+    color: #fff;
+}
+
+.tf-lead-info {
+    display: flex;
+    flex-direction: column;
+}
+
+.tf-lead-info strong {
+    font-size: 0.95rem;
+    color: #111;
+}
+
+.tf-lead-info span {
+    font-size: 0.85rem;
+    color: #666;
+}
+
+/* ----- MODAL CRIAÇÃO DE POST ----- */
+.modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    background-color: rgba(0, 0, 0, 0.7);
+    z-index: 2000;
+    display: none;
+    align-items: center;
+    justify-content: center;
+}
+
+.modal-overlay.show {
+    display: flex;
+}
+
+.modal-box {
+    background-color: #333333;
+    width: 700px;
+    max-width: 90%;
+    padding: 30px 40px;
+    border-radius: 8px;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.5);
+    color: #ffffff;
+    position: relative;
+}
+
+.modal-title {
+    font-size: 1.8rem;
+    font-weight: 700;
+    margin-bottom: 0;
+}
+
+.modal-label {
+    font-size: 1.1rem;
+    font-weight: 600;
+    margin-bottom: 8px;
+    display: block;
+}
+
+.modal-input {
+    width: 100%;
+    background-color: #555555;
+    border: 1px solid #444;
+    border-radius: 6px;
+    padding: 12px 14px;
+    color: #ffffff;
+    font-size: 1rem;
+    outline: none;
+    box-sizing: border-box;
+    font-family: inherit;
+}
+
+.modal-input:focus {
+    background-color: #666666;
+    border-color: #888;
+}
+
+.modal-textarea {
+    width: 100%;
+    background-color: #555555;
+    border: 1px solid #444;
+    color: #ffffff;
+    font-size: 1rem;
+    padding: 15px;
+    border-radius: 6px;
+    outline: none;
+    resize: vertical;
+    line-height: 1.5;
+    font-family: inherit;
+    min-height: 150px;
+    box-sizing: border-box;
+}
+
+.modal-textarea:focus {
+    background-color: #666666;
+    border-color: #888;
+}
+
+/* ----- RESPONSIVIDADE ----- */
+@media (max-width: 1024px) {
+    .tf-layout {
+        grid-template-columns: 1fr;
+    }
+}
+
+@media (max-width: 768px) {
+    .tf-tabs {
+        gap: 10px;
+    }
+
+    .tf-tab {
+        font-size: 0.95rem;
+    }
+}

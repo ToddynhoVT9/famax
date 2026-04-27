@@ -1,0 +1,73 @@
+/* ===================================
+   FAMAX — Auth Pages Common Styles
+   (Login, Register, Recover Password)
+   =================================== */
+
+body {
+    height: 100vh;
+    position: relative;
+}
+
+/* Header simples das páginas de auth (logo no canto) */
+.header {
+    position: absolute;
+    top: 30px;
+    left: 50px;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+}
+
+.header h1 {
+    font-size: 3.5rem;
+    font-weight: 700;
+    margin: 0;
+    line-height: 1;
+    letter-spacing: 1px;
+}
+
+.header .subtitle {
+    font-size: 1.5rem;
+    font-weight: 300;
+    margin-top: 2px;
+    margin-right: 5px;
+}
+
+/* Form group e input field compartilhados */
+.form-group {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+.input-field {
+    width: 100%;
+    padding: 14px;
+    border: none;
+    border-radius: 6px;
+    background-color: #7b7b7b;
+    color: #ffffff;
+    font-size: 0.95rem;
+    box-sizing: border-box;
+    text-align: center;
+    margin-bottom: 15px;
+    font-family: inherit;
+}
+
+.input-field::placeholder {
+    color: #e0e0e0;
+}
+
+.input-field:focus {
+    outline: 2px solid #ffffff;
+    background-color: #888888;
+}
+
+/* Mensagem de erro genérica */
+.error-message {
+    color: #ff6b6b;
+    font-size: 0.85rem;
+    text-align: center;
+    margin-top: 10px;
+    display: none;
+}

@@ -17,10 +17,13 @@ export default defineConfig({
       input: {
         index: resolvePath("./src/index.html"),
         home: resolvePath("./src/html/home.html"),
+        community: resolvePath("./src/html/community.html"),
         login: resolvePath("./src/html/user-pages/login.html"),
         register: resolvePath("./src/html/user-pages/register.html"),
-        profile: resolvePath("./src/html/user-pages/profile.html"),
-        recoverPassword: resolvePath("./src/html/user-pages/recover-password.html")
+        recoverPassword: resolvePath("./src/html/user-pages/recover-password.html"),
+        profileView: resolvePath("./src/html/user-pages/profile-view.html"),
+        profileSettings: resolvePath("./src/html/user-pages/profile-settings.html"),
+        terms: resolvePath("./src/html/legal/terms.html"),
       }
     }
   }

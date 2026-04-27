@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FAMAX - Meu Perfil</title>
+    <link rel="stylesheet" href="../../css/global.css">
+    <link rel="stylesheet" href="../../css/layout.css">
+    <link rel="stylesheet" href="../../css/profile/profile-view.css">
+</head>
+<body>
+
+    <!-- Cabeçalho -->
+    <header class="header">
+        <a href="../home.html" class="logo-container">
+            <span class="logo-text">FAMAX</span>
+            <span class="logo-subtext">Logo</span>
+        </a>
+
+        <div class="search-container">
+            <input type="text" id="searchInput" class="search-input" placeholder="Pesquisar comunidade">
+            <div class="search-suggestions" id="searchSuggestions">
+                <div class="suggestion-item">Opção 1</div>
+                <div class="suggestion-item">Opção 2</div>
+                <div class="suggestion-item">Opção 3</div>
+                <div class="suggestion-item">Opção 4</div>
+                <div class="suggestion-item">Opção 5</div>
+            </div>
+        </div>
+
+        <div class="header-actions">
+            <div class="filtros-container">
+                <button class="btn-filtros" id="btnFiltros">Filtros</button>
+                <div class="filtros-dropdown" id="filtrosDropdown">
+                    <label class="filtro-item">
+                        <input type="radio" name="filtroOpcao" value="categorias" checked>
+                        <span class="custom-radio"></span>Categorias
+                    </label>
+                    <label class="filtro-item">
+                        <input type="radio" name="filtroOpcao" value="comunidades">
+                        <span class="custom-radio"></span>Comunidades
+                    </label>
+                    <label class="filtro-item">
+                        <input type="radio" name="filtroOpcao" value="usuarios">
+                        <span class="custom-radio"></span>Usuários
+                    </label>
+                    <label class="filtro-item">
+                        <input type="radio" name="filtroOpcao" value="posts">
+                        <span class="custom-radio"></span>Posts
+                    </label>
+                </div>
+            </div>
+
+            <a href="profile-view.html" class="user-profile">usuário</a>
+        </div>
+    </header>
+
+    <!-- Botão Hambúrguer para Sidebar -->
+    <button class="sidebar-toggle" id="sidebarToggle">
+        <span></span><span></span><span></span>
+    </button>
+
+    <!-- Menu Lateral -->
+    <aside class="sidebar" id="sidebar">
+        <div class="sidebar-header">
+            <a href="../home.html" class="sidebar-link">Página Inicial</a>
+        </div>
+        <a href="#" class="sidebar-link">Comunidade que participo 1</a>
+        <a href="#" class="sidebar-link">Comunidade que participo 2</a>
+        <a href="#" class="sidebar-link">Comunidade que participo 3</a>
+        <a href="#" class="sidebar-link">Comunidade que participo 4</a>
+        <a href="#" class="sidebar-link">Comunidade que participo 5</a>
+        <a href="#" class="sidebar-link">Comunidade que participo 6</a>
+        <a href="#" class="sidebar-link">Comunidade que participo 7</a>
+        <a href="#" class="sidebar-link">Comunidade que participo 8</a>
+        <a href="#" class="sidebar-link">Comunidade que participo 9</a>
+    </aside>
+
+    <!-- CONTEÚDO PRINCIPAL DO PERFIL PÚBLICO -->
+    <main class="main-content" id="main-content">
+        <div class="perfil-container">
+
+            <!-- Banner -->
+            <div class="banner">
+                <!-- Imagem do Usuário -->
+                <div class="profile-picture"></div>
+            </div>
+            
+            <!-- Ações do Header (Botão Editar Perfil) -->
+            <div class="profile-header-actions">
+                <a href="profile-settings.html" class="btn-edit-profile">Editar Perfil</a>
+            </div>
+
+            <!-- Informações Públicas do Perfil -->
+            <div class="profile-info-section">
+                <h1 class="profile-name">Nome do Usuário<span id="privatePadlockProfile" style="display:none; margin-left:12px;" title="Perfil Privado"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#ffffff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: middle;"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg></span></h1>
+                <h2 class="profile-username">@usuario</h2>
+                
+                <p class="profile-bio">
+                    Sua biografia aparecerá aqui...
+                </p>
+                
+                <div class="profile-stats">
+                    <span><strong>0</strong> Seguindo</span>
+                    <span><strong>0</strong> Seguidores</span>
+                </div>
+            </div>
+
+            <!-- Navegação Pessoal -->
+            <div class="profile-tabs">
+                <button class="tab-btn active">Posts</button>
+                <button class="tab-btn">Respostas</button>
+                <button class="tab-btn">Recursos</button>
+            </div>
+
+            <!-- Conteúdo em Branco / Feed -->
+            <div class="profile-feed">
+                <div class="empty-state">
+                    Você ainda não publicou nenhum post.
+                </div>
+            </div>
+
+        </div>
+    </main>
+
+    <script type="module" src="../../script/user-script/profile-view.ts"></script>
+</body>
+</html>

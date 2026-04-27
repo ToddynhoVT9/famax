@@ -1,0 +1,242 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FAMAX - Comunidade</title>
+    <link rel="stylesheet" href="../css/global.css">
+    <link rel="stylesheet" href="../css/layout.css">
+    <link rel="stylesheet" href="../css/community.css">
+</head>
+<body>
+
+    <!-- Cabeçalho -->
+    <header class="header">
+        <a href="home.html" class="logo-container">
+            <span class="logo-text">FAMAX</span>
+            <span class="logo-subtext">Logo</span>
+        </a>
+
+        <div class="search-container">
+            <input type="text" id="searchInput" class="search-input" placeholder="Pesquisar comunidade">
+            <div class="search-suggestions" id="searchSuggestions">
+                <div class="suggestion-item">Carregando sugestões...</div>
+            </div>
+        </div>
+
+        <div class="header-actions">
+            <div class="filtros-container">
+                <button class="btn-filtros" id="btnFiltros">Filtros</button>
+                <div class="filtros-dropdown" id="filtrosDropdown">
+                    <label class="filtro-item">
+                        <input type="radio" name="filtroOpcao" value="categorias" checked>
+                        <span class="custom-radio"></span>
+                        Categorias
+                    </label>
+                    <label class="filtro-item">
+                        <input type="radio" name="filtroOpcao" value="comunidades">
+                        <span class="custom-radio"></span>
+                        Comunidades
+                    </label>
+                    <label class="filtro-item">
+                        <input type="radio" name="filtroOpcao" value="usuarios">
+                        <span class="custom-radio"></span>
+                        Usuários
+                    </label>
+                    <label class="filtro-item">
+                        <input type="radio" name="filtroOpcao" value="posts">
+                        <span class="custom-radio"></span>
+                        Posts
+                    </label>
+                </div>
+            </div>
+
+            <a href="user-pages/profile-view.html" class="user-profile">usuário</a>
+        </div>
+    </header>
+
+    <button class="sidebar-toggle" id="sidebarToggle">
+        <span></span>
+        <span></span>
+        <span></span>
+    </button>
+
+    <!-- Menu Lateral -->
+    <aside class="sidebar" id="sidebar">
+        <div class="sidebar-header">
+            <a href="home.html" class="sidebar-link">Página Inicial</a>
+        </div>
+        <a href="#" class="sidebar-link">Discussões</a>
+        <a href="#" class="sidebar-link">Regras</a>
+        <a href="#" class="sidebar-link">Membros</a>
+        <a href="#" class="sidebar-link">Eventos</a>
+        <a href="#" class="sidebar-link">Suporte</a>
+
+        <div class="sidebar-header" style="margin-top:20px; border-bottom:1px solid #aaa;">
+            <a href="#" class="sidebar-link" style="font-size: 1rem; color: #ccc;">Minhas Comunidades</a>
+        </div>
+        <a href="#" class="sidebar-link">Minha Comunidade Exemplo</a>
+    </aside>
+
+    <!-- Conteúdo Principal da Comunidade -->
+    <main class="main-content" id="main-content">
+
+        <!-- Tabs Superiores -->
+        <div class="tf-tabs" id="tfTabsContainer">
+            <a href="#" class="tf-tab active">Conversas</a>
+            <a href="#" class="tf-tab">Ajudar os outros</a>
+            <a href="#" class="tf-tab">Categorias</a>
+            <div class="tf-tab-indicator" id="tfTabIndicator"></div>
+        </div>
+
+        <div class="tf-layout">
+            <!-- Esquerda: Lista de Posts -->
+            <div class="tf-main-col">
+                <div class="tf-posts-list">
+
+                    <!-- Post 1 -->
+                    <div class="tf-post">
+                        <div class="tf-post-avatar-container">
+                            <div class="tf-avatar bg-blue">JD</div>
+                        </div>
+                        <div class="tf-post-body">
+                            <div class="tf-post-meta">
+                                <strong>MestreKakaroto</strong> • Perguntado em Modding &amp; Add-ons
+                            </div>
+                            <h3 class="tf-post-title">
+                                Alguém tem o link do mod de gráficos ultra realistas atualizado?
+                            </h3>
+                            <div class="tf-post-snippet">
+                                Fala galera, o mod de textura HD parou de funcionar na última atualização do jogo.
+                                Alguém sabe de alguma versão que já esteja rodando na v1.5?
+                            </div>
+                            <div class="tf-post-stats">
+                                <span class="tf-stat">👍 14</span>
+                                <span class="tf-stat">💬 5</span>
+                                <span class="tf-stat-user">
+                                    <div class="tf-avatar-small bg-gray">M</div> 3 horas atrás
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+
+            <!-- Direita: Widgets -->
+            <div class="tf-sidebar-col">
+                <!-- Greeting Widget -->
+                <div class="tf-widget tf-greeting-widget">
+                    <h3 class="tf-widget-title-center">Algo novo a discutir?</h3>
+                    <button class="tf-btn-dark" id="btnCreatePost">Compartilhe-os</button>
+                </div>
+
+                <!-- Leaderboard Widget -->
+                <div class="tf-widget tf-leaderboard-widget">
+                    <h3 class="tf-widget-title">Maiores criadores</h3>
+
+                    <div class="tf-widget-tabs" id="tfWidgetTabsContainer">
+                        <span class="tf-w-tab active">Semanalmente</span>
+                        <span class="tf-w-tab">Todos os tempos</span>
+                        <div class="tf-w-tab-indicator" id="tfWidgetTabIndicator"></div>
+                    </div>
+
+                    <ul class="tf-leaderboard">
+                        <li class="tf-lead-item">
+                            <span class="tf-rank">1</span>
+                            <div class="tf-lead-avatar bg-gray">J</div>
+                            <div class="tf-lead-info">
+                                <strong>john.desborough</strong>
+                                <span>299 pontos</span>
+                            </div>
+                        </li>
+                        <li class="tf-lead-item">
+                            <span class="tf-rank">2</span>
+                            <div class="tf-lead-avatar bg-blue">I</div>
+                            <div class="tf-lead-info">
+                                <strong>Ibrahim masudi</strong>
+                                <span>117 pontos</span>
+                            </div>
+                        </li>
+                        <li class="tf-lead-item">
+                            <span class="tf-rank">3</span>
+                            <div class="tf-lead-avatar bg-teal">N</div>
+                            <div class="tf-lead-info">
+                                <strong>nam.th</strong>
+                                <span>96 pontos</span>
+                            </div>
+                        </li>
+                        <li class="tf-lead-item">
+                            <span class="tf-rank">4</span>
+                            <div class="tf-lead-avatar bg-orange">D</div>
+                            <div class="tf-lead-info">
+                                <strong>Darnell</strong>
+                                <span>93 pontos</span>
+                            </div>
+                        </li>
+                        <li class="tf-lead-item">
+                            <span class="tf-rank">5</span>
+                            <div class="tf-lead-avatar bg-blue">M</div>
+                            <div class="tf-lead-info">
+                                <strong>mathio</strong>
+                                <span>88 pontos</span>
+                            </div>
+                        </li>
+                        <li class="tf-lead-item">
+                            <span class="tf-rank">6</span>
+                            <div class="tf-lead-avatar bg-lightb">C</div>
+                            <div class="tf-lead-info">
+                                <strong>christelinglese</strong>
+                                <span>60 pontos</span>
+                            </div>
+                        </li>
+                        <li class="tf-lead-item">
+                            <span class="tf-rank">7</span>
+                            <div class="tf-lead-avatar bg-pink">O</div>
+                            <div class="tf-lead-info">
+                                <strong>okdashcam</strong>
+                                <span>51 pontos</span>
+                            </div>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+    </main>
+
+    <!-- MODAL DE CRIAÇÃO DE POST -->
+    <div class="modal-overlay" id="createPostModal">
+        <div class="modal-box">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 25px;">
+                <h2 class="modal-title">Criar nova discussão</h2>
+                <button id="closePostModal" style="background: none; border: none; color: #aaa; font-size: 1.8rem; cursor: pointer; transition: color 0.2s;">&times;</button>
+            </div>
+            
+            <label class="modal-label">Título do Post</label>
+            <input type="text" class="modal-input" placeholder="Sobre o que você quer falar?">
+            
+            <label class="modal-label" style="margin-top: 20px;">Categoria</label>
+            <select class="modal-input" style="cursor: pointer;">
+                <option value="">Selecione uma categoria...</option>
+                <option value="guias">Guias e Dicas</option>
+                <option value="modding">Modding &amp; Add-ons</option>
+                <option value="hardware">Hardware &amp; Setup</option>
+                <option value="competitivo">Competitivo / eSports</option>
+                <option value="recomendacoes">Recomendações</option>
+                <option value="offtopic">Discussão Geral / Off-Topic</option>
+            </select>
+            
+            <label class="modal-label" style="margin-top: 20px;">Conteúdo</label>
+            <textarea class="modal-textarea" placeholder="Escreva os detalhes da sua discussão aqui..."></textarea>
+            
+            <div style="display: flex; justify-content: flex-end; gap: 15px; margin-top: 30px;">
+                <button class="btn-filtros" id="cancelPostModal" style="background-color: #555; color: #fff; padding: 12px 24px;">Cancelar</button>
+                <button class="tf-btn-dark" style="width: auto; margin-bottom: 0; background-color: #0073e6; padding: 12px 30px;">Publicar Post</button>
+            </div>
+        </div>
+    </div>
+
+    <script type="module" src="../script/community.ts"></script>
+</body>
+</html>
