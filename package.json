@@ -4,13 +4,16 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "vite",
+    "dev": "concurrently -n backend,frontend -c cyan,green \"npm run dev --prefix backend\" \"vite\"",
+    "dev:frontend": "vite",
+    "dev:backend": "npm run dev --prefix backend",
     "typecheck": "tsc --noEmit",
     "build": "npm run typecheck && vite build",
     "preview": "vite preview"
   },
   "devDependencies": {
     "@types/node": "^25.5.0",
+    "concurrently": "^9.2.1",
     "typescript": "^5.9.3",
     "vite": "^7.1.10"
   }

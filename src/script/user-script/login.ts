@@ -1,4 +1,4 @@
-export {};
+import { api, setToken } from "../shared/api.js";
 
 const usernameInput = document.getElementById("username");
 const passwordInput = document.getElementById("password");
@@ -11,39 +11,38 @@ if (
   loginButton instanceof HTMLButtonElement &&
   errorElement instanceof HTMLElement
 ) {
-  const usuariosValidos = new Set(["admin", "teste@famax.com"]);
-
   const showError = (message: string): void => {
     errorElement.innerText = message;
     errorElement.style.display = "block";
   };
 
-  const realizarLogin = (): void => {
-    const username = usernameInput.value.trim();
+  const realizarLogin = async (): Promise<void> => {
+    const identifier = usernameInput.value.trim();
     const password = passwordInput.value;
-
     errorElement.style.display = "none";
 
-    if (username === "") {
-      showError("Por favor, digite seu e-mail ou usuário.");
+    if (!identifier || !password) {
+      showError("Preencha email/usuário e senha.");
       return;
     }
 
-    if (!usuariosValidos.has(username)) {
-      showError("Esse email e/ou usuario não existe ou está digitado errado");
-      return;
+    loginButton.disabled = true;
+
+    try {
+      const { token } = await api<{ token: string; user: unknown }>(
+        "/auth/login",
+        {
+          method: "POST",
+          body: JSON.stringify({ identifier, password }),
+        },
+      );
+      setToken(token);
+      window.location.href = "../home.html";
+    } catch (err) {
+      showError(err instanceof Error ? err.message : "Erro ao fazer login");
+    } finally {
+      loginButton.disabled = false;
     }
-
-    const senhaCorreta =
-      (username === "admin" && password === "123") ||
-      (username === "teste@famax.com" && password === "senha123");
-
-    if (!senhaCorreta) {
-      showError("senha incorreta, tente novamente");
-      return;
-    }
-
-    window.location.href = "../home.html";
   };
 
   loginButton.addEventListener("click", realizarLogin);
@@ -57,3 +56,5 @@ if (
     });
   });
 }
+
+export {};
