@@ -19,7 +19,7 @@ router.get("/communities/:communityId/posts", async (req, res, next) => {
     const { page, limit } = listPostsQuery.parse(req.query);
     const offset = (page - 1) * limit;
 
-    const [rows] = await pool.execute<any[]>(
+    const { rows } = await pool.query(
       `SELECT
          p.post_id,
          p.title,
@@ -38,20 +38,20 @@ router.get("/communities/:communityId/posts", async (req, res, next) => {
        LEFT  JOIN user_profiles up  ON up.user_id = p.author_id
        LEFT  JOIN community_categories cc
              ON cc.community_category_id = p.community_category_id
-       WHERE p.community_id = ?
+       WHERE p.community_id = $1
          AND p.deleted_at IS NULL
        ORDER BY p.created_at DESC
-       LIMIT ? OFFSET ?`,
+       LIMIT $2 OFFSET $3`,
       [communityId, limit, offset],
     );
 
-    const [countRows] = await pool.execute<any[]>(
-      `SELECT COUNT(*) AS total
+    const { rows: countRows } = await pool.query(
+      `SELECT COUNT(*)::int AS total
        FROM posts
-       WHERE community_id = ? AND deleted_at IS NULL`,
+       WHERE community_id = $1 AND deleted_at IS NULL`,
       [communityId],
     );
-    const total = Number(countRows[0].total);
+    const total = countRows[0].total;
 
     res.json({
       data: rows,

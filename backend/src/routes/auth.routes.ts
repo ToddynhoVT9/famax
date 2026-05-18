@@ -41,8 +41,8 @@ router.post("/register", async (req, res, next) => {
   try {
     const data = registerSchema.parse(req.body);
 
-    const [existing] = await pool.execute<any[]>(
-      "SELECT user_id FROM users WHERE email = ? OR username = ? LIMIT 1",
+    const { rows: existing } = await pool.query(
+      "SELECT user_id FROM users WHERE email = $1 OR username = $2 LIMIT 1",
       [data.email, data.username],
     );
     if (existing.length > 0) {
@@ -56,44 +56,44 @@ router.post("/register", async (req, res, next) => {
     const settingsId = randomUUID();
     const acceptanceId = randomUUID();
 
-    const connection = await pool.getConnection();
+    const client = await pool.connect();
     try {
-      await connection.beginTransaction();
+      await client.query("BEGIN");
 
-      await connection.execute(
+      await client.query(
         `INSERT INTO users
          (user_id, email, username, password_hash, terms_accepted)
-         VALUES (?, ?, ?, ?, TRUE)`,
+         VALUES ($1, $2, $3, $4, TRUE)`,
         [userId, data.email, data.username, passwordHash],
       );
 
-      await connection.execute(
+      await client.query(
         `INSERT INTO user_profiles
          (profile_id, user_id, display_name)
-         VALUES (?, ?, ?)`,
+         VALUES ($1, $2, $3)`,
         [profileId, userId, data.displayName],
       );
 
-      await connection.execute(
+      await client.query(
         `INSERT INTO user_settings
          (settings_id, user_id, is_private)
-         VALUES (?, ?, TRUE)`,
+         VALUES ($1, $2, TRUE)`,
         [settingsId, userId],
       );
 
-      await connection.execute(
+      await client.query(
         `INSERT INTO terms_acceptance
          (acceptance_id, user_id, terms_version, ip_address)
-         VALUES (?, ?, ?, ?)`,
+         VALUES ($1, $2, $3, $4)`,
         [acceptanceId, userId, data.termsVersion, req.ip ?? null],
       );
 
-      await connection.commit();
+      await client.query("COMMIT");
     } catch (err) {
-      await connection.rollback();
+      await client.query("ROLLBACK");
       throw err;
     } finally {
-      connection.release();
+      client.release();
     }
 
     const token = jwt.sign({ sub: userId }, config.JWT_SECRET, {
@@ -132,14 +132,14 @@ router.post("/login", async (req, res, next) => {
   try {
     const { identifier, password } = loginSchema.parse(req.body);
 
-    const [rows] = await pool.execute<any[]>(
+    const { rows } = await pool.query(
       `SELECT u.user_id, u.email, u.username, u.password_hash, p.display_name
        FROM users u
        LEFT JOIN user_profiles p ON p.user_id = u.user_id
-       WHERE (u.email = ? OR u.username = ?)
+       WHERE (u.email = $1 OR u.username = $1)
          AND u.deleted_at IS NULL
        LIMIT 1`,
-      [identifier, identifier],
+      [identifier],
     );
 
     const user = rows[0];
@@ -157,9 +157,9 @@ router.post("/login", async (req, res, next) => {
       expiresIn: config.JWT_EXPIRES_IN,
     });
 
-    await pool.execute(
+    await pool.query(
       `INSERT INTO user_sessions (session_id, user_id, token, ip_address, user_agent, expires_at)
-       VALUES (?, ?, ?, ?, ?, DATE_ADD(NOW(), INTERVAL 7 DAY))`,
+       VALUES ($1, $2, $3, $4, $5, NOW() + INTERVAL '7 days')`,
       [
         randomUUID(),
         user.user_id,

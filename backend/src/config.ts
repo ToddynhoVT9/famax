@@ -1,15 +1,15 @@
 export const config = {
-  PORT: Number(process.env.PORT) || 3000,
+  PORT: Number(process.env.PORT ?? 3000),
   NODE_ENV: (process.env.NODE_ENV ?? "development") as "development" | "production",
 
-  DB_HOST: process.env.DB_HOST ?? "viaduct.proxy.rlwy.net",
-  DB_PORT: Number(process.env.DB_PORT) || 59380,
-  DB_USER: process.env.DB_USER ?? "root",
-  DB_PASSWORD: process.env.DB_PASSWORD ?? "whIVjXcdJvEbpBQNNtLwdZQsoLkIxkqc",
-  DB_NAME: process.env.DB_NAME ?? "railway",
+  DATABASE_URL:
+    process.env.DATABASE_URL ??
+    "postgresql://postgres.tsuescxrxpzmmcofckkn:whIVjXcdJvEbpBQNNtLwdZQsoLkIxkqc@aws-1-sa-east-1.pooler.supabase.com:5432/postgres",
 
-  JWT_SECRET: process.env.JWT_SECRET ?? "famax-mvp-secret-trocar-em-producao-pelo-menos-32-caracteres-ok",
-  JWT_EXPIRES_IN: (process.env.JWT_EXPIRES_IN ?? "7d") as string,
+  JWT_SECRET:
+    process.env.JWT_SECRET ??
+    "famax-mvp-secret-trocar-em-producao-pelo-menos-32-caracteres-ok",
+  JWT_EXPIRES_IN: (process.env.JWT_EXPIRES_IN ?? "7d") as `${number}d`,
 
   CORS_ORIGIN: process.env.CORS_ORIGIN ?? "http://localhost:5173",
 };

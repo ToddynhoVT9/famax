@@ -1,29 +1,22 @@
-import mysql from "mysql2/promise";
+import pg from "pg";
 import { config } from "./config.js";
 
-export const pool = mysql.createPool({
-  host: config.DB_HOST,
-  port: config.DB_PORT,
-  user: config.DB_USER,
-  password: config.DB_PASSWORD,
-  database: config.DB_NAME,
+const { Pool } = pg;
 
-  waitForConnections: true,
-  connectionLimit: 10,
-  queueLimit: 0,
-
-  dateStrings: false,
-  timezone: "Z",
-
-  charset: "utf8mb4",
+export const pool = new Pool({
+  connectionString: config.DATABASE_URL,
+  max: 10,
+  idleTimeoutMillis: 30000,
+  connectionTimeoutMillis: 10000,
+  ssl: { rejectUnauthorized: false },
 });
 
 export async function pingDatabase(): Promise<void> {
-  const connection = await pool.getConnection();
+  const client = await pool.connect();
   try {
-    await connection.ping();
-    console.log(`✅ MySQL conectado em ${config.DB_HOST}:${config.DB_PORT}`);
+    await client.query("SELECT 1");
+    console.log("✅ Postgres (Supabase) conectado");
   } finally {
-    connection.release();
+    client.release();
   }
 }
