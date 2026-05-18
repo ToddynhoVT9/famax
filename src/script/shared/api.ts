@@ -1,3 +1,4 @@
+const API_BASE = import.meta.env.VITE_API_URL ?? "/api";
 const TOKEN_KEY = "famax_token";
 
 export function getToken(): string | null {
@@ -26,8 +27,7 @@ export async function api<T = unknown>(
     headers.Authorization = `Bearer ${token}`;
   }
 
-  const BASE = (import.meta.env.VITE_API_URL as string | undefined) ?? "";
-  const response = await fetch(`${BASE}/api${path}`, { ...options, headers });
+  const response = await fetch(`${API_BASE}${path}`, { ...options, headers });
 
   if (!response.ok) {
     const body = await response.json().catch(() => ({}));

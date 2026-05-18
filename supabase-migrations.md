@@ -1,3 +1,34 @@
+{
+"name": "your-app",
+"dependencies": {
+"next": "^14.0.0",
+"react": "^18.0.0",
+
+<div class="node-database-code-snippet__highlighted-text">"@supabase/supabase-js": "^2.0.0"</div>
+}
+}
+
+---
+
+const { createClient } = require('@supabase/supabase-js');
+
+const supabase = createClient(
+process.env.SUPABASE_URL,
+process.env.SUPABASE_ANON_KEY
+);
+
+// Test the connection
+supabase
+.from('your_table')
+.select('\*')
+.limit(1)
+.then(({ data, error }) => {
+if (error) console.error('Connection error:', error);
+else console.log('Connected:', data);
+});
+
+module.exports = supabase;
+
 # FAMAX — Migrando para Supabase (Guia para Iniciantes)
 
 Guia completo, do zero, para migrar seu backend (que hoje usa MySQL no Railway) para **PostgreSQL no Supabase** — que é o que o Hostinger Node.js Web App aceita nativamente.
