@@ -5,7 +5,7 @@ const resolvePath = (path: string): string =>
   fileURLToPath(new URL(path, import.meta.url));
 
 export default defineConfig({
-  root: "src",
+  root: "client",
   server: {
     open: "/index.html",
     proxy: {
@@ -17,20 +17,24 @@ export default defineConfig({
   },
   plugins: [],
   build: {
-    outDir: "../dist",
+    outDir: "../dist/public",
     emptyOutDir: true,
     rollupOptions: {
       input: {
-        index: resolvePath("./src/index.html"),
-        home: resolvePath("./src/html/home.html"),
-        community: resolvePath("./src/html/community.html"),
-        login: resolvePath("./src/html/user-pages/login.html"),
-        register: resolvePath("./src/html/user-pages/register.html"),
-        recoverPassword: resolvePath("./src/html/user-pages/recover-password.html"),
-        profileView: resolvePath("./src/html/user-pages/profile-view.html"),
-        profileSettings: resolvePath("./src/html/user-pages/profile-settings.html"),
-        terms: resolvePath("./src/html/legal/terms.html"),
-      }
-    }
-  }
+        index: resolvePath("./client/index.html"),
+        home: resolvePath("./client/html/home.html"),
+        community: resolvePath("./client/html/community.html"),
+        login: resolvePath("./client/html/user-pages/login.html"),
+        register: resolvePath("./client/html/user-pages/register.html"),
+        recoverPassword: resolvePath(
+          "./client/html/user-pages/recover-password.html",
+        ),
+        profileView: resolvePath("./client/html/user-pages/profile-view.html"),
+        profileSettings: resolvePath(
+          "./client/html/user-pages/profile-settings.html",
+        ),
+        terms: resolvePath("./client/html/legal/terms.html"),
+      },
+    },
+  },
 });

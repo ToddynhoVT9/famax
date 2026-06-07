@@ -4,16 +4,32 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "concurrently -n backend,frontend -c cyan,green \"npm run dev --prefix backend\" \"vite\"",
+    "dev": "concurrently -n backend,frontend -c cyan,green \"npm run dev:backend\" \"npm run dev:frontend\"",
+    "dev:backend": "tsx watch server/server.ts",
     "dev:frontend": "vite",
-    "dev:backend": "npm run dev --prefix backend",
-    "typecheck": "tsc --noEmit",
-    "build": "npm run typecheck && vite build",
-    "preview": "vite preview"
+    "build": "npm run build:frontend && npm run build:backend",
+    "build:frontend": "vite build",
+    "build:backend": "tsc",
+    "start": "node dist/server.js",
+    "typecheck": "tsc --noEmit && tsc -p tsconfig.client.json --noEmit"
+  },
+  "dependencies": {
+    "bcrypt": "^5.1.1",
+    "cors": "^2.8.5",
+    "express": "^4.21.2",
+    "jsonwebtoken": "^9.0.2",
+    "pg": "^8.13.1",
+    "zod": "^3.24.1"
   },
   "devDependencies": {
-    "@types/node": "^25.5.0",
+    "@types/bcrypt": "^5.0.2",
+    "@types/cors": "^2.8.17",
+    "@types/express": "^5.0.0",
+    "@types/jsonwebtoken": "^9.0.7",
+    "@types/node": "^22.10.7",
+    "@types/pg": "^8.11.10",
     "concurrently": "^9.2.1",
+    "tsx": "^4.19.2",
     "typescript": "^5.9.3",
     "vite": "^7.1.10"
   }

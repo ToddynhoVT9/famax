@@ -1,4 +1,4 @@
-const API_BASE = import.meta.env.VITE_API_URL ?? "/api";
+const API_BASE = "/api";
 const TOKEN_KEY = "famax_token";
 
 export function getToken(): string | null {
