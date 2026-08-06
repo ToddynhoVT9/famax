@@ -1,0 +1,242 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FAMAX - Configurações do Perfil</title>
+    <link rel="stylesheet" href="css/editar-perfil.css">
+</head>
+
+<body>
+
+    <!-- Cabeçalho -->
+    <header class="header">
+        <a href="home.html" class="logo-container">
+            <span class="logo-text">FAMAX</span>
+            <span class="logo-subtext">Logo</span>
+        </a>
+
+        <div class="search-container">
+            <input type="text" id="searchInput" class="search-input" placeholder="Pesquisar comunidade">
+            <div class="search-suggestions" id="searchSuggestions">
+                <div class="suggestion-item">Opção 1</div>
+                <div class="suggestion-item">Opção 2</div>
+                <div class="suggestion-item">Opção 3</div>
+                <div class="suggestion-item">Opção 4</div>
+                <div class="suggestion-item">Opção 5</div>
+            </div>
+        </div>
+
+        <div class="header-actions">
+            <!-- Container do botão filtros -->
+            <div class="filtros-container">
+                <button class="btn-filtros" id="btnFiltros">Filtros</button>
+                <div class="filtros-dropdown" id="filtrosDropdown">
+                    <label class="filtro-item">
+                        <input type="radio" name="filtroOpcao" value="categorias" checked>
+                        <span class="custom-radio"></span>Categorias
+                    </label>
+                    <label class="filtro-item">
+                        <input type="radio" name="filtroOpcao" value="comunidades">
+                        <span class="custom-radio"></span>Comunidades
+                    </label>
+                    <label class="filtro-item">
+                        <input type="radio" name="filtroOpcao" value="usuarios">
+                        <span class="custom-radio"></span>Usuários
+                    </label>
+                    <label class="filtro-item">
+                        <input type="radio" name="filtroOpcao" value="posts">
+                        <span class="custom-radio"></span>Posts
+                    </label>
+                </div>
+            </div>
+
+            <a href="perfil.html" class="user-profile">usuário</a>
+        </div>
+    </header>
+
+    <!-- Botão Hambúrguer para Sidebar -->
+    <button class="sidebar-toggle" id="sidebarToggle" onclick="toggleSidebar()">
+        <span></span><span></span><span></span>
+    </button>
+
+    <!-- Menu Lateral -->
+    <aside class="sidebar" id="sidebar">
+        <div class="sidebar-header">
+            <a href="home.html" class="sidebar-link">Página Inicial</a>
+        </div>
+        <a href="#" class="sidebar-link">Comunidade que participo 1</a>
+        <a href="#" class="sidebar-link">Comunidade que participo 2</a>
+        <a href="#" class="sidebar-link">Comunidade que participo 3</a>
+        <a href="#" class="sidebar-link">Comunidade que participo 4</a>
+        <a href="#" class="sidebar-link">Comunidade que participo 5</a>
+        <a href="#" class="sidebar-link">Comunidade que participo 6</a>
+        <a href="#" class="sidebar-link">Comunidade que participo 7</a>
+        <a href="#" class="sidebar-link">Comunidade que participo 8</a>
+        <a href="#" class="sidebar-link">Comunidade que participo 9</a>
+    </aside>
+
+    <!-- CONTEÚDO PRINCIPAL DO PERFIL -->
+    <main class="main-content" id="main-content">
+        <div class="perfil-container">
+
+            <!-- Banner -->
+            <div class="banner">
+                <!-- Botão Alterar Banner -->
+                <button class="btn-change-photo btn-change-banner">Alterar foto de baner</button>
+
+                <!-- Imagem de Perfil com sobreposição -->
+                <div class="profile-picture">
+                    <button class="btn-change-photo btn-change-profile">Alterar foto de perfil</button>
+                </div>
+            </div>
+
+            <!-- Grade de Informações -->
+            <div class="perfil-info-grid">
+
+                <!-- Coluna Esquerda -->
+                <div class="col-esq">
+                    <div class="profile-line">
+                        <strong>Apelido:</strong> <span>usuario</span>
+                    </div>
+                    <div class="profile-line">
+                        <strong>Nome:</strong> <span id="userNameSpan">Nome do Usuário<span id="privatePadlockSettings" style="display:none; margin-left:8px;" title="Perfil Privado"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#ffffff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: sub;"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg></span></span>
+                    </div>
+                    <div class="profile-line">
+                        <strong id="btnSobre" style="cursor: pointer;"
+                            title="Clique para editar o seu Sobre">Sobre</strong>
+                    </div>
+                    <div class="profile-line">
+                        <strong>Adulto</strong>
+                        <!-- Apenas 1 botão interativo -->
+                        <div class="toggle-switch-ui" onclick="toggleSwitch(this)">
+                            <div class="toggle-circle"></div>
+                        </div>
+                    </div>
+                    <div class="profile-line">
+                        <strong>Autenticação de dois fatores</strong>
+                    </div>
+                </div>
+
+                <!-- Divisor -->
+                <div class="divider-vertical"></div>
+
+                <!-- Coluna Direita -->
+                <div class="col-dir">
+                    <div class="profile-line">
+                        <strong>E-mail:</strong> <span>email@exemplo.com</span>
+                    </div>
+                    <div class="profile-line">
+                        <strong id="btnChangePassword" style="cursor: pointer;"
+                            title="Clique para alterar a senha">Senha</strong>
+                    </div>
+                    <div class="profile-line">
+                        <strong>Privar perfil</strong>
+                        <div class="toggle-switch-ui on" onclick="toggleSwitch(this)" id="togglePrivate">
+                            <div class="toggle-circle"></div>
+                        </div>
+                    </div>
+                    <div class="profile-line">
+                        <strong>Outros perfis</strong>
+                    </div>
+                    <div class="profile-line">
+                        <strong>Suas redes sociais</strong>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+    </main>
+
+    <!-- MODAL DE SENHA -->
+    <div class="modal-overlay" id="senhaModalOverlay">
+        <div class="modal-box" id="senhaModalBox">
+            <!-- Passo 1: Senha atual -->
+            <div id="modalStep1">
+                <div class="modal-title">Senha</div>
+                <div class="modal-label">Qual a sua senha atual?</div>
+                <input type="password" class="modal-input" id="currentPasswordInput">
+                <div style="margin-top: 15px;">
+                    <label
+                        style="cursor: pointer; font-size: 1rem; display: flex; align-items: center; color: #e0e0e0;">
+                        <input type="checkbox" onclick="togglePasswordVis('currentPasswordInput')"
+                            style="margin-right: 8px; width: 16px; height: 16px; accent-color: #444;">
+                        Mostrar senha
+                    </label>
+                </div>
+                <div id="step1Error"
+                    style="color: #ff6b6b; font-size: 0.95rem; margin-top: 15px; display: none; text-align: center;">
+                </div>
+            </div>
+
+            <!-- Passo 2: Nova senha -->
+            <div id="modalStep2" style="display: none;">
+                <div class="modal-title">Senha</div>
+                <div class="modal-two-cols">
+                    <div>
+                        <div class="modal-label">Qual a sua nova senha?</div>
+                        <input type="password" class="modal-input" id="newPasswordInput">
+                    </div>
+                    <div>
+                        <div class="modal-label">Confirme a sua nova senha.</div>
+                        <input type="password" class="modal-input" id="confirmPasswordInput">
+                    </div>
+                </div>
+                <div style="margin-top: 15px;">
+                    <label
+                        style="cursor: pointer; font-size: 1rem; display: flex; align-items: center; color: #e0e0e0;">
+                        <input type="checkbox" onclick="togglePasswordVis('newPasswordInput', 'confirmPasswordInput')"
+                            style="margin-right: 8px; width: 16px; height: 16px; accent-color: #444;">
+                        Mostrar senhas
+                    </label>
+                </div>
+                <div id="step2Error"
+                    style="color: #ff6b6b; font-size: 0.95rem; margin-top: 15px; display: none; text-align: center;">
+                </div>
+            </div>
+
+            <!-- Passo 3: Sucesso -->
+            <div id="modalStep3" style="display: none;">
+                <div class="modal-success">Alterado com sucesso!</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL SOBRE -->
+    <div class="modal-overlay" id="sobreModalOverlay">
+        <div class="modal-box" id="sobreModalBox" style="width: 700px;">
+            <div class="modal-title">Sobre</div>
+
+            <div class="sobre-flex-row">
+                <div class="sobre-idade-section">
+                    <div class="modal-label">Idade</div>
+                    <!-- Usando input date nativo que servirá de "sistema de calendário" -->
+                    <input type="date" class="sobre-date-input" id="sobreIdade">
+                </div>
+
+                <div class="sobre-genero-section">
+                    <!-- Gênero right-aligned -->
+                    <div class="modal-label">Gênero</div>
+                    <div class="genero-options" id="generoOptionsContainer">
+                        <button class="btn-genero">Outro</button>
+                        <button class="btn-genero">Masculino</button>
+                        <button class="btn-genero">Feminino</button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="sobre-bio-section">
+                <div class="modal-label">Bio</div>
+                <textarea class="sobre-textarea"
+                    rows="8" placeholder="Escreva sobre você..."></textarea>
+            </div>
+        </div>
+    </div>
+
+    <!-- Scripts Separados -->
+    <script src="js/editar-perfil.js"></script>
+    <script src="js/chat-widget.js"></script>
+</body>
+
+</html>

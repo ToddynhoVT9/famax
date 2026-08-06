@@ -1,0 +1,1329 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FAMAX - Comunidade</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+        }
+
+        body {
+            background-color: #222222;
+            color: #ffffff;
+            overflow-x: hidden;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* ----- CABEÇALHO ----- */
+        .header {
+            background-color: #828282;
+            height: 80px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 40px;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            z-index: 1000;
+        }
+
+        .logo-container {
+            display: flex;
+            flex-direction: column;
+            align-items: flex-end;
+            text-decoration: none;
+            color: white;
+            user-select: none;
+        }
+
+        .logo-text {
+            font-size: 2.5rem;
+            font-weight: 800;
+            line-height: 1;
+            letter-spacing: 1px;
+        }
+
+        .logo-subtext {
+            font-size: 1.1rem;
+            font-weight: 400;
+            margin-right: 5px;
+        }
+
+        .search-container {
+            flex-grow: 1;
+            max-width: 600px;
+            margin: 0 30px;
+            display: flex;
+            flex-direction: column;
+            position: relative;
+        }
+
+        .search-input {
+            width: 100%;
+            padding: 10px 16px;
+            border-radius: 6px;
+            border: none;
+            font-size: 1rem;
+            outline: none;
+            color: #333;
+            transition: border-radius 0.1s;
+        }
+
+        .search-input:focus {
+            border-bottom-left-radius: 0;
+            border-bottom-right-radius: 0;
+        }
+
+        .search-input::placeholder {
+            color: #555;
+        }
+
+        .search-suggestions {
+            position: absolute;
+            top: 100%;
+            left: 0;
+            width: 100%;
+            background-color: #ffffff;
+            border-bottom-left-radius: 6px;
+            border-bottom-right-radius: 6px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.2);
+            display: none;
+            flex-direction: column;
+            z-index: 1005;
+            overflow: hidden;
+        }
+
+        .search-suggestions.show {
+            display: flex;
+        }
+
+        .suggestion-item {
+            padding: 8px 16px;
+            color: #000000;
+            font-size: 1rem;
+            cursor: pointer;
+        }
+
+        .suggestion-item:hover {
+            background-color: #f0f0f0;
+        }
+
+        .header-actions {
+            display: flex;
+            align-items: center;
+            gap: 20px;
+        }
+
+        .filtros-container {
+            position: relative;
+        }
+
+        .btn-filtros {
+            background-color: #ffffff;
+            color: #000000;
+            border: none;
+            border-radius: 6px;
+            padding: 10px 24px;
+            font-size: 1rem;
+            cursor: pointer;
+            font-weight: 500;
+            transition: background-color 0.2s, border-radius 0.1s;
+        }
+
+        .btn-filtros:hover {
+            background-color: #f0f0f0;
+        }
+
+        .btn-filtros.active {
+            border-bottom-left-radius: 0;
+            border-bottom-right-radius: 0;
+            background-color: #f0f0f0;
+        }
+
+        .filtros-dropdown {
+            position: absolute;
+            top: 100%;
+            left: 0;
+            min-width: 160px;
+            background-color: #ffffff;
+            border-bottom-left-radius: 6px;
+            border-bottom-right-radius: 6px;
+            border-top-right-radius: 6px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.2);
+            display: none;
+            flex-direction: column;
+            z-index: 1005;
+            padding: 8px 0;
+        }
+
+        .filtros-dropdown.show {
+            display: flex;
+        }
+
+        .filtro-item {
+            display: flex;
+            align-items: center;
+            padding: 8px 16px;
+            cursor: pointer;
+            color: #000000;
+            font-size: 1rem;
+            gap: 10px;
+            user-select: none;
+        }
+
+        .filtro-item:hover {
+            background-color: #f0f0f0;
+        }
+
+        .filtro-item input[type="radio"] {
+            display: none;
+        }
+
+        .custom-radio {
+            width: 16px;
+            height: 16px;
+            border: 2px solid #000000;
+            border-radius: 50%;
+            display: inline-block;
+            position: relative;
+        }
+
+        .filtro-item input[type="radio"]:checked+.custom-radio::after {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 8px;
+            height: 8px;
+            background-color: #000000;
+            border-radius: 50%;
+        }
+
+        .user-profile {
+            background-color: #ffffff;
+            color: #000000;
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.8rem;
+            font-weight: 500;
+            cursor: pointer;
+        }
+
+        .user-profile:hover {
+            background-color: #f0f0f0;
+        }
+
+        /* ----- TOGGLE DO MENU LATERAL ----- */
+        .sidebar-toggle {
+            position: fixed;
+            top: 100px;
+            left: 10px;
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            background-color: #828282;
+            border: none;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 5px;
+            cursor: pointer;
+            z-index: 1001;
+            transition: left 0.3s ease;
+        }
+
+        .sidebar-toggle span {
+            display: block;
+            width: 26px;
+            height: 3px;
+            background-color: #111;
+            border-radius: 2px;
+        }
+
+        .sidebar-toggle.open {
+            left: 230px;
+        }
+
+        /* ----- MENU LATERAL ----- */
+        .sidebar {
+            position: fixed;
+            top: 80px;
+            left: -280px;
+            width: 250px;
+            height: calc(100vh - 80px);
+            background-color: #828282;
+            z-index: 999;
+            transition: left 0.3s ease;
+            overflow-y: auto;
+            padding: 20px 0;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .sidebar.open {
+            left: 0;
+        }
+
+        .sidebar-link {
+            color: #ffffff;
+            text-decoration: none;
+            font-size: 1.1rem;
+            padding: 12px 20px;
+            display: block;
+            transition: background 0.2s ease;
+        }
+
+        .sidebar-link:hover {
+            background-color: rgba(255, 255, 255, 0.1);
+        }
+
+        .sidebar-header {
+            padding: 0 20px 10px 20px;
+            margin-bottom: 10px;
+            border-bottom: 2px solid #ffffff;
+        }
+
+        .sidebar-header .sidebar-link {
+            padding: 0;
+            font-size: 1.2rem;
+            background: none;
+        }
+
+        .sidebar-header .sidebar-link:hover {
+            background-color: transparent;
+        }
+
+        .sidebar::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        .sidebar::-webkit-scrollbar-track {
+            background: transparent;
+        }
+
+        .sidebar::-webkit-scrollbar-thumb {
+            background-color: rgba(255, 255, 255, 0.3);
+            border-radius: 10px;
+        }
+
+        /* ----- CONTEÚDO PRINCIPAL ----- */
+        .main-content {
+            margin-top: 80px;
+            padding: 30px 20px 50px 80px;
+            transition: padding-left 0.3s ease;
+            flex-grow: 1;
+            background-color: #222222;
+        }
+
+        .main-content.shifted {
+            padding-left: 280px;
+        }
+
+        /* ----- TIPO TYPEFORM LAYOUT ----- */
+        .tf-tabs {
+            display: flex;
+            gap: 20px;
+            border-bottom: 2px solid #444;
+            margin-bottom: 30px;
+            padding: 0 10px;
+            position: relative;
+        }
+
+        .tf-tab {
+            color: #aaaaaa;
+            text-decoration: none;
+            font-size: 1.1rem;
+            font-weight: 500;
+            padding-bottom: 10px;
+            position: relative;
+            transition: color 0.2s;
+        }
+
+        .tf-tab:hover {
+            color: #ffffff;
+        }
+
+        .tf-tab.active {
+            color: #ffffff;
+        }
+
+        .tf-tab-indicator {
+            position: absolute;
+            bottom: -2px;
+            left: 0;
+            height: 2px;
+            background-color: #ffffff;
+            transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1), width 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .tf-layout {
+            display: grid;
+            grid-template-columns: 1fr 320px;
+            gap: 30px;
+            align-items: start;
+        }
+
+        /* --- COLUNA ESQUERDA: POSTS --- */
+        .tf-posts-header {
+            display: flex;
+            justify-content: flex-end;
+            padding-bottom: 15px;
+            border-bottom: 1px solid #444;
+            margin-bottom: 0px;
+        }
+
+        .tf-posts-list {
+            display: flex;
+            flex-direction: column;
+            background-color: #ffffff;
+            border-radius: 8px;
+            border: 1px solid #444;
+            overflow: hidden;
+        }
+
+        .tf-post {
+            display: flex;
+            padding: 25px 20px;
+            color: #000000;
+            border-bottom: 1px solid #e0e0e0;
+            transition: background-color 0.2s;
+        }
+
+        .tf-post:hover {
+            background-color: #f9f9f9;
+        }
+
+        .tf-post:last-child {
+            border-bottom: none;
+        }
+
+        .tf-post-avatar-container {
+            margin-right: 20px;
+            flex-shrink: 0;
+            cursor: pointer;
+        }
+        
+        .tf-post-avatar-container:hover .tf-avatar {
+            filter: brightness(0.9);
+        }
+
+        .tf-avatar {
+            width: 48px;
+            height: 48px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #ffffff;
+            font-weight: bold;
+            font-size: 1.1rem;
+        }
+
+        /* Cores variadas p/ os avatares */
+        .bg-blue {
+            background-color: #0073e6;
+        }
+
+        .bg-pink {
+            background-color: #e65c9c;
+        }
+
+        .bg-gray {
+            background-color: #c4c4c4;
+        }
+
+        .bg-orange {
+            background-color: #f69c5e;
+        }
+
+        .bg-lightb {
+            background-color: #72bde8;
+        }
+
+        .bg-teal {
+            background-color: #55c5ac;
+        }
+
+        .tf-post-body {
+            display: flex;
+            flex-direction: column;
+            flex-grow: 1;
+        }
+
+        .tf-post-meta {
+            font-size: 0.9rem;
+            color: #666666;
+            margin-bottom: 8px;
+        }
+
+        .tf-post-meta strong {
+            color: #222222;
+            cursor: pointer;
+        }
+
+        .tf-post-meta strong:hover {
+            text-decoration: underline;
+        }
+
+        .tf-post-title {
+            font-size: 1.3rem;
+            font-weight: 700;
+            color: #111111;
+            margin-bottom: 12px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+
+        .tf-post-snippet {
+            font-size: 0.95rem;
+            color: #555555;
+            line-height: 1.5;
+            margin-bottom: 15px;
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            line-clamp: 2;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+        }
+
+        .tf-post-stats {
+            display: flex;
+            align-items: center;
+            gap: 20px;
+            font-size: 0.9rem;
+            color: #666666;
+        }
+
+        .tf-stat {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            cursor: pointer;
+            padding: 8px 12px;
+            border-radius: 999px;
+            border: 1px solid transparent;
+            background: transparent;
+            color: inherit;
+            font: inherit;
+            transition: background-color 0.2s, color 0.2s, border-color 0.2s;
+        }
+
+        .tf-stat:hover,
+        .tf-stat.active {
+            color: #111111;
+            background: rgba(0, 0, 0, 0.03);
+            border-color: #e0e0e0;
+        }
+
+        .tf-stat:focus {
+            outline: none;
+            box-shadow: 0 0 0 3px rgba(51, 102, 204, 0.18);
+        }
+
+        .tf-stat-user {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-left: auto;
+        }
+
+        .tf-post-comments {
+            margin-top: 18px;
+            border-top: 1px solid #e8e8e8;
+            padding-top: 16px;
+        }
+
+        .tf-comment-list {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .tf-comment-item {
+            background: #f8f8f8;
+            border: 1px solid #e6e6e6;
+            border-radius: 12px;
+            padding: 12px 14px;
+            color: #222;
+            font-size: 0.92rem;
+            line-height: 1.4;
+        }
+
+        .tf-comment-item strong {
+            display: block;
+            font-size: 0.9rem;
+            margin-bottom: 6px;
+            color: #111;
+        }
+
+        .tf-comment-form {
+            display: flex;
+            gap: 10px;
+            margin-top: 12px;
+        }
+
+        .tf-comment-input {
+            flex: 1;
+            min-width: 0;
+            border: 1px solid #ddd;
+            border-radius: 999px;
+            padding: 12px 16px;
+            font-size: 0.95rem;
+            color: #111;
+            background: #fff;
+            outline: none;
+        }
+
+        .tf-comment-input:focus {
+            border-color: #999;
+        }
+
+        .tf-comment-form button {
+            border: none;
+            border-radius: 999px;
+            background: #222222;
+            color: #ffffff;
+            padding: 12px 18px;
+            cursor: pointer;
+            font-weight: 600;
+        }
+
+        .tf-comment-form button:hover {
+            background: #111111;
+        }
+
+        .tf-avatar-small {
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            background-color: #333;
+            color: #fff;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.7rem;
+            font-weight: bold;
+        }
+
+        /* --- COLUNA DIREITA: WIDGETS --- */
+        .tf-sidebar-col {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        .tf-widget {
+            background-color: #ffffff;
+            color: #000000;
+            border-radius: 8px;
+            padding: 30px 20px;
+            border: 1px solid #444;
+            border-color: #e0e0e0;
+        }
+
+        .tf-greeting-widget {
+            text-align: center;
+        }
+
+        .tf-widget-title-center {
+            font-size: 1.3rem;
+            font-weight: 700;
+            margin-bottom: 20px;
+            color: #111;
+        }
+
+        .tf-btn-dark {
+            background-color: #222222;
+            color: #ffffff;
+            border: none;
+            padding: 12px 20px;
+            font-size: 1rem;
+            font-weight: 600;
+            border-radius: 6px;
+            cursor: pointer;
+            width: 100%;
+            margin-bottom: 5px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 8px;
+            transition: background 0.2s;
+        }
+
+        .tf-btn-dark:hover {
+            background-color: #111111;
+        }
+
+        .tf-widget-title {
+            font-size: 1.1rem;
+            font-weight: 700;
+            margin-bottom: 20px;
+            color: #111;
+        }
+
+        .tf-widget-tabs {
+            display: flex;
+            gap: 15px;
+            border-bottom: 1px solid #e0e0e0;
+            margin-bottom: 20px;
+            position: relative;
+        }
+
+        .tf-w-tab {
+            font-size: 0.9rem;
+            color: #666;
+            padding-bottom: 5px;
+            cursor: pointer;
+            position: relative;
+        }
+
+        .tf-w-tab.active {
+            color: #111;
+            font-weight: 600;
+        }
+
+        .tf-w-tab-indicator {
+            position: absolute;
+            bottom: -1px;
+            left: 0;
+            height: 2px;
+            background-color: #111;
+            transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1), width 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .tf-leaderboard {
+            list-style: none;
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+
+        .tf-lead-item {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .tf-rank {
+            font-weight: 700;
+            font-size: 1rem;
+            color: #111;
+            width: 15px;
+        }
+
+        .tf-lead-avatar {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background-color: #ddd;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.9rem;
+            font-weight: bold;
+            color: #fff;
+        }
+
+        .tf-lead-info {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .tf-lead-info strong {
+            font-size: 0.95rem;
+            color: #111;
+        }
+
+        .tf-lead-info span {
+            font-size: 0.85rem;
+            color: #666;
+        }
+
+        /* Responsividade */
+        @media (max-width: 1024px) {
+            .tf-layout {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        @media (max-width: 768px) {
+            .header {
+                padding: 0 20px;
+            }
+
+            .search-container {
+                display: none;
+                /* Simplifica no mobile p/ caber */
+            }
+
+            .tf-tabs {
+                gap: 10px;
+            }
+
+            .tf-tab {
+                font-size: 0.95rem;
+            }
+
+            .main-content {
+                padding: 20px 10px 40px 10px;
+            }
+        }
+        /* ----- MODAL CRIAÇÃO DE POST ----- */
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            background-color: rgba(0, 0, 0, 0.7);
+            z-index: 2000;
+            display: none;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .modal-overlay.show {
+            display: flex;
+        }
+
+        .modal-box {
+            background-color: #333333;
+            width: 700px;
+            max-width: 90%;
+            padding: 30px 40px;
+            border-radius: 8px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.5);
+            color: #ffffff;
+            position: relative;
+        }
+
+        .modal-title {
+            font-size: 1.8rem;
+            font-weight: 700;
+            margin-bottom: 0;
+        }
+
+        .modal-label {
+            font-size: 1.1rem;
+            font-weight: 600;
+            margin-bottom: 8px;
+            display: block;
+        }
+
+        .modal-input {
+            width: 100%;
+            background-color: #555555;
+            border: 1px solid #444;
+            border-radius: 6px;
+            padding: 12px 14px;
+            color: #ffffff;
+            font-size: 1rem;
+            outline: none;
+            box-sizing: border-box;
+            font-family: inherit;
+        }
+
+        .modal-input:focus {
+            background-color: #666666;
+            border-color: #888;
+        }
+
+        .modal-textarea {
+            width: 100%;
+            background-color: #555555;
+            border: 1px solid #444;
+            color: #ffffff;
+            font-size: 1rem;
+            padding: 15px;
+            border-radius: 6px;
+            outline: none;
+            resize: vertical;
+            line-height: 1.5;
+            font-family: inherit;
+            min-height: 150px;
+            box-sizing: border-box;
+        }
+
+        .modal-textarea:focus {
+            background-color: #666666;
+            border-color: #888;
+        }
+    </style>
+</head>
+
+<body>
+
+    <!-- Cabeçalho idêntico à Home -->
+    <header class="header">
+        <a href="home.html" class="logo-container">
+            <span class="logo-text">FAMAX</span>
+            <span class="logo-subtext">Logo</span>
+        </a>
+
+        <div class="search-container">
+            <input type="text" id="searchInput" class="search-input" placeholder="Pesquisar comunidade">
+            <div class="search-suggestions" id="searchSuggestions">
+                <!-- Sugestões dinâmicas do backend -->
+                <div class="suggestion-item">Carregando sugestões...</div>
+            </div>
+        </div>
+
+        <div class="header-actions">
+            <div class="filtros-container">
+                <button class="btn-filtros" id="btnFiltros">Filtros</button>
+                <div class="filtros-dropdown" id="filtrosDropdown">
+                    <label class="filtro-item">
+                        <input type="radio" name="filtroOpcao" value="categorias" checked>
+                        <span class="custom-radio"></span>
+                        Categorias
+                    </label>
+                    <label class="filtro-item">
+                        <input type="radio" name="filtroOpcao" value="comunidades">
+                        <span class="custom-radio"></span>
+                        Comunidades
+                    </label>
+                    <label class="filtro-item">
+                        <input type="radio" name="filtroOpcao" value="usuarios">
+                        <span class="custom-radio"></span>
+                        Usuários
+                    </label>
+                    <label class="filtro-item">
+                        <input type="radio" name="filtroOpcao" value="posts">
+                        <span class="custom-radio"></span>
+                        Posts
+                    </label>
+                </div>
+            </div>
+
+            <div class="user-profile" onclick="window.location.href='perfil.html'">usuário</div>
+        </div>
+    </header>
+
+    <button class="sidebar-toggle" id="sidebarToggle" onclick="toggleSidebar()">
+        <span></span>
+        <span></span>
+        <span></span>
+    </button>
+
+    <!-- Menu Lateral (Pode conter links relativos à comunidade ou site inteiro) -->
+    <aside class="sidebar" id="sidebar">
+        <div class="sidebar-header">
+            <a href="home.html" class="sidebar-link">Página Inicial</a>
+        </div>
+        <a href="comunidade.html" class="sidebar-link">Discussões</a>
+        <a href="regras.html" class="sidebar-link">Regras</a>
+        <a href="membros.html" class="sidebar-link">Membros</a>
+        <a href="#" class="sidebar-link">Eventos</a>
+        <a href="#" class="sidebar-link">Suporte</a>
+
+        <div class="sidebar-header" style="margin-top:20px; border-bottom:1px solid #aaa;">
+            <a href="#" class="sidebar-link" style="font-size: 1rem; color: #ccc;">Minhas Comunidades</a>
+        </div>
+        <!-- Template de comunidade participada (Backend) -->
+        <a href="#" class="sidebar-link">Minha Comunidade Exemplo</a>
+    </aside>
+
+    <!-- Conteúdo Principal da Comunidade -->
+    <main class="main-content" id="main-content">
+
+        <!-- Tabs Superiores -->
+        <div class="tf-tabs" id="tfTabsContainer">
+            <a href="#" class="tf-tab active" onclick="activateTab(event, this)">Conversas</a>
+            <a href="#" class="tf-tab" onclick="activateTab(event, this)">Ajudar os outros</a>
+            <a href="#" class="tf-tab" onclick="activateTab(event, this)">Categorias</a>
+            <div class="tf-tab-indicator" id="tfTabIndicator"></div>
+        </div>
+
+        <div class="tf-layout">
+            <!-- Esquerda: Lista de Posts -->
+            <div class="tf-main-col">
+                <div class="tf-posts-list">
+
+                    <!-- Post 1 -->
+                    <div class="tf-post">
+                        <div class="tf-post-avatar-container">
+                            <div class="tf-avatar bg-blue">JD</div>
+                        </div>
+                        <div class="tf-post-body">
+                            <div class="tf-post-meta">
+                                <strong>MestreKakaroto</strong> • Perguntado em Modding & Add-ons
+                            </div>
+                            <h3 class="tf-post-title">
+                                Alguém tem o link do mod de gráficos ultra realistas atualizado?
+                            </h3>
+                            <div class="tf-post-snippet">
+                                Fala galera, o mod de textura HD parou de funcionar na última atualização do jogo.
+                                Alguém sabe de alguma versão que já esteja rodando na v1.5?
+                            </div>
+                            <div class="tf-post-stats">
+                                <button type="button" class="tf-stat tf-stat-like" data-liked="false">
+                                    👍 <span class="like-count">14</span>
+                                </button>
+                                <button type="button" class="tf-stat tf-stat-comment-toggle">
+                                    💬 <span class="comment-count">5</span>
+                                </button>
+                                <span class="tf-stat-user">
+                                    <div class="tf-avatar-small bg-gray">M</div> 3 horas atrás
+                                </span>
+                            </div>
+                            <div class="tf-post-comments" hidden>
+                                <div class="tf-comment-list">
+                                    <div class="tf-comment-item">
+                                        <strong>MestreKakaroto</strong>
+                                        <p>Ótima questão, vou acompanhar aqui também.</p>
+                                    </div>
+                                </div>
+                                <form class="tf-comment-form">
+                                    <input type="text" class="tf-comment-input" placeholder="Escreva um comentário..." aria-label="Comentário" />
+                                    <button type="submit">Enviar</button>
+                                </form>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Outros posts serão gerados pelo backend aqui -->
+
+                </div>
+            </div>
+
+            <!-- Direita: Widgets -->
+            <div class="tf-sidebar-col">
+                <!-- Greeting Widget -->
+                <div class="tf-widget tf-greeting-widget">
+                    <h3 class="tf-widget-title-center">Algo novo a discutir?</h3>
+                    <button class="tf-btn-dark" id="btnCreatePost">Compartilhe-os</button>
+                </div>
+
+                <!-- Leaderboard Widget -->
+                <div class="tf-widget tf-leaderboard-widget">
+                    <h3 class="tf-widget-title">Maiores criadores</h3>
+
+                    <div class="tf-widget-tabs" id="tfWidgetTabsContainer">
+                        <span class="tf-w-tab active" onclick="activateWidgetTab(event, this)">Semanalmente</span>
+                        <span class="tf-w-tab" onclick="activateWidgetTab(event, this)">Todos os tempos</span>
+                        <div class="tf-w-tab-indicator" id="tfWidgetTabIndicator"></div>
+                    </div>
+
+                    <ul class="tf-leaderboard">
+                        <li class="tf-lead-item">
+                            <span class="tf-rank">1</span>
+                            <div class="tf-lead-avatar bg-gray">J</div>
+                            <div class="tf-lead-info">
+                                <strong>john.desborough</strong>
+                                <span>299 pontos</span>
+                            </div>
+                        </li>
+                        <li class="tf-lead-item">
+                            <span class="tf-rank">2</span>
+                            <div class="tf-lead-avatar bg-blue">I</div>
+                            <div class="tf-lead-info">
+                                <strong>Ibrahim masudi</strong>
+                                <span>117 pontos</span>
+                            </div>
+                        </li>
+                        <li class="tf-lead-item">
+                            <span class="tf-rank">3</span>
+                            <div class="tf-lead-avatar bg-teal">N</div>
+                            <div class="tf-lead-info">
+                                <strong>nam.th</strong>
+                                <span>96 pontos</span>
+                            </div>
+                        </li>
+                        <li class="tf-lead-item">
+                            <span class="tf-rank">4</span>
+                            <div class="tf-lead-avatar bg-orange">D</div>
+                            <div class="tf-lead-info">
+                                <strong>Darnell</strong>
+                                <span>93 pontos</span>
+                            </div>
+                        </li>
+                        <li class="tf-lead-item">
+                            <span class="tf-rank">5</span>
+                            <div class="tf-lead-avatar bg-blue">M</div>
+                            <div class="tf-lead-info">
+                                <strong>mathio</strong>
+                                <span>88 pontos</span>
+                            </div>
+                        </li>
+                        <li class="tf-lead-item">
+                            <span class="tf-rank">6</span>
+                            <div class="tf-lead-avatar bg-lightb">C</div>
+                            <div class="tf-lead-info">
+                                <strong>christelinglese</strong>
+                                <span>60 pontos</span>
+                            </div>
+                        </li>
+                        <li class="tf-lead-item">
+                            <span class="tf-rank">7</span>
+                            <div class="tf-lead-avatar bg-pink">O</div>
+                            <div class="tf-lead-info">
+                                <strong>okdashcam</strong>
+                                <span>51 pontos</span>
+                            </div>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+    </main>
+
+    <!-- MODAL DE CRIAÇÃO DE POST -->
+    <div class="modal-overlay" id="createPostModal">
+        <div class="modal-box">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 25px;">
+                <h2 class="modal-title">Criar nova discussão</h2>
+                <button id="closePostModal" style="background: none; border: none; color: #aaa; font-size: 1.8rem; cursor: pointer; transition: color 0.2s;">&times;</button>
+            </div>
+            
+            <label class="modal-label">Título do Post</label>
+            <input type="text" class="modal-input" placeholder="Sobre o que você quer falar?">
+            
+            <label class="modal-label" style="margin-top: 20px;">Categoria</label>
+            <select class="modal-input" style="cursor: pointer;">
+                <option value="">Selecione uma categoria...</option>
+                <option value="guias">Guias e Dicas</option>
+                <option value="modding">Modding & Add-ons</option>
+                <option value="hardware">Hardware & Setup</option>
+                <option value="competitivo">Competitivo / eSports</option>
+                <option value="recomendacoes">Recomendações</option>
+                <option value="offtopic">Discussão Geral / Off-Topic</option>
+            </select>
+            
+            <label class="modal-label" style="margin-top: 20px;">Conteúdo</label>
+            <textarea class="modal-textarea" placeholder="Escreva os detalhes da sua discussão aqui... Use formatação simples (markdown) se desejar."></textarea>
+            
+            <div style="display: flex; justify-content: flex-end; gap: 15px; margin-top: 30px;">
+                <button class="btn-filtros" id="cancelPostModal" style="background-color: #555; color: #fff; padding: 12px 24px;">Cancelar</button>
+                <button class="tf-btn-dark" style="width: auto; margin-bottom: 0; background-color: #0073e6; padding: 12px 30px;" onclick="alert('Isso é um protótipo visual, sua postagem seria levada para nossa verificação e apareceria na comunidade!')">Publicar Post</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Toggle Menu Lateral
+        function toggleSidebar() {
+            const sidebar = document.getElementById('sidebar');
+            const mainContent = document.getElementById('main-content');
+            const toggleBtn = document.getElementById('sidebarToggle');
+
+            sidebar.classList.toggle('open');
+            toggleBtn.classList.toggle('open');
+        }
+
+        // Dropdown Pesquisa
+        const searchInput = document.getElementById('searchInput');
+        const searchSuggestions = document.getElementById('searchSuggestions');
+
+        searchInput.addEventListener('focus', () => {
+            searchSuggestions.classList.add('show');
+        });
+
+        // Dropdown Filtros
+        const btnFiltros = document.getElementById('btnFiltros');
+        const filtrosDropdown = document.getElementById('filtrosDropdown');
+
+        btnFiltros.addEventListener('click', (event) => {
+            event.stopPropagation();
+            filtrosDropdown.classList.toggle('show');
+            btnFiltros.classList.toggle('active');
+        });
+
+        // Fechar dropdowns ao clicar fora
+        document.addEventListener('click', (event) => {
+            if (!searchInput.contains(event.target) && !searchSuggestions.contains(event.target)) {
+                searchSuggestions.classList.remove('show');
+            }
+            if (!btnFiltros.contains(event.target) && !filtrosDropdown.contains(event.target)) {
+                filtrosDropdown.classList.remove('show');
+                btnFiltros.classList.remove('active');
+            }
+        });
+
+        // Tab Slider Interactivity
+        function activateTab(event, element) {
+            event.preventDefault();
+
+            const tabs = document.querySelectorAll('.tf-tab');
+            tabs.forEach(tab => tab.classList.remove('active'));
+
+            element.classList.add('active');
+            updateIndicator();
+        }
+
+        function updateIndicator() {
+            const activeTab = document.querySelector('.tf-tab.active');
+            const indicator = document.getElementById('tfTabIndicator');
+            const container = document.getElementById('tfTabsContainer');
+
+            if (activeTab && indicator && container) {
+                const containerRect = container.getBoundingClientRect();
+                const tabRect = activeTab.getBoundingClientRect();
+
+                const relativeLeft = tabRect.left - containerRect.left;
+
+                indicator.style.width = `${tabRect.width}px`;
+                indicator.style.transform = `translateX(${relativeLeft}px)`;
+            }
+        }
+
+        function activateWidgetTab(event, element) {
+            event.preventDefault();
+
+            const tabs = document.querySelectorAll('.tf-w-tab');
+            tabs.forEach(tab => tab.classList.remove('active'));
+
+            element.classList.add('active');
+            updateWidgetIndicator();
+        }
+
+        function updateWidgetIndicator() {
+            const activeTab = document.querySelector('.tf-w-tab.active');
+            const indicator = document.getElementById('tfWidgetTabIndicator');
+            const container = document.getElementById('tfWidgetTabsContainer');
+
+            if (activeTab && indicator && container) {
+                const containerRect = container.getBoundingClientRect();
+                const tabRect = activeTab.getBoundingClientRect();
+
+                const relativeLeft = tabRect.left - containerRect.left;
+
+                indicator.style.width = `${tabRect.width}px`;
+                indicator.style.transform = `translateX(${relativeLeft}px)`;
+            }
+        }
+
+        // Initialize indicator position
+        window.addEventListener('load', () => {
+            setTimeout(updateIndicator, 50);
+            setTimeout(updateWidgetIndicator, 50);
+        });
+        window.addEventListener('resize', () => {
+            updateIndicator();
+            updateWidgetIndicator();
+        });
+
+        // Clique no avatar e nome dos posts
+        const postAvatars = document.querySelectorAll('.tf-post-avatar-container');
+        const postNames = document.querySelectorAll('.tf-post-meta strong');
+
+        const goToProfile = (event) => {
+            let userName = 'Usuário';
+            const post = event.currentTarget.closest('.tf-post');
+            if (post) {
+                const nameEl = post.querySelector('.tf-post-meta strong');
+                if (nameEl) userName = nameEl.innerText;
+            }
+            window.location.href = `perfil.html?view=other&name=${encodeURIComponent(userName)}`;
+        };
+
+        postAvatars.forEach(avatar => avatar.addEventListener('click', goToProfile));
+        postNames.forEach(name => name.addEventListener('click', goToProfile));
+
+        // Lógica do Modal de Criação de Post
+        const btnCreatePost = document.getElementById('btnCreatePost');
+        const createPostModal = document.getElementById('createPostModal');
+        const closePostModal = document.getElementById('closePostModal');
+        const cancelPostModal = document.getElementById('cancelPostModal');
+
+        const openModal = () => createPostModal.classList.add('show');
+        const closeModal = () => createPostModal.classList.remove('show');
+
+        if (btnCreatePost) btnCreatePost.addEventListener('click', openModal);
+        if (closePostModal) closePostModal.addEventListener('click', closeModal);
+        if (cancelPostModal) cancelPostModal.addEventListener('click', closeModal);
+
+        // Fechar ao clicar fora
+        if (createPostModal) {
+            createPostModal.addEventListener('click', (e) => {
+                if (e.target === createPostModal) {
+                    closeModal();
+                }
+            });
+
+            closePostModal.addEventListener('mouseover', () => closePostModal.style.color = '#fff');
+            closePostModal.addEventListener('mouseout', () => closePostModal.style.color = '#aaa');
+        }
+
+        // Curtidas e comentários nos posts
+        const postLikes = document.querySelectorAll('.tf-post .tf-stat-like');
+        const postCommentToggles = document.querySelectorAll('.tf-post .tf-stat-comment-toggle');
+
+        postLikes.forEach(likeBtn => {
+            likeBtn.addEventListener('click', () => {
+                const liked = likeBtn.dataset.liked === 'true';
+                const countEl = likeBtn.querySelector('.like-count');
+                let count = Number(countEl.textContent || '0');
+
+                if (liked) {
+                    likeBtn.dataset.liked = 'false';
+                    likeBtn.classList.remove('active');
+                    count = Math.max(0, count - 1);
+                } else {
+                    likeBtn.dataset.liked = 'true';
+                    likeBtn.classList.add('active');
+                    count += 1;
+                }
+
+                countEl.textContent = count;
+            });
+        });
+
+        postCommentToggles.forEach(toggleBtn => {
+            toggleBtn.addEventListener('click', () => {
+                const post = toggleBtn.closest('.tf-post');
+                const comments = post.querySelector('.tf-post-comments');
+                const input = post.querySelector('.tf-comment-input');
+                if (comments) {
+                    comments.hidden = !comments.hidden;
+                    if (!comments.hidden && input) {
+                        input.focus();
+                    }
+                }
+            });
+        });
+
+        const commentForms = document.querySelectorAll('.tf-post .tf-comment-form');
+        commentForms.forEach(form => {
+            form.addEventListener('submit', (event) => {
+                event.preventDefault();
+                const input = form.querySelector('.tf-comment-input');
+                const commentList = form.closest('.tf-post-comments').querySelector('.tf-comment-list');
+                const commentText = input.value.trim();
+                if (!commentText) return;
+
+                const newComment = document.createElement('div');
+                newComment.className = 'tf-comment-item';
+                newComment.innerHTML = `<strong>Você</strong><p>${commentText}</p>`;
+                commentList.appendChild(newComment);
+
+                const commentCount = form.closest('.tf-post').querySelector('.comment-count');
+                const currentCount = Number(commentCount.textContent || '0');
+                commentCount.textContent = currentCount + 1;
+
+                input.value = '';
+            });
+        });
+    </script>
+    <script src="js/chat-widget.js"></script>
+</body>
+
+</html>
