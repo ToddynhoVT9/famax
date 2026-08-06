@@ -300,6 +300,9 @@
             padding: 0 20px 10px 20px;
             margin-bottom: 10px;
             border-bottom: 2px solid #ffffff;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
         }
 
         .sidebar-header .sidebar-link {
@@ -307,6 +310,161 @@
             font-size: 1.2rem;
             background: none;
         }
+
+        .sidebar-content {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .create-community-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 10px;
+            padding: 20px 20px 10px;
+            margin-top: auto;
+            border-top: 1px solid rgba(255,255,255,0.12);
+        }
+
+        .create-community-label {
+            font-size: 1rem;
+            color: #ffffff;
+        }
+
+        .create-community-btn {
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            border: none;
+            background-color: #ffffff;
+            color: #222;
+            font-size: 1.5rem;
+            font-weight: 700;
+            cursor: pointer;
+            transition: transform 0.2s ease, background-color 0.2s ease;
+        }
+
+        .create-community-btn:hover {
+            transform: scale(1.08);
+            background-color: #f0f0f0;
+        }
+
+        .create-community-panel {
+            position: fixed;
+            top: 80px;
+            right: -430px;
+            width: min(420px, 100%);
+            height: calc(100vh - 80px);
+            background: #1f1f1f;
+            box-shadow: -18px 0 40px rgba(0, 0, 0, 0.35);
+            transition: right 0.3s ease;
+            z-index: 1002;
+            display: flex;
+            flex-direction: column;
+            overflow-y: auto;
+            padding: 24px;
+        }
+
+        .create-community-panel.active {
+            right: 0;
+        }
+
+        .create-community-panel h2 {
+            font-size: 1.8rem;
+            margin-bottom: 12px;
+            color: #ffffff;
+        }
+
+        .create-community-panel p {
+            margin-bottom: 24px;
+            color: #d1d5db;
+            line-height: 1.5;
+        }
+
+        .create-community-panel label {
+            display: block;
+            margin-bottom: 14px;
+            color: #e5e7eb;
+            font-size: 0.95rem;
+        }
+
+        .create-community-panel input[type="text"],
+        .create-community-panel select,
+        .create-community-panel input[type="file"] {
+            width: 100%;
+            border-radius: 14px;
+            border: 1px solid #444;
+            background: #101010;
+            color: #f4f4f4;
+            padding: 14px 16px;
+            font-size: 1rem;
+            margin-top: 8px;
+        }
+
+        .create-community-panel select {
+            appearance: none;
+        }
+
+        .create-community-panel .image-preview {
+            min-height: 150px;
+            border: 2px dashed #3d3d3d;
+            border-radius: 16px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 18px;
+            color: #9ca3af;
+            background: #111;
+            text-align: center;
+            margin-bottom: 16px;
+        }
+
+        .create-community-panel .image-preview img {
+            max-width: 100%;
+            max-height: 250px;
+            border-radius: 16px;
+            object-fit: cover;
+        }
+
+        .create-community-panel .panel-actions {
+            display: flex;
+            gap: 12px;
+            flex-wrap: wrap;
+            justify-content: flex-end;
+            margin-top: 20px;
+        }
+
+        .create-community-panel .panel-actions button {
+            border: none;
+            border-radius: 14px;
+            padding: 14px 18px;
+            font-weight: 700;
+            cursor: pointer;
+        }
+
+        .create-community-panel .cancel-btn {
+            background: #2f2f2f;
+            color: #e5e7eb;
+        }
+
+        .create-community-panel .submit-btn {
+            background: #ffffff;
+            color: #111;
+        }
+
+        .create-community-panel .panel-close {
+            position: absolute;
+            top: 16px;
+            right: 16px;
+            border: none;
+            background: transparent;
+            color: #f4f4f4;
+            font-size: 1.5rem;
+            cursor: pointer;
+        }
+
         .sidebar-header .sidebar-link:hover {
             background-color: transparent;
         }
@@ -727,13 +885,19 @@
 
     <!-- Menu Lateral -->
     <aside class="sidebar" id="sidebar">
-        <!-- Título principal com linha embaixo -->
-        <div class="sidebar-header">
-            <a href="#" class="sidebar-link">Página Inicial</a>
+        <div class="sidebar-content">
+            <!-- Título principal com linha embaixo -->
+            <div class="sidebar-header">
+                <a href="#" class="sidebar-link">Página Inicial</a>
+            </div>
+            
+            <!-- Lista de comunidades (Renderizadas pelo Backend) -->
+            <a href="comunidade.html" class="sidebar-link">Minha Comunidade Exemplo</a>
         </div>
-        
-        <!-- Lista de comunidades (Renderizadas pelo Backend) -->
-        <a href="comunidade.html" class="sidebar-link">Minha Comunidade Exemplo</a>
+        <div class="create-community-row">
+            <span class="create-community-label">Criar comunidade</span>
+            <button class="create-community-btn" id="openCreateCommunity" type="button">+</button>
+        </div>
     </aside>
 
     <!-- Conteúdo Principal do Feed -->
@@ -750,6 +914,35 @@
                 </a>
             </div>
         </section>
+
+        <div class="create-community-panel" id="createCommunityPanel" aria-hidden="true">
+            <button class="panel-close" id="closeCreateCommunity" type="button" aria-label="Fechar">×</button>
+            <h2>Criar nova comunidade</h2>
+            <p>Preencha o nome, escolha a categoria e adicione uma capa para sua comunidade.</p>
+            <form id="createCommunityForm">
+                <label for="communityName">Nome da comunidade
+                    <input id="communityName" name="communityName" type="text" placeholder="Ex: Gamers do bairro" required>
+                </label>
+                <label for="communityCategory">Categoria
+                    <select id="communityCategory" name="communityCategory" required>
+                        <option value="">Selecione a categoria</option>
+                        <option value="jogo">Jogo</option>
+                        <option value="estudo">Estudo</option>
+                        <option value="arte">Arte</option>
+                        <option value="lazer">Lazer</option>
+                        <option value="outros">Outros</option>
+                    </select>
+                </label>
+                <label for="communityCover">Capa da comunidade
+                    <input id="communityCover" name="communityCover" type="file" accept="image/*">
+                </label>
+                <div class="image-preview" id="imagePreview">Nenhuma imagem selecionada</div>
+                <div class="panel-actions">
+                    <button class="cancel-btn" id="cancelCreateCommunity" type="button">Cancelar</button>
+                    <button class="submit-btn" type="submit">Criar comunidade</button>
+                </div>
+            </form>
+        </div>
 
     </main>
 
@@ -802,6 +995,132 @@
                 chatWidget.classList.remove('open');
             }
         });
+
+        const openCreateCommunity = document.getElementById('openCreateCommunity');
+        const createCommunityPanel = document.getElementById('createCommunityPanel');
+        const closeCreateCommunity = document.getElementById('closeCreateCommunity');
+        const cancelCreateCommunity = document.getElementById('cancelCreateCommunity');
+        const communityForm = document.getElementById('createCommunityForm');
+        const communityCover = document.getElementById('communityCover');
+        const imagePreview = document.getElementById('imagePreview');
+
+        function toggleCreatePanel(show) {
+            createCommunityPanel.classList.toggle('active', show);
+            createCommunityPanel.setAttribute('aria-hidden', show ? 'false' : 'true');
+            if (show) {
+                communityForm.reset();
+                imagePreview.textContent = 'Nenhuma imagem selecionada';
+            }
+        }
+
+        openCreateCommunity.addEventListener('click', () => toggleCreatePanel(true));
+        closeCreateCommunity.addEventListener('click', () => toggleCreatePanel(false));
+        cancelCreateCommunity.addEventListener('click', () => toggleCreatePanel(false));
+
+        document.addEventListener('keydown', (event) => {
+            if (event.key === 'Escape' && createCommunityPanel.classList.contains('active')) {
+                toggleCreatePanel(false);
+            }
+        });
+
+        communityCover.addEventListener('change', () => {
+            const file = communityCover.files[0];
+            if (!file) {
+                imagePreview.textContent = 'Nenhuma imagem selecionada';
+                return;
+            }
+            const reader = new FileReader();
+            reader.onload = () => {
+                imagePreview.innerHTML = '';
+                const img = document.createElement('img');
+                img.src = reader.result;
+                img.alt = 'Prévia da capa da comunidade';
+                imagePreview.appendChild(img);
+            };
+            reader.readAsDataURL(file);
+        });
+
+        function getCategoryLabel(value) {
+            const labels = {
+                jogo: 'Jogo',
+                estudo: 'Estudo',
+                arte: 'Arte',
+                lazer: 'Lazer',
+                outros: 'Outros'
+            };
+            return labels[value] || 'Categoria';
+        }
+
+        function findOrCreateCategorySection(categoryValue) {
+            const categoryLabel = getCategoryLabel(categoryValue);
+            const existingSection = Array.from(document.querySelectorAll('.category-section')).find((section) => section.dataset.category === categoryValue);
+            if (existingSection) {
+                return existingSection.querySelector('.cards-container');
+            }
+
+            const section = document.createElement('section');
+            section.className = 'category-section';
+            section.dataset.category = categoryValue;
+            section.innerHTML = `
+                <h2 class="category-title">${categoryLabel}</h2>
+                <div class="cards-container"></div>
+            `;
+            document.getElementById('main-content').appendChild(section);
+            return section.querySelector('.cards-container');
+        }
+
+        function createCommunityCard(name, categoryValue, imageUrl) {
+            const card = document.createElement('a');
+            card.className = 'card';
+            card.href = 'comunidade.html';
+            card.style.backgroundImage = imageUrl ? `url('${imageUrl}')` : 'none';
+            card.style.backgroundSize = 'cover';
+            card.style.backgroundPosition = 'center';
+            card.innerHTML = `
+                <div class="card-content">${name}</div>
+                <div class="card-footer">${getCategoryLabel(categoryValue)}</div>
+            `;
+            return card;
+        }
+
+        function addSidebarCommunityLink(name) {
+            const link = document.createElement('a');
+            link.className = 'sidebar-link';
+            link.href = 'comunidade.html';
+            link.textContent = name;
+            document.getElementById('sidebar').appendChild(link);
+        }
+
+        communityForm.addEventListener('submit', (event) => {
+            event.preventDefault();
+            const name = document.getElementById('communityName').value.trim();
+            const category = document.getElementById('communityCategory').value;
+            const file = communityCover.files[0];
+
+            if (!name || !category) {
+                return;
+            }
+
+            const addCard = (imageUrl) => {
+                const cardsContainer = findOrCreateCategorySection(category);
+                const newCard = createCommunityCard(name, category, imageUrl);
+                cardsContainer.appendChild(newCard);
+            };
+
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = () => {
+                    addCard(reader.result);
+                };
+                reader.readAsDataURL(file);
+            } else {
+                addCard('');
+            }
+
+            addSidebarCommunityLink(name);
+            toggleCreatePanel(false);
+        });
+
 
     </script>
     <script src="js/chat-widget.js"></script>

@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FAMAX - Nova Comunidade</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+        }
+
+        body {
+            background-color: #222222;
+            color: #ffffff;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 24px;
+        }
+
+        .page-card {
+            width: min(720px, 100%);
+            background-color: #2b2b2b;
+            border-radius: 24px;
+            box-shadow: 0 24px 64px rgba(0, 0, 0, 0.45);
+            overflow: hidden;
+        }
+
+        .page-header {
+            background-color: #828282;
+            padding: 26px 28px;
+        }
+
+        .page-header h1 {
+            font-size: 2rem;
+            font-weight: 800;
+            color: #ffffff;
+            margin-bottom: 8px;
+        }
+
+        .page-header p {
+            color: #f4f4f4;
+            font-size: 1rem;
+            opacity: 0.9;
+        }
+
+        .page-body {
+            padding: 28px;
+            display: grid;
+            gap: 20px;
+        }
+
+        .form-field {
+            display: grid;
+            gap: 10px;
+        }
+
+        label {
+            font-size: 0.95rem;
+            color: #f4f4f4;
+        }
+
+        input[type="text"],
+        select,
+        input[type="file"] {
+            width: 100%;
+            border-radius: 14px;
+            border: 1px solid #555555;
+            padding: 14px 16px;
+            background-color: #1d1d1d;
+            color: #f4f4f4;
+            font-size: 1rem;
+        }
+
+        select {
+            appearance: none;
+        }
+
+        .image-preview {
+            min-height: 150px;
+            border: 2px dashed #555555;
+            border-radius: 16px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 18px;
+            color: #bcbcbc;
+            background: #181818;
+            text-align: center;
+        }
+
+        .image-preview img {
+            max-width: 100%;
+            max-height: 260px;
+            border-radius: 16px;
+            object-fit: cover;
+        }
+
+        .actions {
+            display: flex;
+            justify-content: flex-end;
+            gap: 12px;
+            flex-wrap: wrap;
+        }
+
+        .btn {
+            border: none;
+            border-radius: 14px;
+            padding: 14px 20px;
+            font-size: 1rem;
+            font-weight: 700;
+            cursor: pointer;
+        }
+
+        .btn-secondary {
+            background: #383838;
+            color: #f4f4f4;
+        }
+
+        .btn-primary {
+            background: #ffffff;
+            color: #222222;
+        }
+
+        .btn-primary:hover,
+        .btn-secondary:hover {
+            opacity: 0.94;
+        }
+
+        @media (max-width: 640px) {
+            .actions {
+                justify-content: stretch;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="page-card">
+        <div class="page-header">
+            <h1>Criar comunidade</h1>
+            <p>Preencha os dados para criar sua comunidade e escolha uma capa personalizada.</p>
+        </div>
+        <div class="page-body">
+            <form id="communityForm">
+                <div class="form-field">
+                    <label for="communityName">Nome da comunidade</label>
+                    <input id="communityName" name="communityName" type="text" placeholder="Ex: Gamers do bairro" required>
+                </div>
+                <div class="form-field">
+                    <label for="communityCategory">Categoria</label>
+                    <select id="communityCategory" name="communityCategory" required>
+                        <option value="">Selecione a categoria</option>
+                        <option value="jogo">Jogo</option>
+                        <option value="estudo">Estudo</option>
+                        <option value="arte">Arte</option>
+                        <option value="lazer">Lazer</option>
+                        <option value="outros">Outros</option>
+                    </select>
+                </div>
+                <div class="form-field">
+                    <label for="communityCover">Capa da comunidade</label>
+                    <input id="communityCover" name="communityCover" type="file" accept="image/*">
+                </div>
+                <div class="image-preview" id="imagePreview">Nenhuma imagem selecionada</div>
+                <div class="actions">
+                    <button type="button" class="btn btn-secondary" id="cancelBtn">Voltar</button>
+                    <button type="submit" class="btn btn-primary">Criar comunidade</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        const communityCover = document.getElementById('communityCover');
+        const imagePreview = document.getElementById('imagePreview');
+        const cancelBtn = document.getElementById('cancelBtn');
+        const communityForm = document.getElementById('communityForm');
+
+        communityCover.addEventListener('change', () => {
+            const file = communityCover.files[0];
+            if (!file) {
+                imagePreview.textContent = 'Nenhuma imagem selecionada';
+                return;
+            }
+
+            const reader = new FileReader();
+            reader.onload = () => {
+                imagePreview.innerHTML = '';
+                const img = document.createElement('img');
+                img.src = reader.result;
+                img.alt = 'Prévia da capa da comunidade';
+                imagePreview.appendChild(img);
+            };
+            reader.readAsDataURL(file);
+        });
+
+        cancelBtn.addEventListener('click', () => {
+            window.location.href = 'home.html';
+        });
+
+        communityForm.addEventListener('submit', (event) => {
+            event.preventDefault();
+            const name = document.getElementById('communityName').value.trim();
+            const category = document.getElementById('communityCategory').value;
+            const file = communityCover.files[0];
+
+            if (!name || !category) {
+                return;
+            }
+
+            // Aqui você pode enviar os dados para o backend ou armazenar localmente.
+            alert(`Comunidade "${name}" criada com sucesso!`);
+            window.location.href = 'home.html';
+        });
+    </script>
+</body>
+</html>

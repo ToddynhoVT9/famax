@@ -1095,25 +1095,25 @@
             </div>
             
             <label class="modal-label">Título do Post</label>
-            <input type="text" class="modal-input" placeholder="Sobre o que você quer falar?">
+            <input id="newPostTitle" type="text" class="modal-input" placeholder="Sobre o que você quer falar?">
             
             <label class="modal-label" style="margin-top: 20px;">Categoria</label>
-            <select class="modal-input" style="cursor: pointer;">
+            <select id="newPostCategory" class="modal-input" style="cursor: pointer;">
                 <option value="">Selecione uma categoria...</option>
-                <option value="guias">Guias e Dicas</option>
-                <option value="modding">Modding & Add-ons</option>
-                <option value="hardware">Hardware & Setup</option>
-                <option value="competitivo">Competitivo / eSports</option>
-                <option value="recomendacoes">Recomendações</option>
-                <option value="offtopic">Discussão Geral / Off-Topic</option>
+                <option value="Guias e Dicas">Guias e Dicas</option>
+                <option value="Modding & Add-ons">Modding & Add-ons</option>
+                <option value="Hardware & Setup">Hardware & Setup</option>
+                <option value="Competitivo / eSports">Competitivo / eSports</option>
+                <option value="Recomendações">Recomendações</option>
+                <option value="Discussão Geral / Off-Topic">Discussão Geral / Off-Topic</option>
             </select>
             
             <label class="modal-label" style="margin-top: 20px;">Conteúdo</label>
-            <textarea class="modal-textarea" placeholder="Escreva os detalhes da sua discussão aqui... Use formatação simples (markdown) se desejar."></textarea>
+            <textarea id="newPostContent" class="modal-textarea" placeholder="Escreva os detalhes da sua discussão aqui... Use formatação simples (markdown) se desejar."></textarea>
             
             <div style="display: flex; justify-content: flex-end; gap: 15px; margin-top: 30px;">
                 <button class="btn-filtros" id="cancelPostModal" style="background-color: #555; color: #fff; padding: 12px 24px;">Cancelar</button>
-                <button class="tf-btn-dark" style="width: auto; margin-bottom: 0; background-color: #0073e6; padding: 12px 30px;" onclick="alert('Isso é um protótipo visual, sua postagem seria levada para nossa verificação e apareceria na comunidade!')">Publicar Post</button>
+                <button class="tf-btn-dark" id="publishPostBtn" style="width: auto; margin-bottom: 0; background-color: #0073e6; padding: 12px 30px;">Publicar Post</button>
             </div>
         </div>
     </div>
@@ -1243,13 +1243,79 @@
         const createPostModal = document.getElementById('createPostModal');
         const closePostModal = document.getElementById('closePostModal');
         const cancelPostModal = document.getElementById('cancelPostModal');
+        const publishPostBtn = document.getElementById('publishPostBtn');
+        const newPostTitle = document.getElementById('newPostTitle');
+        const newPostCategory = document.getElementById('newPostCategory');
+        const newPostContent = document.getElementById('newPostContent');
+        const postList = document.querySelector('.tf-posts-list');
 
         const openModal = () => createPostModal.classList.add('show');
         const closeModal = () => createPostModal.classList.remove('show');
+        const clearModalFields = () => {
+            if (newPostTitle) newPostTitle.value = '';
+            if (newPostCategory) newPostCategory.value = '';
+            if (newPostContent) newPostContent.value = '';
+        };
+
+        const createPostElement = (title, category, content) => {
+            const post = document.createElement('div');
+            post.className = 'tf-post';
+            post.innerHTML = `
+                <div class="tf-post-avatar-container">
+                    <div class="tf-avatar bg-gray">U</div>
+                </div>
+                <div class="tf-post-body">
+                    <div class="tf-post-meta">
+                        <strong>Você</strong> • ${category || 'Discussões'}
+                    </div>
+                    <h3 class="tf-post-title">${title}</h3>
+                    <div class="tf-post-snippet">${content.replace(/\n/g, '<br>')}</div>
+                    <div class="tf-post-stats">
+                        <button type="button" class="tf-stat tf-stat-like" data-liked="false">
+                            👍 <span class="like-count">0</span>
+                        </button>
+                        <button type="button" class="tf-stat tf-stat-comment-toggle">
+                            💬 <span class="comment-count">0</span>
+                        </button>
+                        <span class="tf-stat-user">
+                            <div class="tf-avatar-small bg-gray">V</div> agora
+                        </span>
+                    </div>
+                    <div class="tf-post-comments" hidden>
+                        <div class="tf-comment-list"></div>
+                        <form class="tf-comment-form">
+                            <input type="text" class="tf-comment-input" placeholder="Escreva um comentário..." aria-label="Comentário" />
+                            <button type="submit">Enviar</button>
+                        </form>
+                    </div>
+                </div>
+            `;
+            return post;
+        };
+
+        const publishPost = () => {
+            const title = newPostTitle?.value.trim();
+            const category = newPostCategory?.value;
+            const content = newPostContent?.value.trim();
+
+            if (!title || !content) {
+                alert('Por favor, preencha título e conteúdo para publicar.');
+                return;
+            }
+
+            if (postList) {
+                const newPost = createPostElement(title, category, content);
+                postList.appendChild(newPost);
+            }
+
+            closeModal();
+            clearModalFields();
+        };
 
         if (btnCreatePost) btnCreatePost.addEventListener('click', openModal);
         if (closePostModal) closePostModal.addEventListener('click', closeModal);
         if (cancelPostModal) cancelPostModal.addEventListener('click', closeModal);
+        if (publishPostBtn) publishPostBtn.addEventListener('click', publishPost);
 
         // Fechar ao clicar fora
         if (createPostModal) {
