@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FAMAX - Nova Comunidade</title>
+    <link rel="stylesheet" href="../../css/global.css">
+    <link rel="stylesheet" href="../../css/community-new.css">
+</head>
+<body class="community-new-page">
+    <div class="page-card">
+        <div class="page-header">
+            <h1>Criar comunidade</h1>
+            <p>Preencha os dados para criar sua comunidade e escolha uma capa personalizada.</p>
+        </div>
+        <div class="page-body">
+            <form id="communityForm" novalidate>
+                <div class="form-error" id="formError" role="alert"></div>
+
+                <div class="form-field">
+                    <label for="communityName">Nome da comunidade</label>
+                    <input id="communityName" name="communityName" type="text"
+                           placeholder="Ex: Gamers do bairro" maxlength="80" required>
+                </div>
+
+                <div class="form-field">
+                    <label for="communityCategory">Categoria</label>
+                    <select id="communityCategory" name="communityCategory" required disabled>
+                        <option value="">Carregando categorias...</option>
+                    </select>
+                </div>
+
+                <div class="form-field">
+                    <label for="communityDescription">Descrição <span class="field-hint">(opcional)</span></label>
+                    <textarea id="communityDescription" name="communityDescription"
+                              maxlength="500" placeholder="Sobre o que é a sua comunidade?"></textarea>
+                </div>
+
+                <div class="form-field">
+                    <label for="communityCover">Capa da comunidade <span class="field-hint">(opcional)</span></label>
+                    <input id="communityCover" name="communityCover" type="file"
+                           accept="image/png,image/jpeg,image/webp">
+                    <span class="field-hint">PNG, JPEG ou WebP. Máximo 2MB.</span>
+                </div>
+
+                <div class="image-preview" id="imagePreview">Nenhuma imagem selecionada</div>
+
+                <div class="actions">
+                    <button type="button" class="btn btn-secondary" id="cancelBtn">Voltar</button>
+                    <button type="submit" class="btn btn-primary" id="submitBtn">Criar comunidade</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script type="module" src="../../script/community-new.ts"></script>
+</body>
+</html>

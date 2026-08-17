@@ -13,14 +13,42 @@ export function clearToken(): void {
   localStorage.removeItem(TOKEN_KEY);
 }
 
+/**
+ * Lê o `sub` do JWT sem validar a assinatura.
+ *
+ * Serve só para decisões de interface — mostrar o botão de excluir no próprio
+ * comentário, saber se uma mensagem é minha. Toda autorização real é feita no
+ * servidor, que verifica a assinatura; um token adulterado aqui muda o que a
+ * tela desenha e nada mais.
+ */
+export function getCurrentUserId(): string | null {
+  const token = getToken();
+  if (!token) return null;
+
+  const payload = token.split(".")[1];
+  if (!payload) return null;
+
+  try {
+    const json = atob(payload.replace(/-/g, "+").replace(/_/g, "/"));
+    const parsed = JSON.parse(json) as { sub?: string };
+    return parsed.sub ?? null;
+  } catch {
+    return null;
+  }
+}
+
 export async function api<T = unknown>(
   path: string,
   options: RequestInit = {},
 ): Promise<T> {
   const token = getToken();
 
+  // Em multipart o browser precisa definir o Content-Type sozinho (ele carrega
+  // o boundary). Forçar application/json aqui quebra o upload da capa.
+  const isFormData = options.body instanceof FormData;
+
   const headers: Record<string, string> = {
-    "Content-Type": "application/json",
+    ...(isFormData ? {} : { "Content-Type": "application/json" }),
     ...((options.headers as Record<string, string>) ?? {}),
   };
   if (token) {
@@ -32,6 +60,10 @@ export async function api<T = unknown>(
   if (!response.ok) {
     const body = await response.json().catch(() => ({}));
     throw new Error(body.error ?? `HTTP ${response.status}`);
+  }
+
+  if (response.status === 204) {
+    return undefined as T;
   }
 
   return response.json();

@@ -73,13 +73,20 @@
         <a href="#" class="sidebar-link">Suporte</a>
 
         <div class="sidebar-header" style="margin-top:20px; border-bottom:1px solid #aaa;">
-            <a href="#" class="sidebar-link" style="font-size: 1rem; color: #ccc;">Minhas Comunidades</a>
+            <a href="community/new.html" class="sidebar-link" style="font-size: 1rem; color: #ccc;">+ Criar comunidade</a>
         </div>
-        <a href="#" class="sidebar-link">Minha Comunidade Exemplo</a>
+        <!-- Preenchido por community.ts a partir de GET /api/me/communities -->
+        <div id="myCommunities"></div>
     </aside>
 
     <!-- Conteúdo Principal da Comunidade -->
     <main class="main-content" id="main-content">
+
+        <div class="tf-community-head">
+            <h1 class="tf-community-name" id="communityName">Carregando...</h1>
+            <p class="tf-community-meta" id="communityMeta"></p>
+            <button type="button" class="tf-btn-join" id="btnJoinCommunity" hidden>Participar</button>
+        </div>
 
         <!-- Tabs Superiores -->
         <div class="tf-tabs" id="tfTabsContainer">
@@ -90,36 +97,10 @@
         </div>
 
         <div class="tf-layout">
-            <!-- Esquerda: Lista de Posts -->
+            <!-- Esquerda: Lista de Posts (renderizada por community.ts) -->
             <div class="tf-main-col">
-                <div class="tf-posts-list">
-
-                    <!-- Post 1 -->
-                    <div class="tf-post">
-                        <div class="tf-post-avatar-container">
-                            <div class="tf-avatar bg-blue">JD</div>
-                        </div>
-                        <div class="tf-post-body">
-                            <div class="tf-post-meta">
-                                <strong>MestreKakaroto</strong> • Perguntado em Modding &amp; Add-ons
-                            </div>
-                            <h3 class="tf-post-title">
-                                Alguém tem o link do mod de gráficos ultra realistas atualizado?
-                            </h3>
-                            <div class="tf-post-snippet">
-                                Fala galera, o mod de textura HD parou de funcionar na última atualização do jogo.
-                                Alguém sabe de alguma versão que já esteja rodando na v1.5?
-                            </div>
-                            <div class="tf-post-stats">
-                                <span class="tf-stat">👍 14</span>
-                                <span class="tf-stat">💬 5</span>
-                                <span class="tf-stat-user">
-                                    <div class="tf-avatar-small bg-gray">M</div> 3 horas atrás
-                                </span>
-                            </div>
-                        </div>
-                    </div>
-
+                <div class="tf-posts-list" id="tfPostsList">
+                    <div class="tf-feed-status" id="tfFeedStatus">Carregando discussões...</div>
                 </div>
             </div>
 
@@ -213,30 +194,31 @@
                 <button id="closePostModal" style="background: none; border: none; color: #aaa; font-size: 1.8rem; cursor: pointer; transition: color 0.2s;">&times;</button>
             </div>
             
-            <label class="modal-label">Título do Post</label>
-            <input type="text" class="modal-input" placeholder="Sobre o que você quer falar?">
-            
-            <label class="modal-label" style="margin-top: 20px;">Categoria</label>
-            <select class="modal-input" style="cursor: pointer;">
+            <div class="modal-error" id="postModalError" role="alert"></div>
+
+            <label class="modal-label" for="newPostTitle">Título do Post</label>
+            <input id="newPostTitle" type="text" class="modal-input" maxlength="200"
+                   placeholder="Sobre o que você quer falar?">
+
+            <!-- As opções vêm das subcategorias da comunidade (o value precisa
+                 ser o community_category_id, não um slug fixo). -->
+            <label class="modal-label" for="newPostCategory" style="margin-top: 20px;">Categoria</label>
+            <select id="newPostCategory" class="modal-input" style="cursor: pointer;">
                 <option value="">Selecione uma categoria...</option>
-                <option value="guias">Guias e Dicas</option>
-                <option value="modding">Modding &amp; Add-ons</option>
-                <option value="hardware">Hardware &amp; Setup</option>
-                <option value="competitivo">Competitivo / eSports</option>
-                <option value="recomendacoes">Recomendações</option>
-                <option value="offtopic">Discussão Geral / Off-Topic</option>
             </select>
-            
-            <label class="modal-label" style="margin-top: 20px;">Conteúdo</label>
-            <textarea class="modal-textarea" placeholder="Escreva os detalhes da sua discussão aqui..."></textarea>
-            
+
+            <label class="modal-label" for="newPostContent" style="margin-top: 20px;">Conteúdo</label>
+            <textarea id="newPostContent" class="modal-textarea" maxlength="10000"
+                      placeholder="Escreva os detalhes da sua discussão aqui..."></textarea>
+
             <div style="display: flex; justify-content: flex-end; gap: 15px; margin-top: 30px;">
                 <button class="btn-filtros" id="cancelPostModal" style="background-color: #555; color: #fff; padding: 12px 24px;">Cancelar</button>
-                <button class="tf-btn-dark" style="width: auto; margin-bottom: 0; background-color: #0073e6; padding: 12px 30px;">Publicar Post</button>
+                <button class="tf-btn-dark" id="publishPostBtn" style="width: auto; margin-bottom: 0; background-color: #0073e6; padding: 12px 30px;">Publicar Post</button>
             </div>
         </div>
     </div>
 
     <script type="module" src="../script/community.ts"></script>
+    <script type="module" src="../script/shared/chat-widget.ts"></script>
 </body>
 </html>

@@ -81,3 +81,15 @@
     font-size: 1.2rem;
     font-weight: 400;
 }
+
+/* ----- ESTADOS DO FEED ----- */
+.feed-status {
+    padding: 60px 20px;
+    text-align: center;
+    color: #aaaaaa;
+    font-size: 1.05rem;
+}
+
+.feed-status.error {
+    color: #ff9aa4;
+}

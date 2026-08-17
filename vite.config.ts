@@ -24,6 +24,7 @@ export default defineConfig({
         index: resolvePath("./client/index.html"),
         home: resolvePath("./client/html/home.html"),
         community: resolvePath("./client/html/community.html"),
+        communityNew: resolvePath("./client/html/community/new.html"),
         login: resolvePath("./client/html/user-pages/login.html"),
         register: resolvePath("./client/html/user-pages/register.html"),
         recoverPassword: resolvePath(

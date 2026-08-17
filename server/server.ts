@@ -8,6 +8,11 @@ import { errorHandler } from "./middleware/error.js";
 
 import authRoutes from "./routes/auth.routes.js";
 import postsRoutes from "./routes/posts.routes.js";
+import communitiesRoutes from "./routes/communities.routes.js";
+import commentsRoutes from "./routes/comments.routes.js";
+import reactionsRoutes from "./routes/reactions.routes.js";
+import chatRoutes from "./routes/chat.routes.js";
+import usersRoutes from "./routes/users.routes.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const publicDir = path.join(__dirname, "public");
@@ -23,7 +28,12 @@ app.get("/api/health", (_req, res) => {
 });
 
 app.use("/api/auth", authRoutes);
+app.use("/api", communitiesRoutes);
 app.use("/api", postsRoutes);
+app.use("/api", commentsRoutes);
+app.use("/api", reactionsRoutes);
+app.use("/api", usersRoutes);
+app.use("/api/conversations", chatRoutes);
 
 // FRONTEND ESTÁTICO
 app.use(express.static(publicDir));

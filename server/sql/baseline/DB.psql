@@ -1,0 +1,416 @@
+-- =============================================================================
+-- FAMAX — Schema do Banco de Dados (PostgreSQL / Supabase)
+-- =============================================================================
+-- Versão portada de `famax_schema.sql` (MySQL) para PostgreSQL.
+-- Pronto para rodar no SQL Editor do Supabase.
+--
+-- Mudanças em relação à versão MySQL:
+--   - CHAR(36) substituído por UUID nativo
+--   - ENUMs MySQL → CREATE TYPE ... AS ENUM
+--   - TIMESTAMP → TIMESTAMPTZ (timestamp com timezone, padrão Postgres)
+--   - ON UPDATE CURRENT_TIMESTAMP substituído por trigger genérico
+--   - ENGINE/CHARSET removidos (Postgres é UTF-8 por padrão)
+--   - Índices secundários extraídos do CREATE TABLE
+--   - DATE_ADD(NOW(), INTERVAL 7 DAY) → NOW() + INTERVAL '7 days' (apenas no
+--     código da aplicação; o schema em si não usa)
+-- =============================================================================
+
+-- =============================================================================
+-- TIPOS (ENUMs)
+-- =============================================================================
+
+CREATE TYPE gender_enum         AS ENUM ('masculino', 'feminino', 'outro');
+CREATE TYPE member_role_enum    AS ENUM ('owner', 'moderator', 'member');
+CREATE TYPE reaction_type_enum  AS ENUM ('like');
+CREATE TYPE report_target_enum  AS ENUM ('post', 'comment', 'user');
+CREATE TYPE report_status_enum  AS ENUM ('pending', 'reviewing', 'resolved', 'dismissed');
+
+-- =============================================================================
+-- FUNÇÃO GENÉRICA DE TRIGGER PARA updated_at
+-- Postgres não tem o equivalente do `ON UPDATE CURRENT_TIMESTAMP` do MySQL,
+-- então usamos um trigger.
+-- =============================================================================
+
+CREATE OR REPLACE FUNCTION set_updated_at()
+RETURNS TRIGGER AS $$
+BEGIN
+  NEW.updated_at = NOW();
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+-- =============================================================================
+-- 1. users
+-- =============================================================================
+CREATE TABLE users (
+    user_id             UUID            NOT NULL,
+    email               VARCHAR(255)    NOT NULL,
+    username            VARCHAR(50)     NOT NULL,
+    password_hash       VARCHAR(255)    NOT NULL,
+    is_adult            BOOLEAN         NOT NULL DEFAULT FALSE,
+    two_factor_enabled  BOOLEAN         NOT NULL DEFAULT FALSE,
+    terms_accepted      BOOLEAN         NOT NULL DEFAULT FALSE,
+    created_at          TIMESTAMPTZ     NOT NULL DEFAULT NOW(),
+    updated_at          TIMESTAMPTZ     NOT NULL DEFAULT NOW(),
+    deleted_at          TIMESTAMPTZ     NULL,
+    PRIMARY KEY (user_id),
+    CONSTRAINT uq_users_email    UNIQUE (email),
+    CONSTRAINT uq_users_username UNIQUE (username)
+);
+
+CREATE TRIGGER users_set_updated_at
+BEFORE UPDATE ON users
+FOR EACH ROW EXECUTE FUNCTION set_updated_at();
+
+-- NOTA: a tabela `users` aqui (schema `public`) é independente de `auth.users`
+-- do Supabase Auth. Como você está usando bcrypt + JWT no Express, não há
+-- conflito. Se algum dia migrar para Supabase Auth, daria pra trocar a PK
+-- `users.user_id` por uma FK para `auth.users(id)`.
+
+-- =============================================================================
+-- 2. user_profiles  (1:1 com users)
+-- =============================================================================
+CREATE TABLE user_profiles (
+    profile_id      UUID            NOT NULL,
+    user_id         UUID            NOT NULL,
+    display_name    VARCHAR(100)    NOT NULL,
+    nickname        VARCHAR(50)     NULL,
+    bio             VARCHAR(500)    NULL,
+    birth_date      DATE            NULL,
+    gender          gender_enum     NULL,
+    avatar_url      VARCHAR(500)    NULL,
+    banner_url      VARCHAR(500)    NULL,
+    PRIMARY KEY (profile_id),
+    CONSTRAINT uq_user_profiles_user_id UNIQUE (user_id),
+    CONSTRAINT fk_user_profiles_user
+        FOREIGN KEY (user_id) REFERENCES users(user_id)
+        ON DELETE CASCADE ON UPDATE CASCADE
+);
+
+-- =============================================================================
+-- 3. user_settings  (1:1 com users)
+-- =============================================================================
+CREATE TABLE user_settings (
+    settings_id     UUID        NOT NULL,
+    user_id         UUID        NOT NULL,
+    is_private      BOOLEAN     NOT NULL DEFAULT TRUE,
+    PRIMARY KEY (settings_id),
+    CONSTRAINT uq_user_settings_user_id UNIQUE (user_id),
+    CONSTRAINT fk_user_settings_user
+        FOREIGN KEY (user_id) REFERENCES users(user_id)
+        ON DELETE CASCADE ON UPDATE CASCADE
+);
+
+-- =============================================================================
+-- 4. user_social_links  (1:N com users)
+-- =============================================================================
+CREATE TABLE user_social_links (
+    social_link_id  UUID            NOT NULL,
+    user_id         UUID            NOT NULL,
+    platform        VARCHAR(50)     NOT NULL,
+    url             VARCHAR(500)    NOT NULL,
+    PRIMARY KEY (social_link_id),
+    CONSTRAINT fk_user_social_links_user
+        FOREIGN KEY (user_id) REFERENCES users(user_id)
+        ON DELETE CASCADE ON UPDATE CASCADE
+);
+
+CREATE INDEX ix_user_social_links_user ON user_social_links (user_id);
+
+-- =============================================================================
+-- 5. user_sessions
+-- =============================================================================
+CREATE TABLE user_sessions (
+    session_id      UUID            NOT NULL,
+    user_id         UUID            NOT NULL,
+    token           VARCHAR(512)    NOT NULL,
+    ip_address      VARCHAR(45)     NULL,         -- suporta IPv6
+    user_agent      VARCHAR(500)    NULL,
+    created_at      TIMESTAMPTZ     NOT NULL DEFAULT NOW(),
+    expires_at      TIMESTAMPTZ     NOT NULL,
+    PRIMARY KEY (session_id),
+    CONSTRAINT uq_user_sessions_token UNIQUE (token),
+    CONSTRAINT fk_user_sessions_user
+        FOREIGN KEY (user_id) REFERENCES users(user_id)
+        ON DELETE CASCADE ON UPDATE CASCADE
+);
+
+CREATE INDEX ix_user_sessions_user    ON user_sessions (user_id);
+CREATE INDEX ix_user_sessions_expires ON user_sessions (expires_at);
+
+-- =============================================================================
+-- 6. password_recovery
+-- =============================================================================
+CREATE TABLE password_recovery (
+    recovery_id     UUID            NOT NULL,
+    user_id         UUID            NOT NULL,
+    email           VARCHAR(255)    NOT NULL,
+    recovery_code   VARCHAR(20)     NOT NULL,
+    is_used         BOOLEAN         NOT NULL DEFAULT FALSE,
+    created_at      TIMESTAMPTZ     NOT NULL DEFAULT NOW(),
+    expires_at      TIMESTAMPTZ     NOT NULL,
+    PRIMARY KEY (recovery_id),
+    CONSTRAINT fk_password_recovery_user
+        FOREIGN KEY (user_id) REFERENCES users(user_id)
+        ON DELETE CASCADE ON UPDATE CASCADE
+);
+
+CREATE INDEX ix_password_recovery_user ON password_recovery (user_id);
+CREATE INDEX ix_password_recovery_code ON password_recovery (recovery_code);
+
+-- =============================================================================
+-- 7. categories
+-- =============================================================================
+CREATE TABLE categories (
+    category_id     UUID            NOT NULL,
+    name            VARCHAR(50)     NOT NULL,
+    display_order   INTEGER         NOT NULL DEFAULT 0,
+    PRIMARY KEY (category_id),
+    CONSTRAINT uq_categories_name UNIQUE (name)
+);
+
+CREATE INDEX ix_categories_order ON categories (display_order);
+
+-- =============================================================================
+-- 8. communities
+-- =============================================================================
+CREATE TABLE communities (
+    community_id    UUID            NOT NULL,
+    name            VARCHAR(100)    NOT NULL,
+    description     TEXT            NULL,
+    cover_image_url VARCHAR(500)    NULL,
+    category_id     UUID            NOT NULL,
+    owner_id        UUID            NOT NULL,
+    created_at      TIMESTAMPTZ     NOT NULL DEFAULT NOW(),
+    deleted_at      TIMESTAMPTZ     NULL,
+    PRIMARY KEY (community_id),
+    CONSTRAINT uq_communities_name UNIQUE (name),
+    CONSTRAINT fk_communities_category
+        FOREIGN KEY (category_id) REFERENCES categories(category_id)
+        ON DELETE RESTRICT ON UPDATE CASCADE,
+    CONSTRAINT fk_communities_owner
+        FOREIGN KEY (owner_id) REFERENCES users(user_id)
+        ON DELETE RESTRICT ON UPDATE CASCADE
+);
+
+CREATE INDEX ix_communities_category ON communities (category_id);
+CREATE INDEX ix_communities_owner    ON communities (owner_id);
+
+-- =============================================================================
+-- 9. community_members  (N:N users <-> communities)
+-- =============================================================================
+CREATE TABLE community_members (
+    membership_id   UUID                NOT NULL,
+    user_id         UUID                NOT NULL,
+    community_id    UUID                NOT NULL,
+    role            member_role_enum    NOT NULL DEFAULT 'member',
+    joined_at       TIMESTAMPTZ         NOT NULL DEFAULT NOW(),
+    PRIMARY KEY (membership_id),
+    CONSTRAINT uq_community_members_user_community UNIQUE (user_id, community_id),
+    CONSTRAINT fk_community_members_user
+        FOREIGN KEY (user_id) REFERENCES users(user_id)
+        ON DELETE CASCADE ON UPDATE CASCADE,
+    CONSTRAINT fk_community_members_community
+        FOREIGN KEY (community_id) REFERENCES communities(community_id)
+        ON DELETE CASCADE ON UPDATE CASCADE
+);
+
+CREATE INDEX ix_community_members_community ON community_members (community_id);
+
+-- =============================================================================
+-- 10. community_categories  (subcategorias internas de cada comunidade)
+-- =============================================================================
+CREATE TABLE community_categories (
+    community_category_id   UUID            NOT NULL,
+    community_id            UUID            NOT NULL,
+    name                    VARCHAR(100)    NOT NULL,
+    slug                    VARCHAR(100)    NOT NULL,
+    PRIMARY KEY (community_category_id),
+    CONSTRAINT uq_community_categories_community_slug UNIQUE (community_id, slug),
+    CONSTRAINT fk_community_categories_community
+        FOREIGN KEY (community_id) REFERENCES communities(community_id)
+        ON DELETE CASCADE ON UPDATE CASCADE
+);
+
+-- =============================================================================
+-- 11. posts
+-- =============================================================================
+CREATE TABLE posts (
+    post_id                 UUID            NOT NULL,
+    community_id            UUID            NOT NULL,
+    community_category_id   UUID            NULL,
+    author_id               UUID            NOT NULL,
+    title                   VARCHAR(200)    NOT NULL,
+    content                 TEXT            NOT NULL,
+    likes_count             INTEGER         NOT NULL DEFAULT 0,
+    comments_count          INTEGER         NOT NULL DEFAULT 0,
+    created_at              TIMESTAMPTZ     NOT NULL DEFAULT NOW(),
+    updated_at              TIMESTAMPTZ     NOT NULL DEFAULT NOW(),
+    deleted_at              TIMESTAMPTZ     NULL,
+    PRIMARY KEY (post_id),
+    CONSTRAINT fk_posts_community
+        FOREIGN KEY (community_id) REFERENCES communities(community_id)
+        ON DELETE CASCADE ON UPDATE CASCADE,
+    CONSTRAINT fk_posts_community_category
+        FOREIGN KEY (community_category_id) REFERENCES community_categories(community_category_id)
+        ON DELETE SET NULL ON UPDATE CASCADE,
+    CONSTRAINT fk_posts_author
+        FOREIGN KEY (author_id) REFERENCES users(user_id)
+        ON DELETE RESTRICT ON UPDATE CASCADE
+);
+
+CREATE INDEX ix_posts_community_created  ON posts (community_id, created_at DESC);
+CREATE INDEX ix_posts_author             ON posts (author_id);
+CREATE INDEX ix_posts_community_category ON posts (community_category_id);
+
+CREATE TRIGGER posts_set_updated_at
+BEFORE UPDATE ON posts
+FOR EACH ROW EXECUTE FUNCTION set_updated_at();
+
+-- NOTA: likes_count e comments_count são contadores desnormalizados.
+-- Mantidos pela camada de aplicação ou via triggers extras.
+
+-- =============================================================================
+-- 12. comments  (com self-reference para threading)
+-- =============================================================================
+CREATE TABLE comments (
+    comment_id          UUID        NOT NULL,
+    post_id             UUID        NOT NULL,
+    author_id           UUID        NOT NULL,
+    parent_comment_id   UUID        NULL,
+    content             TEXT        NOT NULL,
+    created_at          TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    deleted_at          TIMESTAMPTZ NULL,
+    PRIMARY KEY (comment_id),
+    CONSTRAINT fk_comments_post
+        FOREIGN KEY (post_id) REFERENCES posts(post_id)
+        ON DELETE CASCADE ON UPDATE CASCADE,
+    CONSTRAINT fk_comments_author
+        FOREIGN KEY (author_id) REFERENCES users(user_id)
+        ON DELETE RESTRICT ON UPDATE CASCADE,
+    CONSTRAINT fk_comments_parent
+        FOREIGN KEY (parent_comment_id) REFERENCES comments(comment_id)
+        ON DELETE CASCADE ON UPDATE CASCADE
+);
+
+CREATE INDEX ix_comments_post_created ON comments (post_id, created_at);
+CREATE INDEX ix_comments_author       ON comments (author_id);
+CREATE INDEX ix_comments_parent       ON comments (parent_comment_id);
+
+-- =============================================================================
+-- 13. post_reactions
+-- =============================================================================
+CREATE TABLE post_reactions (
+    reaction_id     UUID                NOT NULL,
+    post_id         UUID                NOT NULL,
+    user_id         UUID                NOT NULL,
+    type            reaction_type_enum  NOT NULL DEFAULT 'like',
+    created_at      TIMESTAMPTZ         NOT NULL DEFAULT NOW(),
+    PRIMARY KEY (reaction_id),
+    CONSTRAINT uq_post_reactions_post_user_type UNIQUE (post_id, user_id, type),
+    CONSTRAINT fk_post_reactions_post
+        FOREIGN KEY (post_id) REFERENCES posts(post_id)
+        ON DELETE CASCADE ON UPDATE CASCADE,
+    CONSTRAINT fk_post_reactions_user
+        FOREIGN KEY (user_id) REFERENCES users(user_id)
+        ON DELETE CASCADE ON UPDATE CASCADE
+);
+
+CREATE INDEX ix_post_reactions_user ON post_reactions (user_id);
+
+-- Para adicionar tipos no futuro:
+--   ALTER TYPE reaction_type_enum ADD VALUE 'dislike';
+--   ALTER TYPE reaction_type_enum ADD VALUE 'love';
+
+-- =============================================================================
+-- 14. follows  (com CHECK anti-self-follow)
+-- =============================================================================
+CREATE TABLE follows (
+    follow_id       UUID        NOT NULL,
+    follower_id     UUID        NOT NULL,
+    following_id    UUID        NOT NULL,
+    created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    PRIMARY KEY (follow_id),
+    CONSTRAINT uq_follows_follower_following UNIQUE (follower_id, following_id),
+    CONSTRAINT chk_follows_not_self CHECK (follower_id <> following_id),
+    CONSTRAINT fk_follows_follower
+        FOREIGN KEY (follower_id) REFERENCES users(user_id)
+        ON DELETE CASCADE ON UPDATE CASCADE,
+    CONSTRAINT fk_follows_following
+        FOREIGN KEY (following_id) REFERENCES users(user_id)
+        ON DELETE CASCADE ON UPDATE CASCADE
+);
+
+CREATE INDEX ix_follows_following ON follows (following_id);
+
+-- =============================================================================
+-- 15. leaderboard_points
+-- =============================================================================
+CREATE TABLE leaderboard_points (
+    leaderboard_id  UUID        NOT NULL,
+    user_id         UUID        NOT NULL,
+    community_id    UUID        NOT NULL,
+    points          INTEGER     NOT NULL DEFAULT 0,
+    period_start    DATE        NOT NULL,
+    period_end      DATE        NOT NULL,
+    PRIMARY KEY (leaderboard_id),
+    CONSTRAINT uq_leaderboard_user_community_period UNIQUE (user_id, community_id, period_start),
+    CONSTRAINT chk_leaderboard_period CHECK (period_end >= period_start),
+    CONSTRAINT fk_leaderboard_user
+        FOREIGN KEY (user_id) REFERENCES users(user_id)
+        ON DELETE CASCADE ON UPDATE CASCADE,
+    CONSTRAINT fk_leaderboard_community
+        FOREIGN KEY (community_id) REFERENCES communities(community_id)
+        ON DELETE CASCADE ON UPDATE CASCADE
+);
+
+CREATE INDEX ix_leaderboard_community_period
+    ON leaderboard_points (community_id, period_start, points DESC);
+
+-- =============================================================================
+-- 16. reports  (target_id é polimórfico — não há FK direta)
+-- =============================================================================
+CREATE TABLE reports (
+    report_id       UUID                NOT NULL,
+    reporter_id     UUID                NOT NULL,
+    target_type     report_target_enum  NOT NULL,
+    target_id       UUID                NOT NULL,
+    reason          TEXT                NOT NULL,
+    status          report_status_enum  NOT NULL DEFAULT 'pending',
+    created_at      TIMESTAMPTZ         NOT NULL DEFAULT NOW(),
+    resolved_at     TIMESTAMPTZ         NULL,
+    resolved_by     UUID                NULL,
+    PRIMARY KEY (report_id),
+    CONSTRAINT fk_reports_reporter
+        FOREIGN KEY (reporter_id) REFERENCES users(user_id)
+        ON DELETE CASCADE ON UPDATE CASCADE,
+    CONSTRAINT fk_reports_resolved_by
+        FOREIGN KEY (resolved_by) REFERENCES users(user_id)
+        ON DELETE SET NULL ON UPDATE CASCADE
+);
+
+CREATE INDEX ix_reports_reporter ON reports (reporter_id);
+CREATE INDEX ix_reports_target   ON reports (target_type, target_id);
+CREATE INDEX ix_reports_status   ON reports (status);
+
+-- =============================================================================
+-- 17. terms_acceptance
+-- =============================================================================
+CREATE TABLE terms_acceptance (
+    acceptance_id   UUID            NOT NULL,
+    user_id         UUID            NOT NULL,
+    terms_version   VARCHAR(20)     NOT NULL,
+    accepted_at     TIMESTAMPTZ     NOT NULL DEFAULT NOW(),
+    ip_address      VARCHAR(45)     NULL,
+    PRIMARY KEY (acceptance_id),
+    CONSTRAINT fk_terms_acceptance_user
+        FOREIGN KEY (user_id) REFERENCES users(user_id)
+        ON DELETE CASCADE ON UPDATE CASCADE
+);
+
+CREATE INDEX ix_terms_acceptance_user    ON terms_acceptance (user_id);
+CREATE INDEX ix_terms_acceptance_version ON terms_acceptance (terms_version);
+
+-- =============================================================================
+-- FIM DO SCHEMA
+-- =============================================================================

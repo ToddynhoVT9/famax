@@ -11,17 +11,24 @@
     "build:frontend": "vite build",
     "build:backend": "tsc",
     "start": "node dist/server.js",
-    "typecheck": "tsc --noEmit && tsc -p tsconfig.client.json --noEmit"
+    "test": "tsx test/integration.mjs",
+    "typecheck": "tsc --noEmit && tsc -p tsconfig.client.json --noEmit",
+    "migrate": "node scripts/migrate.mjs"
   },
   "dependencies": {
+    "@types/multer": "^2.2.0",
     "bcrypt": "^5.1.1",
     "cors": "^2.8.5",
+    "dotenv": "^17.4.2",
     "express": "^4.21.2",
     "jsonwebtoken": "^9.0.2",
+    "multer": "^2.2.0",
     "pg": "^8.13.1",
     "zod": "^3.24.1"
   },
   "devDependencies": {
+    "@electric-sql/pglite": "^0.5.5",
+    "@electric-sql/pglite-socket": "^0.2.8",
     "@types/bcrypt": "^5.0.2",
     "@types/cors": "^2.8.17",
     "@types/express": "^5.0.0",

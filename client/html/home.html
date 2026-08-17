@@ -70,30 +70,23 @@
     <aside class="sidebar" id="sidebar">
         <!-- Título principal com linha embaixo -->
         <div class="sidebar-header">
-            <a href="#" class="sidebar-link">Página Inicial</a>
+            <a href="home.html" class="sidebar-link">Página Inicial</a>
         </div>
-        
-        <!-- Lista de comunidades (Renderizadas pelo Backend) -->
-        <a href="community.html" class="sidebar-link">Minha Comunidade Exemplo</a>
+
+        <div class="sidebar-header" style="margin-top:20px; border-bottom:1px solid #aaa;">
+            <a href="community/new.html" class="sidebar-link" style="font-size: 1rem; color: #ccc;">+ Criar comunidade</a>
+        </div>
+
+        <!-- Preenchido por home.ts a partir de GET /api/me/communities -->
+        <div id="myCommunities"></div>
     </aside>
 
-    <!-- Conteúdo Principal do Feed -->
+    <!-- Conteúdo Principal do Feed (renderizado por home.ts) -->
     <main class="main-content" id="main-content">
-        
-        <!-- Categoria Template (Renderizada pelo Backend) -->
-        <section class="category-section">
-            <h2 class="category-title">Nome da Categoria</h2>
-            <div class="cards-container">
-                <!-- Cartão de Template -->
-                <a href="community.html" class="card">
-                    <div class="card-content">Imagem/<br>Capa</div>
-                    <div class="card-footer">Nome da Comunidade</div>
-                </a>
-            </div>
-        </section>
-
+        <div class="feed-status" id="feedStatus">Carregando comunidades...</div>
     </main>
 
     <script type="module" src="../script/home.ts"></script>
+    <script type="module" src="../script/shared/chat-widget.ts"></script>
 </body>
 </html>
