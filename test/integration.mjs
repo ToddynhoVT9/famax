@@ -277,6 +277,126 @@ check(
 
 // --- Posts ------------------------------------------------------------------
 
+// --- Upload de capa (multipart) ---------------------------------------------
+
+console.log("\n[Sistema 2] Upload de capa");
+
+// Usuário próprio: o rate limit de create-community é 5/min por usuário e a
+// alice já gastou 3 nos testes acima.
+const dave = {
+    email: `dave${stamp}@famax.test`,
+    username: `dave${stamp}`,
+    password: "senha123!forte",
+    displayName: "Dave Teste",
+    termsAccepted: true,
+};
+const daveReg = await call("POST", "/auth/register", { body: dave });
+const daveToken = daveReg.body?.token;
+
+// Os magic bytes de um PNG. O conteúdo não precisa ser uma imagem de verdade:
+// sem SUPABASE_URL/SUPABASE_SERVICE_KEY o isStorageEnabled() é false e a rota
+// nem chama o uploadCommunityCover — o que se exercita aqui é o multer e o
+// errorHandler, não o Storage.
+const pngBytes = new Uint8Array([
+    0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0x00, 0x00, 0x00, 0x0d,
+]);
+
+const withCover = new FormData();
+withCover.append("name", `Com Capa ${stamp}`);
+withCover.append("categoryId", categoryId);
+withCover.append("cover", new Blob([pngBytes], { type: "image/png" }), "capa.png");
+const coverOk = await call("POST", "/communities", {
+    token: daveToken,
+    body: withCover,
+    raw: true,
+});
+check(
+    "cria comunidade com capa (multipart)",
+    coverOk.status === 201,
+    JSON.stringify(coverOk.body).slice(0, 140),
+);
+
+const tooBig = new FormData();
+tooBig.append("name", `Capa Grande ${stamp}`);
+tooBig.append("categoryId", categoryId);
+tooBig.append("cover", new Blob([new Uint8Array(3 * 1024 * 1024)]), "grande.png");
+const coverTooBig = await call("POST", "/communities", {
+    token: daveToken,
+    body: tooBig,
+    raw: true,
+});
+check(
+    "capa acima de 2MB → 413",
+    coverTooBig.status === 413 && /2MB/.test(coverTooBig.body?.error ?? ""),
+    `${coverTooBig.status} ${JSON.stringify(coverTooBig.body)}`,
+);
+
+// fieldArrayIndexLimit: um índice alto forçava a alocação de um array esparso
+// gigante e travava o processo. Tem que virar 400, e com mensagem de
+// formulário — o problema é o nome do campo, não o arquivo.
+const arrayIndex = new FormData();
+arrayIndex.append("name", `Indice ${stamp}`);
+arrayIndex.append("categoryId", categoryId);
+arrayIndex.append("items[4294967294]", "a");
+const coverArrayIndex = await call("POST", "/communities", {
+    token: daveToken,
+    body: arrayIndex,
+    raw: true,
+});
+check(
+    "índice de array no nome do campo → 400 Formulário inválido",
+    coverArrayIndex.status === 400 &&
+        coverArrayIndex.body?.error === "Formulário inválido",
+    `${coverArrayIndex.status} ${JSON.stringify(coverArrayIndex.body)}`,
+);
+
+// Contraponto do check acima: erro que é de arquivo continua dizendo arquivo.
+// Se os dois caírem na mesma mensagem, a separação no errorHandler se perdeu.
+const wrongField = new FormData();
+wrongField.append("name", `Campo Errado ${stamp}`);
+wrongField.append("categoryId", categoryId);
+wrongField.append("anexo", new Blob([pngBytes]), "capa.png");
+const coverWrongField = await call("POST", "/communities", {
+    token: daveToken,
+    body: wrongField,
+    raw: true,
+});
+check(
+    "campo de arquivo inesperado → 400 Arquivo inválido",
+    coverWrongField.status === 400 &&
+        coverWrongField.body?.error === "Arquivo inválido",
+    `${coverWrongField.status} ${JSON.stringify(coverWrongField.body)}`,
+);
+
+// O sniffImageType é a única barreira contra um arquivo renomeado — o
+// mimetype que o multer expõe vem do cliente. Chamado direto porque a rota só
+// chega nele com o Storage configurado, o que o harness não faz.
+const { sniffImageType } = await import("../server/lib/storage.js");
+check(
+    "sniffImageType reconhece PNG",
+    sniffImageType(Buffer.from(pngBytes)) === "png",
+);
+check(
+    "sniffImageType reconhece JPEG",
+    sniffImageType(Buffer.from([0xff, 0xd8, 0xff, 0xe0, 0, 0, 0, 0, 0, 0, 0, 0])) ===
+        "jpeg",
+);
+check(
+    "sniffImageType reconhece WebP",
+    sniffImageType(
+        Buffer.concat([Buffer.from("RIFF"), Buffer.alloc(4), Buffer.from("WEBP")]),
+    ) === "webp",
+);
+check(
+    "sniffImageType rejeita executável renomeado para .png",
+    sniffImageType(Buffer.from([0x4d, 0x5a, 0x90, 0, 0, 0, 0, 0, 0, 0, 0, 0])) === null,
+);
+check(
+    "sniffImageType rejeita buffer curto demais",
+    sniffImageType(Buffer.from([0x89, 0x50])) === null,
+);
+
+
 console.log("\n[Sistema 2] Posts");
 
 const postByStranger = await call("POST", "/posts", {
