@@ -1,5 +1,8 @@
 node_modules/
 dist/
+
+# Dados do Postgres embarcado (DB_MODE=embedded)
+data/
 .env
 
 # Editor

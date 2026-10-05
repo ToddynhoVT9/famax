@@ -18,13 +18,37 @@ function required(name: string): string {
   return value;
 }
 
+/**
+ * `embedded` sobe um Postgres em WASM dentro do processo (ver embedded-db.ts);
+ * `external` exige DATABASE_URL apontando para um Postgres de verdade.
+ *
+ * É explícito de propósito: cair no embarcado só porque DATABASE_URL faltou
+ * transformaria um erro de configuração num banco vazio subindo em silêncio.
+ */
+const DB_MODE = (process.env.DB_MODE ?? "external") as "external" | "embedded";
+
+if (DB_MODE !== "external" && DB_MODE !== "embedded") {
+  throw new Error(`DB_MODE inválido: "${DB_MODE}". Use "external" ou "embedded".`);
+}
+
+const PGLITE_PORT = Number(process.env.PGLITE_PORT ?? 55500);
+
 export const config = {
   PORT: Number(process.env.PORT ?? 3000),
   NODE_ENV: (process.env.NODE_ENV ?? "development") as
     | "development"
     | "production",
 
-  DATABASE_URL: required("DATABASE_URL"),
+  DB_MODE,
+  PGLITE_PORT,
+  PGLITE_DATA_DIR: process.env.PGLITE_DATA_DIR ?? "./data/pglite",
+
+  // No modo embarcado o banco é o socket local que o embedded-db.ts abre, então
+  // a URL é derivada em vez de exigida.
+  DATABASE_URL:
+    DB_MODE === "embedded"
+      ? `postgresql://postgres:postgres@127.0.0.1:${PGLITE_PORT}/postgres`
+      : required("DATABASE_URL"),
 
   JWT_SECRET: required("JWT_SECRET"),
   JWT_EXPIRES_IN: (process.env.JWT_EXPIRES_IN ?? "7d") as `${number}d`,

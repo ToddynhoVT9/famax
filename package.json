@@ -9,13 +9,15 @@
     "dev:frontend": "vite",
     "build": "npm run build:frontend && npm run build:backend",
     "build:frontend": "vite build",
-    "build:backend": "tsc",
+    "build:backend": "tsc && node scripts/copy-sql.mjs",
     "start": "node dist/server.js",
     "test": "tsx test/integration.mjs",
     "typecheck": "tsc --noEmit && tsc -p tsconfig.client.json --noEmit",
     "migrate": "node scripts/migrate.mjs"
   },
   "dependencies": {
+    "@electric-sql/pglite": "^0.5.8",
+    "@electric-sql/pglite-socket": "^0.2.11",
     "bcrypt": "^6.0.0",
     "cors": "^2.8.5",
     "dotenv": "^17.4.2",
@@ -26,8 +28,6 @@
     "zod": "^3.24.1"
   },
   "devDependencies": {
-    "@electric-sql/pglite": "^0.5.5",
-    "@electric-sql/pglite-socket": "^0.2.8",
     "@types/bcrypt": "^6.0.0",
     "@types/cors": "^2.8.17",
     "@types/express": "^5.0.0",
