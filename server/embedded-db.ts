@@ -8,8 +8,9 @@
  *
  * Ativado por DB_MODE=embedded. Ver config.ts.
  */
-import { readFile, readdir, mkdir } from "node:fs/promises";
+import { readFile, readdir, mkdir, stat } from "node:fs/promises";
 import { createHash } from "node:crypto";
+import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { PGlite } from "@electric-sql/pglite";
@@ -77,6 +78,22 @@ async function applySchema(instance: PGlite): Promise<void> {
 }
 
 /**
+ * Resolve o diretório de dados para um caminho absoluto.
+ *
+ * Expande o `~` na mão: o shell faz isso, mas uma env var vinda de painel de
+ * hospedagem chega literal, e o Node trataria "~/dados" como uma pasta
+ * chamada "~" dentro do cwd — criada sem reclamar, e perdida no próximo
+ * deploy junto com a pasta do app.
+ */
+function resolveDataDir(raw: string): string {
+  if (raw === "~") return os.homedir();
+  if (raw.startsWith("~/") || raw.startsWith("~\\")) {
+    return path.join(os.homedir(), raw.slice(2));
+  }
+  return path.resolve(raw);
+}
+
+/**
  * Sobe o banco embarcado. Precisa rodar antes de qualquer query — o pool do
  * pg é preguiçoso (só abre conexão na primeira query), então basta chamar
  * isto antes do pingDatabase().
@@ -84,10 +101,26 @@ async function applySchema(instance: PGlite): Promise<void> {
 export async function startEmbeddedDatabase(): Promise<void> {
   if (db) return;
 
-  await mkdir(config.PGLITE_DATA_DIR, { recursive: true });
-  console.log(`Postgres embarcado (PGlite) em ${config.PGLITE_DATA_DIR}`);
+  const dataDir = resolveDataDir(config.PGLITE_DATA_DIR);
 
-  db = await PGlite.create({ dataDir: config.PGLITE_DATA_DIR });
+  // Em hospedagem gerenciada a pasta do app é recriada a cada deploy, então o
+  // que importa saber é onde o banco caiu de fato e se ele sobreviveu ao
+  // deploy anterior. Um caminho relativo nunca é óbvio: depende do cwd que o
+  // painel escolheu. Por isso o log mostra os dois.
+  const existed = await stat(dataDir)
+    .then((s) => s.isDirectory())
+    .catch(() => false);
+
+  console.log("Postgres embarcado (PGlite)");
+  console.log(`  cwd        : ${process.cwd()}`);
+  console.log(`  home       : ${os.homedir()}`);
+  console.log(`  dataDir    : ${dataDir}`);
+  console.log(
+    `  persistiu  : ${existed ? "sim (diretório já existia)" : "não (primeiro boot aqui)"}`,
+  );
+
+  await mkdir(dataDir, { recursive: true });
+  db = await PGlite.create({ dataDir });
   await applySchema(db);
 
   socketServer = new PGLiteSocketServer({
