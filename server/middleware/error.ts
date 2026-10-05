@@ -11,6 +11,19 @@ export class AppError extends Error {
   }
 }
 
+// Códigos que o multer emite ao analisar os nomes/valores dos campos de texto
+// do multipart — nada a ver com o arquivo em si.
+const FIELD_ERROR_CODES = new Set([
+  "LIMIT_PART_COUNT",
+  "LIMIT_FIELD_KEY",
+  "LIMIT_FIELD_VALUE",
+  "LIMIT_FIELD_COUNT",
+  "LIMIT_FIELD_NESTING",
+  "LIMIT_FIELD_ARRAY_INDEX",
+  "MISSING_FIELD_NAME",
+  "INVALID_FIELD_NAME",
+]);
+
 export function errorHandler(
   err: unknown,
   _req: Request,
@@ -26,6 +39,9 @@ export function errorHandler(
   if (err instanceof MulterError) {
     if (err.code === "LIMIT_FILE_SIZE") {
       return res.status(413).json({ error: "A capa deve ter no máximo 2MB" });
+    }
+    if (FIELD_ERROR_CODES.has(err.code)) {
+      return res.status(400).json({ error: "Formulário inválido" });
     }
     return res.status(400).json({ error: "Arquivo inválido" });
   }

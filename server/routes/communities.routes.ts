@@ -17,7 +17,10 @@ const router = Router();
 // o disco, o que evita depender de volume persistente na hospedagem.
 const upload = multer({
   storage: multer.memoryStorage(),
-  limits: { fileSize: MAX_COVER_BYTES, files: 1 },
+  // fieldArrayIndexLimit barra nomes de campo como `x[4294967294]`, que forçam
+  // a alocação de um array esparso gigante e travam o processo (CVE-2026-82333).
+  // A rota só recebe campos escalares, então nenhum índice é legítimo.
+  limits: { fileSize: MAX_COVER_BYTES, files: 1, fieldArrayIndexLimit: 0 },
 });
 
 /**
