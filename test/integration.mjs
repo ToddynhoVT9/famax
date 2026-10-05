@@ -123,6 +123,90 @@ const aliceToken = aliceReg.body?.token;
 const bobToken = bobReg.body?.token;
 const bobId = bobReg.body?.user?.userId;
 
+// O register já devolve token, então o login é coberto só aqui — é o único
+// ponto que exercita o bcrypt.compare e o 401 genérico de credencial inválida.
+const loginEmail = await call("POST", "/auth/login", {
+    body: { identifier: alice.email, password: alice.password },
+});
+check(
+    "login por email devolve token",
+    loginEmail.status === 200 && Boolean(loginEmail.body?.token),
+    JSON.stringify(loginEmail.body).slice(0, 120),
+);
+
+const loginUsername = await call("POST", "/auth/login", {
+    body: { identifier: alice.username, password: alice.password },
+});
+check(
+    "login por username devolve token",
+    loginUsername.status === 200 && Boolean(loginUsername.body?.token),
+    JSON.stringify(loginUsername.body).slice(0, 120),
+);
+
+// Cada login tem que emitir um token distinto, senão o INSERT em
+// user_sessions bate na uq_user_sessions_token e devolve 500. Checa o jti
+// em vez de só comparar os tokens: sem ele, dois logins em segundos
+// diferentes já geram tokens diferentes pelo iat, e o teste passaria à toa.
+// Devolve null em vez de lançar: quando a regressão aparece o login responde
+// 500 sem token, e um throw aqui abortaria o resto da suíte em vez de
+// registrar uma falha.
+const jti = (token) => {
+    try {
+        const payload = token.split(".")[1];
+        return JSON.parse(Buffer.from(payload, "base64url").toString()).jti ?? null;
+    } catch {
+        return null;
+    }
+};
+const jtiEmail = jti(loginEmail.body?.token);
+const jtiUsername = jti(loginUsername.body?.token);
+check(
+    "logins consecutivos emitem tokens com jti distinto",
+    jtiEmail !== null && jtiEmail !== jtiUsername,
+    `${jtiEmail} vs ${jtiUsername}`,
+);
+
+const loginWrongPassword = await call("POST", "/auth/login", {
+    body: { identifier: alice.email, password: "senha-errada" },
+});
+check(
+    "senha errada → 401",
+    loginWrongPassword.status === 401,
+    JSON.stringify(loginWrongPassword.body),
+);
+
+// Email inexistente ainda passa pelo bcrypt.compare contra o fakeHash, para o
+// tempo de resposta não revelar se a conta existe. A mensagem tem que ser a
+// mesma da senha errada, senão o 401 vira um oráculo de emails cadastrados.
+const loginUnknown = await call("POST", "/auth/login", {
+    body: { identifier: `fantasma${stamp}@famax.test`, password: alice.password },
+});
+check(
+    "usuário inexistente → 401 com a mesma mensagem",
+    loginUnknown.status === 401 &&
+        loginUnknown.body?.error === loginWrongPassword.body?.error,
+    JSON.stringify(loginUnknown.body),
+);
+
+const loginNoIdentifier = await call("POST", "/auth/login", {
+    body: { password: alice.password },
+});
+check(
+    "login sem identifier → 400",
+    loginNoIdentifier.status === 400,
+    JSON.stringify(loginNoIdentifier.body).slice(0, 120),
+);
+
+// Fecha o ciclo: o token emitido pelo login (e não pelo register) autentica.
+const loginTokenUse = await call("GET", "/me/communities", {
+    token: loginEmail.body?.token,
+});
+check(
+    "token do login autentica numa rota protegida",
+    loginTokenUse.status === 200,
+    String(loginTokenUse.status),
+);
+
 // --- Sistema 2: comunidades -------------------------------------------------
 
 console.log("\n[Sistema 2] Criação de comunidade");

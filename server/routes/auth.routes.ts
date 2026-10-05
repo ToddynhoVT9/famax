@@ -153,8 +153,14 @@ router.post("/login", async (req, res, next) => {
       return res.status(401).json({ error: "Credenciais inválidas" });
     }
 
+    // O jti é o que torna o token único. Sem ele o payload é só {sub,iat,exp},
+    // e iat/exp são em segundos inteiros — dois logins do mesmo usuário no
+    // mesmo segundo geravam tokens idênticos e o INSERT abaixo batia na
+    // constraint uq_user_sessions_token, devolvendo 500 (dois cliques no botão
+    // de entrar já reproduzem).
     const token = jwt.sign({ sub: user.user_id }, config.JWT_SECRET, {
       expiresIn: config.JWT_EXPIRES_IN,
+      jwtid: randomUUID(),
     });
 
     await pool.query(
