@@ -85,14 +85,34 @@ process.env.NODE_ENV = "development";
 console.log("Subindo a API...");
 await import("../server/server.js");
 
-for (let i = 0; i < 60; i++) {
+// Espera o BANCO, não só a porta: o servidor abre a porta antes de conectar no
+// banco (exigência da hospedagem, ver server.ts), e nessa janela as rotas de
+// API respondem 503. Parar no primeiro 200 do /health deixava a suíte começar
+// cedo demais.
+let dbReady = false;
+for (let i = 0; i < 120; i++) {
     try {
         const res = await fetch(`${BASE}/health`);
-        if (res.ok) break;
+        if (res.ok) {
+            const body = await res.json();
+            if (body.db === "ready") {
+                dbReady = true;
+                break;
+            }
+            if (body.db === "error") {
+                console.error(`API subiu mas o banco falhou: ${body.dbError ?? "sem detalhe"}`);
+                process.exit(1);
+            }
+        }
     } catch {
         /* ainda subindo */
     }
     await new Promise((r) => setTimeout(r, 250));
+}
+
+if (!dbReady) {
+    console.error("Banco não ficou pronto em 30s.");
+    process.exit(1);
 }
 
 // ---------------------------------------------------------------------------

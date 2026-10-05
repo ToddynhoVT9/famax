@@ -22,9 +22,44 @@ const app = express();
 app.use(cors({ origin: true, credentials: true }));
 app.use(express.json({ limit: "1mb" }));
 
+/**
+ * Estado do banco.
+ *
+ * A porta é aberta antes do banco estar pronto (ver start()), então existe uma
+ * janela de alguns segundos em que a app responde mas não consegue consultar
+ * nada. Isto é o que separa "ainda subindo" de "subiu e falhou".
+ */
+const dbState: { ready: boolean; error: Error | null } = {
+  ready: false,
+  error: null,
+};
+
 // API ROUTES (primeiro, antes do static)
+//
+// Responde 200 mesmo enquanto o banco sobe: o supervisor da hospedagem usa a
+// porta aberta como sinal de vida, e um 503 aqui poderia virar restart em
+// loop. O estado real vai no corpo.
 app.get("/api/health", (_req, res) => {
-  res.json({ status: "ok", timestamp: new Date().toISOString() });
+  res.json({
+    status: "ok",
+    db: dbState.ready ? "ready" : dbState.error ? "error" : "starting",
+    ...(dbState.error && config.NODE_ENV === "development"
+      ? { dbError: dbState.error.message }
+      : {}),
+    timestamp: new Date().toISOString(),
+  });
+});
+
+// Barreira: toda rota de API depende do banco. Sem isto, uma requisição que
+// chegasse na janela de boot receberia um ECONNREFUSED cru vindo do pool.
+// Vem depois do /api/health de propósito, para o health nunca ser barrado.
+app.use("/api", (_req, res, next) => {
+  if (dbState.ready) return next();
+  res.status(503).json({
+    error: dbState.error
+      ? "Banco de dados indisponível"
+      : "Servidor iniciando, tente novamente em alguns segundos",
+  });
 });
 
 app.use("/api/auth", authRoutes);
@@ -47,9 +82,12 @@ app.use((req, res) => {
 
 app.use(errorHandler);
 
-async function start() {
-  // Precisa vir antes do ping: no modo embarcado é isto que cria o banco para
-  // o pool conectar. O pool do pg é preguiçoso, então importá-lo antes é ok.
+/**
+ * Sobe o banco. Roda DEPOIS do listen(), então não pode derrubar o processo:
+ * uma falha aqui fica registrada no dbState e a app responde 503 nas rotas de
+ * API, com o motivo no log e no /api/health. Melhor que morrer em silêncio.
+ */
+async function initDatabase() {
   if (config.DB_MODE === "embedded") {
     const { startEmbeddedDatabase, stopEmbeddedDatabase } = await import(
       "./embedded-db.js"
@@ -76,14 +114,38 @@ async function start() {
   }
 
   await pingDatabase();
+  dbState.ready = true;
+}
+
+function start() {
+  // O listen() vem PRIMEIRO, antes de qualquer trabalho de banco.
+  //
+  // A hospedagem gerenciada mata o processo se não houver listen() em 3
+  // segundos ("App did not call listen() within 3 seconds"), e o primeiro
+  // boot do PGlite passa disso — WASM + baseline + migrations levaram 5,3s.
+  // Com o banco antes do listen o resultado era crash loop: processos
+  // concorrentes disputando a porta do PGlite e um ECONNREFUSED atrás do
+  // outro.
   app.listen(config.PORT, () => {
     console.log(
       `🚀 FAMAX (API + Frontend) rodando em http://localhost:${config.PORT}`,
     );
+    console.log("   Banco subindo — rotas de API respondem 503 até ficar pronto.");
   });
+
+  initDatabase()
+    .then(() => console.log("✅ Banco pronto — API liberada."))
+    .catch((err: Error) => {
+      dbState.error = err;
+      console.error("Erro ao iniciar o banco:", err);
+    });
 }
 
-start().catch((err) => {
+try {
+  start();
+} catch (err) {
+  // Só chega aqui se o próprio listen() falhar (porta ocupada, por exemplo).
+  // Falha de banco não passa por aqui — vira dbState.error.
   console.error("Erro ao iniciar servidor:", err);
   process.exit(1);
-});
+}
