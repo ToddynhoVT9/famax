@@ -123,17 +123,61 @@ export async function startEmbeddedDatabase(): Promise<void> {
   db = await PGlite.create({ dataDir });
   await applySchema(db);
 
-  socketServer = new PGLiteSocketServer({
-    db,
-    host: "127.0.0.1",
-    port: config.PGLITE_PORT,
-    // Precisa acompanhar o `max` do pool em db.ts: o default é 1, e aí a
-    // segunda conexão que o pool abrisse ficaria pendurada.
-    maxConnections: 10,
-  });
-  await socketServer.start();
+  await bindSocketWithRetry();
+}
 
-  console.log(`✅ PGlite escutando em 127.0.0.1:${config.PGLITE_PORT}`);
+/**
+ * Abre o socket, esperando a porta liberar se preciso.
+ *
+ * A hospedagem faz restart sobreposto: sobe a instância nova enquanto a velha
+ * ainda está de pé. A nova encontra a porta ocupada e, sem retry, morria com
+ * EADDRINUSE e ficava viva servindo 503 para sempre. Esperar é o certo — a
+ * velha solta a porta em segundos, quando termina de desligar.
+ */
+async function bindSocketWithRetry(): Promise<void> {
+  const attempts = 30;
+  const delayMs = 1000;
+
+  for (let i = 1; i <= attempts; i++) {
+    const server = new PGLiteSocketServer({
+      db: db!,
+      host: "127.0.0.1",
+      port: config.PGLITE_PORT,
+      // Precisa acompanhar o `max` do pool em db.ts: o default é 1, e aí a
+      // segunda conexão que o pool abrisse ficaria pendurada.
+      maxConnections: 10,
+    });
+
+    try {
+      await server.start();
+      socketServer = server;
+      console.log(`✅ PGlite escutando em 127.0.0.1:${config.PGLITE_PORT}`);
+      return;
+    } catch (err) {
+      const code = (err as NodeJS.ErrnoException).code;
+      if (code !== "EADDRINUSE") throw err;
+
+      // Descarta a instância que falhou: o start() recusa ser chamado duas
+      // vezes no mesmo objeto ("Socket server already started").
+      await server.stop().catch(() => {});
+
+      if (i === attempts) {
+        throw new Error(
+          `Porta ${config.PGLITE_PORT} seguiu ocupada após ${attempts}s. ` +
+            `Outra instância do app ainda está de pé, ou PGLITE_PORT conflita ` +
+            `com outro processo da máquina.`,
+        );
+      }
+
+      if (i === 1) {
+        console.log(
+          `Porta ${config.PGLITE_PORT} ocupada (instância anterior ainda ` +
+            `desligando) — aguardando liberar...`,
+        );
+      }
+      await new Promise((r) => setTimeout(r, delayMs));
+    }
+  }
 }
 
 /** Fecha o socket e o banco, liberando o diretório de dados. */

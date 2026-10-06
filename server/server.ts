@@ -34,6 +34,16 @@ const dbState: { ready: boolean; error: Error | null } = {
   error: null,
 };
 
+/**
+ * Marcado quando o processo está desligando.
+ *
+ * Num restart sobreposto a instância antiga pode receber o sinal de parada no
+ * meio do próprio boot: o socket do banco fecha e o ping em voo falha com
+ * ECONNREFUSED. Isso é o desligamento funcionando, não um erro de início —
+ * registrar como erro manda uma pista falsa para o log.
+ */
+let shuttingDown = false;
+
 // API ROUTES (primeiro, antes do static)
 //
 // Responde 200 mesmo enquanto o banco sobe: o supervisor da hospedagem usa a
@@ -97,11 +107,10 @@ async function initDatabase() {
     // O painel de hospedagem manda SIGTERM a cada deploy/restart. Sem fechar o
     // PGlite, as escritas mais recentes podem não chegar ao disco e o
     // diretório de dados fica com lock para o próximo boot.
-    let closing = false;
     for (const signal of ["SIGTERM", "SIGINT"] as const) {
       process.on(signal, () => {
-        if (closing) return;
-        closing = true;
+        if (shuttingDown) return;
+        shuttingDown = true;
         console.log(`\n${signal} recebido — fechando o banco embarcado...`);
         stopEmbeddedDatabase()
           .then(() => process.exit(0))
@@ -136,6 +145,10 @@ function start() {
   initDatabase()
     .then(() => console.log("✅ Banco pronto — API liberada."))
     .catch((err: Error) => {
+      if (shuttingDown) {
+        console.log("Boot do banco interrompido pelo desligamento.");
+        return;
+      }
       dbState.error = err;
       console.error("Erro ao iniciar o banco:", err);
     });
