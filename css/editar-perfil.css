@@ -351,12 +351,18 @@ body {
 .btn-change-photo {
     position: absolute;
     background-color: #444444;
+<<<<<<< HEAD
     color: #ffffff;
     border-radius: 6px;
+=======
+    color: #111111;
+    border-radius: 50%;
+>>>>>>> 1bb59162bc4ac4ea94026da9036811e9717c79f6
     border: none;
     display: flex;
     align-items: center;
     justify-content: center;
+<<<<<<< HEAD
     padding: 9px 12px;
     font-size: 0.8rem;
     text-align: center;
@@ -364,6 +370,13 @@ body {
     transition: transform 0.2s, background-color 0.2s;
     box-shadow: 0 2px 4px rgba(0, 0, 0, 0.5);
     z-index: 1;
+=======
+    font-size: 0.5rem;
+    text-align: center;
+    cursor: pointer;
+    transition: transform 0.2s;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.5);
+>>>>>>> 1bb59162bc4ac4ea94026da9036811e9717c79f6
 }
 
 .btn-change-photo:hover {
@@ -372,8 +385,16 @@ body {
 }
 
 .btn-change-banner {
+<<<<<<< HEAD
     top: 12px;
     right: 12px;
+=======
+    width: 60px;
+    height: 60px;
+    bottom: -30px;
+    right: 0;
+    transform: translateY(0);
+>>>>>>> 1bb59162bc4ac4ea94026da9036811e9717c79f6
 }
 
 /* IMAGEM DE USUÁRIO */
@@ -396,11 +417,19 @@ body {
 }
 
 .btn-change-profile {
+<<<<<<< HEAD
     bottom: 8px;
     right: 8px;
     position: absolute;
     padding: 7px 9px;
     font-size: 0.68rem;
+=======
+    width: 50px;
+    height: 50px;
+    bottom: 0;
+    right: 0;
+    position: absolute;
+>>>>>>> 1bb59162bc4ac4ea94026da9036811e9717c79f6
 }
 
 /* GRADES DE INFORMAÇÕES DIVIDIDAS */
@@ -622,6 +651,7 @@ body {
     width: 100%;
     min-height: 150px;
 }
+<<<<<<< HEAD
 
 .photo-modal-overlay {
     padding: 20px;
@@ -773,3 +803,5 @@ body {
         max-width: 125px;
     }
 }
+=======
+>>>>>>> 1bb59162bc4ac4ea94026da9036811e9717c79f6

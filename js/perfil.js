@@ -41,6 +41,7 @@ document.addEventListener('click', (event) => {
 document.addEventListener('DOMContentLoaded', () => {
     const urlParams = new URLSearchParams(window.location.search);
     const isOtherUser = urlParams.get('view') === 'other';
+<<<<<<< HEAD
 
     if (!isOtherUser) {
         const profilePhoto = document.querySelector('.profile-picture');
@@ -62,6 +63,8 @@ document.addEventListener('DOMContentLoaded', () => {
             profileBanner.style.backgroundSize = 'cover';
         }
     }
+=======
+>>>>>>> 1bb59162bc4ac4ea94026da9036811e9717c79f6
     
     // Lógica do Cadeado de Perfil Privado
     const padlock = document.getElementById('privatePadlockProfile');

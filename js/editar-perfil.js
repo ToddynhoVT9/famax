@@ -211,6 +211,7 @@ if (generoOptionsContainer) {
         });
     });
 }
+<<<<<<< HEAD
 
 // --- Alteração das imagens do perfil ---
 const photoModalOverlay = document.getElementById('photoModalOverlay');
@@ -356,3 +357,5 @@ document.addEventListener('keydown', event => {
 
 applyPhotoToEditor('profile', localStorage.getItem('profilePhoto'));
 applyPhotoToEditor('banner', localStorage.getItem('profileBanner'));
+=======
+>>>>>>> 1bb59162bc4ac4ea94026da9036811e9717c79f6
