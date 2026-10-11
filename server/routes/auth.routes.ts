@@ -90,7 +90,9 @@ router.post("/register", async (req, res, next) => {
 
       await client.query("COMMIT");
     } catch (err) {
-      await client.query("ROLLBACK");
+      // .catch() porque o ROLLBACK também falha quando é a própria conexão que
+      // caiu — e aí o erro dele substituiria o original, escondendo a causa.
+      await client.query("ROLLBACK").catch(() => {});
       throw err;
     } finally {
       client.release();

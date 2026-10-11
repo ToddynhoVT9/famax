@@ -3,7 +3,7 @@ import cors from "cors";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { config } from "./config.js";
-import { pingDatabase } from "./db.js";
+import { pingDatabase, startDatabaseMonitor } from "./db.js";
 import { errorHandler } from "./middleware/error.js";
 
 import authRoutes from "./routes/auth.routes.js";
@@ -146,8 +146,37 @@ async function initDatabase() {
     }
   }
 
-  await pingDatabase();
+  try {
+    await pingDatabase();
+  } catch (err) {
+    // Num banco externo o erro cru ("ECONNREFUSED", "ETIMEDOUT") não diz se o
+    // problema é DNS, filtro de porta da hospedagem, TLS ou credencial. O
+    // diagnóstico separa esses casos — só no caminho de falha, para não
+    // custar nada quando está tudo bem.
+    if (config.DB_MODE === "external") {
+      const { diagnoseDatabaseReachability } = await import(
+        "./net-diagnostics.js"
+      );
+      await diagnoseDatabaseReachability(config.DATABASE_URL);
+    }
+    throw err;
+  }
+
   dbState.ready = true;
+
+  // Mantém o dbState honesto depois do boot: sem isto, um banco externo que
+  // caísse deixava a aplicação liberando rotas que respondiam 500 em vez do
+  // 503 explicado.
+  startDatabaseMonitor(
+    () => {
+      dbState.ready = true;
+      dbState.error = null;
+    },
+    (err) => {
+      dbState.ready = false;
+      dbState.error = err;
+    },
+  );
 }
 
 function start() {

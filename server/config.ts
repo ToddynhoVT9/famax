@@ -33,6 +33,20 @@ if (DB_MODE !== "external" && DB_MODE !== "embedded") {
 
 const PGLITE_PORT = Number(process.env.PGLITE_PORT ?? 55500);
 
+if (DB_MODE === "embedded" && process.env.NODE_ENV === "production") {
+  // Aviso, não erro: a escolha é de quem opera. Mas o modo embarcado assume
+  // UM processo — o PGlite não tranca o diretório de dados, então duas
+  // instâncias no mesmo dataDir escrevem em paralelo e corrompem o banco. A
+  // maioria das hospedagens gerenciadas roda mais de uma instância, pelo
+  // menos durante o deploy.
+  console.warn(
+    "⚠️  DB_MODE=embedded com NODE_ENV=production.\n" +
+      "   O PGlite assume um único processo: duas instâncias no mesmo\n" +
+      "   PGLITE_DATA_DIR corrompem o banco, e hospedagem gerenciada\n" +
+      "   costuma rodar mais de uma. Para produção use DB_MODE=external.",
+  );
+}
+
 export const config = {
   PORT: Number(process.env.PORT ?? 3000),
   NODE_ENV: (process.env.NODE_ENV ?? "development") as
