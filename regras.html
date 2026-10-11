@@ -1,0 +1,544 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FAMAX - Regras da Comunidade</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+        }
+
+        body {
+            background-color: #222222;
+            color: #ffffff;
+            overflow-x: hidden;
+            min-height: 100vh;
+        }
+
+        .header {
+            background-color: #828282;
+            height: 80px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 40px;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            z-index: 1000;
+        }
+
+        .logo-container {
+            display: flex;
+            flex-direction: column;
+            align-items: flex-end;
+            text-decoration: none;
+            color: white;
+            user-select: none;
+        }
+
+        .logo-text {
+            font-size: 2.5rem;
+            font-weight: 800;
+            line-height: 1;
+            letter-spacing: 1px;
+        }
+
+        .logo-subtext {
+            font-size: 1.1rem;
+            font-weight: 400;
+            margin-right: 5px;
+        }
+
+        .search-container {
+            flex-grow: 1;
+            max-width: 600px;
+            margin: 0 30px;
+            display: flex;
+            flex-direction: column;
+            position: relative;
+        }
+
+        .search-input {
+            width: 100%;
+            padding: 10px 16px;
+            border-radius: 6px;
+            border: none;
+            font-size: 1rem;
+            outline: none;
+            color: #333;
+            transition: border-radius 0.1s;
+        }
+
+        .search-input:focus {
+            border-bottom-left-radius: 0;
+            border-bottom-right-radius: 0;
+        }
+
+        .search-input::placeholder {
+            color: #555;
+        }
+
+        .search-suggestions {
+            position: absolute;
+            top: 100%;
+            left: 0;
+            width: 100%;
+            background-color: #ffffff;
+            border-bottom-left-radius: 6px;
+            border-bottom-right-radius: 6px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.2);
+            display: none;
+            flex-direction: column;
+            z-index: 1005;
+            overflow: hidden;
+        }
+
+        .search-suggestions.show {
+            display: flex;
+        }
+
+        .suggestion-item {
+            padding: 8px 16px;
+            color: #000000;
+            font-size: 1rem;
+            cursor: pointer;
+        }
+
+        .suggestion-item:hover {
+            background-color: #f0f0f0;
+        }
+
+        .header-actions {
+            display: flex;
+            align-items: center;
+            gap: 20px;
+        }
+
+        .btn-filtros {
+            background-color: #ffffff;
+            color: #000000;
+            border: none;
+            border-radius: 6px;
+            padding: 10px 24px;
+            font-size: 1rem;
+            cursor: pointer;
+            font-weight: 500;
+            transition: background-color 0.2s, border-radius 0.1s;
+        }
+
+        .btn-filtros:hover {
+            background-color: #f0f0f0;
+        }
+
+        .btn-filtros.active {
+            border-bottom-left-radius: 0;
+            border-bottom-right-radius: 0;
+            background-color: #f0f0f0;
+        }
+
+        .filtros-dropdown {
+            position: absolute;
+            top: 100%;
+            left: 0;
+            min-width: 160px;
+            background-color: #ffffff;
+            border-bottom-left-radius: 6px;
+            border-bottom-right-radius: 6px;
+            border-top-right-radius: 6px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.2);
+            display: none;
+            flex-direction: column;
+            z-index: 1005;
+            padding: 8px 0;
+        }
+
+        .filtros-dropdown.show {
+            display: flex;
+        }
+
+        .filtro-item {
+            display: flex;
+            align-items: center;
+            padding: 8px 16px;
+            cursor: pointer;
+            color: #000000;
+            font-size: 1rem;
+            gap: 10px;
+            user-select: none;
+        }
+
+        .filtro-item:hover {
+            background-color: #f0f0f0;
+        }
+
+        .filtro-item input[type="radio"] {
+            display: none;
+        }
+
+        .custom-radio {
+            width: 16px;
+            height: 16px;
+            border: 2px solid #000000;
+            border-radius: 50%;
+            display: inline-block;
+            position: relative;
+        }
+
+        .filtro-item input[type="radio"]:checked+.custom-radio::after {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 8px;
+            height: 8px;
+            background-color: #000000;
+            border-radius: 50%;
+        }
+
+        .user-profile {
+            background-color: #ffffff;
+            color: #000000;
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.8rem;
+            font-weight: 500;
+            cursor: pointer;
+        }
+
+        .user-profile:hover {
+            background-color: #f0f0f0;
+        }
+
+        .sidebar-toggle {
+            position: fixed;
+            top: 100px;
+            left: 10px;
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            background-color: #828282;
+            border: none;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 5px;
+            cursor: pointer;
+            z-index: 1001;
+            transition: left 0.3s ease;
+        }
+
+        .sidebar-toggle span {
+            display: block;
+            width: 26px;
+            height: 3px;
+            background-color: #111;
+            border-radius: 2px;
+        }
+
+        .sidebar-toggle.open {
+            left: 230px;
+        }
+
+        .sidebar {
+            position: fixed;
+            top: 80px;
+            left: -280px;
+            width: 250px;
+            height: calc(100vh - 80px);
+            background-color: #828282;
+            z-index: 999;
+            transition: left 0.3s ease;
+            overflow-y: auto;
+            padding: 20px 0;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .sidebar.open {
+            left: 0;
+        }
+
+        .sidebar-link {
+            color: #ffffff;
+            text-decoration: none;
+            font-size: 1.1rem;
+            padding: 12px 20px;
+            display: block;
+            transition: background 0.2s ease;
+        }
+
+        .sidebar-link:hover {
+            background-color: rgba(255, 255, 255, 0.1);
+        }
+
+        .sidebar-header {
+            padding: 0 20px 10px 20px;
+            margin-bottom: 10px;
+            border-bottom: 2px solid #ffffff;
+        }
+
+        .sidebar-header .sidebar-link {
+            padding: 0;
+            font-size: 1.2rem;
+            background: none;
+        }
+
+        .sidebar-header .sidebar-link:hover {
+            background-color: transparent;
+        }
+
+        .sidebar::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        .sidebar::-webkit-scrollbar-track {
+            background: transparent;
+        }
+
+        .sidebar::-webkit-scrollbar-thumb {
+            background-color: rgba(255, 255, 255, 0.3);
+            border-radius: 10px;
+        }
+
+        .main-content {
+            margin-top: 80px;
+            padding: 30px 20px 50px 80px;
+            transition: padding-left 0.3s ease;
+            flex-grow: 1;
+            background-color: #222222;
+        }
+
+        .main-content.shifted {
+            padding-left: 280px;
+        }
+
+        .rules-box {
+            background: #ffffff;
+            color: #111111;
+            border-radius: 12px;
+            padding: 28px;
+            border: 1px solid #444;
+            max-width: 900px;
+            margin: 0 auto;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.15);
+        }
+
+        .rules-title {
+            font-size: 2rem;
+            font-weight: 700;
+            margin-bottom: 18px;
+        }
+
+        .rules-subtitle {
+            font-size: 1rem;
+            color: #555555;
+            margin-bottom: 22px;
+        }
+
+        .rule-item {
+            margin-bottom: 24px;
+        }
+
+        .rule-item h4 {
+            font-size: 1.05rem;
+            font-weight: 700;
+            margin-bottom: 10px;
+            color: #111;
+        }
+
+        .rule-item p {
+            font-size: 0.98rem;
+            line-height: 1.7;
+            color: #333333;
+        }
+
+        .back-link {
+            display: inline-block;
+            margin-top: 24px;
+            color: #828282;
+            text-decoration: none;
+            font-weight: 600;
+            transition: color 0.2s;
+        }
+
+        .back-link:hover {
+            color: #444444;
+        }
+
+        @media (max-width: 1024px) {
+            .main-content {
+                padding-left: 20px;
+            }
+        }
+
+        @media (max-width: 768px) {
+            .header {
+                padding: 0 20px;
+            }
+
+            .search-container {
+                display: none;
+            }
+
+            .sidebar {
+                width: 220px;
+            }
+
+            .main-content {
+                padding: 20px 12px 40px 12px;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <header class="header">
+        <a href="home.html" class="logo-container">
+            <span class="logo-text">FAMAX</span>
+            <span class="logo-subtext">Logo</span>
+        </a>
+
+        <div class="search-container">
+            <input type="text" id="searchInput" class="search-input" placeholder="Pesquisar comunidade">
+            <div class="search-suggestions" id="searchSuggestions">
+                <div class="suggestion-item">Carregando sugestões...</div>
+            </div>
+        </div>
+
+        <div class="header-actions">
+            <div class="filtros-container">
+                <button class="btn-filtros" id="btnFiltros">Filtros</button>
+                <div class="filtros-dropdown" id="filtrosDropdown">
+                    <label class="filtro-item">
+                        <input type="radio" name="filtroOpcao" value="categorias" checked>
+                        <span class="custom-radio"></span>
+                        Categorias
+                    </label>
+                    <label class="filtro-item">
+                        <input type="radio" name="filtroOpcao" value="comunidades">
+                        <span class="custom-radio"></span>
+                        Comunidades
+                    </label>
+                    <label class="filtro-item">
+                        <input type="radio" name="filtroOpcao" value="usuarios">
+                        <span class="custom-radio"></span>
+                        Usuários
+                    </label>
+                    <label class="filtro-item">
+                        <input type="radio" name="filtroOpcao" value="posts">
+                        <span class="custom-radio"></span>
+                        Posts
+                    </label>
+                </div>
+            </div>
+
+            <div class="user-profile" onclick="window.location.href='perfil.html'">usuário</div>
+        </div>
+    </header>
+
+    <button class="sidebar-toggle" id="sidebarToggle" onclick="toggleSidebar()">
+        <span></span>
+        <span></span>
+        <span></span>
+    </button>
+
+    <aside class="sidebar" id="sidebar">
+        <div class="sidebar-header">
+            <a href="home.html" class="sidebar-link">Página Inicial</a>
+        </div>
+        <a href="comunidade.html" class="sidebar-link">Discussões</a>
+        <a href="regras.html" class="sidebar-link">Regras</a>
+        <a href="#" class="sidebar-link">Membros</a>
+        <a href="#" class="sidebar-link">Eventos</a>
+        <a href="#" class="sidebar-link">Suporte</a>
+
+        <div class="sidebar-header" style="margin-top:20px; border-bottom:1px solid #aaa;">
+            <a href="#" class="sidebar-link" style="font-size: 1rem; color: #ccc;">Minhas Comunidades</a>
+        </div>
+        <a href="comunidade.html" class="sidebar-link">Minha Comunidade Exemplo</a>
+    </aside>
+
+    <main class="main-content" id="main-content">
+        <div class="rules-box">
+            <h1 class="rules-title">Regras da Comunidade</h1>
+            <p class="rules-subtitle">Mantenha o ambiente seguro, respeitoso e útil para todos os membros.</p>
+
+            <div class="rule-item">
+                <h4>1. Respeito em primeiro lugar</h4>
+                <p>Trate todos os participantes com educação e cortesia. Ataques pessoais, ofensas ou discriminação não serão tolerados.</p>
+            </div>
+
+            <div class="rule-item">
+                <h4>2. Poste no lugar certo</h4>
+                <p>Use as categorias apropriadas para cada tipo de conteúdo. Posts sobre mods devem ir em Modding & Add-ons, dúvidas técnicas em Hardware e discussões gerais em Off-topic.</p>
+            </div>
+
+            <div class="rule-item">
+                <h4>3. Sem pirataria ou links proibidos</h4>
+                <p>Não compartilhe arquivos ilegais, hacks ou dispositivos de quebra de direitos autorais. Mantenha as postagens dentro das regras da plataforma.</p>
+            </div>
+
+            <div class="rule-item">
+                <h4>4. Ajude antes de julgar</h4>
+                <p>Responda com informações úteis e evite comentários sarcásticos. Se não souber ajudar, indique fontes confiáveis ou convide outro membro a contribuir.</p>
+            </div>
+
+            <div class="rule-item">
+                <h4>5. Não spam</h4>
+                <p>Evite mensagens repetidas, autopromoção e conteúdo irrelevante. Use a área de anúncios apenas quando autorizado pela administração.</p>
+            </div>
+
+            <a href="comunidade.html" class="back-link">← Voltar para a comunidade</a>
+        </div>
+    </main>
+
+    <script>
+        function toggleSidebar() {
+            const sidebar = document.getElementById('sidebar');
+            const toggleBtn = document.getElementById('sidebarToggle');
+            sidebar.classList.toggle('open');
+            toggleBtn.classList.toggle('open');
+        }
+
+        const searchInput = document.getElementById('searchInput');
+        const searchSuggestions = document.getElementById('searchSuggestions');
+        const btnFiltros = document.getElementById('btnFiltros');
+        const filtrosDropdown = document.getElementById('filtrosDropdown');
+
+        searchInput.addEventListener('focus', () => {
+            searchSuggestions.classList.add('show');
+        });
+
+        btnFiltros.addEventListener('click', (event) => {
+            event.stopPropagation();
+            filtrosDropdown.classList.toggle('show');
+            btnFiltros.classList.toggle('active');
+        });
+
+        document.addEventListener('click', (event) => {
+            if (!searchInput.contains(event.target) && !searchSuggestions.contains(event.target)) {
+                searchSuggestions.classList.remove('show');
+            }
+            if (!btnFiltros.contains(event.target) && !filtrosDropdown.contains(event.target)) {
+                filtrosDropdown.classList.remove('show');
+                btnFiltros.classList.remove('active');
+            }
+        });
+    </script>
+    <script src="js/chat-widget.js"></script>
+</body>
+
+</html>
