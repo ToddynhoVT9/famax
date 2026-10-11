@@ -22,6 +22,13 @@ const serverDir = path.dirname(fileURLToPath(import.meta.url));
 const sqlDir = path.join(serverDir, "sql");
 const baselinePath = path.join(sqlDir, "baseline", "DB.psql");
 
+/**
+ * `owner` abriu o PGlite e serve o socket; `client` depende do socket de outra
+ * instância. A distinção importa porque só o dono tem banco de fato — um
+ * cliente precisa provar que consegue consultar antes de a API ser liberada.
+ */
+export type DbRole = "owner" | "client";
+
 let db: PGlite | null = null;
 let socketServer: PGLiteSocketServer | null = null;
 
@@ -99,8 +106,8 @@ function resolveDataDir(raw: string): string {
  * pg é preguiçoso (só abre conexão na primeira query), então basta chamar
  * isto antes do pingDatabase().
  */
-export async function startEmbeddedDatabase(): Promise<void> {
-  if (db) return;
+export async function startEmbeddedDatabase(): Promise<DbRole> {
+  if (db) return "owner";
 
   const dataDir = resolveDataDir(config.PGLITE_DATA_DIR);
 
@@ -131,7 +138,7 @@ export async function startEmbeddedDatabase(): Promise<void> {
     console.log(
       `  papel      : cliente (outra instância já serve 127.0.0.1:${config.PGLITE_PORT})`,
     );
-    return;
+    return "client";
   }
 
   await mkdir(dataDir, { recursive: true });
@@ -157,7 +164,7 @@ export async function startEmbeddedDatabase(): Promise<void> {
 
     if ((err as NodeJS.ErrnoException).code === "EADDRINUSE") {
       console.log("  papel      : cliente (perdi a corrida pelo socket)");
-      return;
+      return "client";
     }
     throw err;
   }
@@ -169,6 +176,7 @@ export async function startEmbeddedDatabase(): Promise<void> {
   await applySchema(instance);
 
   console.log(`✅ PGlite escutando em 127.0.0.1:${config.PGLITE_PORT} (dono)`);
+  return "owner";
 }
 
 /**
@@ -210,27 +218,60 @@ function portIsServing(): Promise<boolean> {
  * Só promove quem é cliente: se já somos donos, não há nada a fazer.
  */
 export function superviseEmbeddedDatabase(
-  onPromoted: () => void,
+  verify: () => Promise<void>,
+  onReady: () => void,
   onError: (err: Error) => void,
 ): void {
-  const intervalMs = 5000;
+  const baseIntervalMs = 5000;
+  const maxIntervalMs = 60_000;
+  let intervalMs = baseIntervalMs;
+  let timer: NodeJS.Timeout;
 
-  const timer = setInterval(() => {
-    if (db) return; // já somos o dono
-    void (async () => {
-      if (await portIsServing()) return; // o dono segue de pé
-      console.log("O dono do banco saiu — assumindo a posse...");
-      try {
-        await startEmbeddedDatabase();
-        onPromoted();
-      } catch (err) {
-        onError(err as Error);
+  const schedule = () => {
+    timer = setTimeout(tick, intervalMs);
+    // Não segura o processo vivo só por causa do vigia.
+    timer.unref();
+  };
+
+  const tick = async () => {
+    if (db) return; // já somos o dono, nada a vigiar
+
+    try {
+      if (await portIsServing()) {
+        // Há um dono de pé. Isso não basta para liberar a API: o pool precisa
+        // CONSEGUIR falar com ele. Numa hospedagem que recusa conexão em
+        // loopback, "existe um dono" e "dá para consultar" são coisas
+        // diferentes — e declarar pronto sem checar foi o que fez a aplicação
+        // devolver 500 em vez de 503.
+        await verify();
+        onReady();
+        intervalMs = baseIntervalMs;
+        return;
       }
-    })();
-  }, intervalMs);
 
-  // Não segura o processo vivo só por causa do vigia.
-  timer.unref();
+      const role = await startEmbeddedDatabase();
+      if (role === "client") {
+        // Perdemos a corrida de novo. Não somos donos nem conseguimos
+        // confirmar acesso — segue indisponível, com espera crescente para
+        // não reabrir o dataDir a cada 5s (dois PGlite no mesmo diretório é
+        // risco de corrupção, e o PGlite não trava o diretório).
+        throw new Error(
+          "Não virei dono do banco nem consigo usar o do dono atual.",
+        );
+      }
+
+      await verify();
+      onReady();
+      intervalMs = baseIntervalMs;
+    } catch (err) {
+      onError(err as Error);
+      intervalMs = Math.min(intervalMs * 2, maxIntervalMs);
+    } finally {
+      if (!db) schedule();
+    }
+  };
+
+  schedule();
 }
 
 /** Fecha o socket e o banco, liberando o diretório de dados. */

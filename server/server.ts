@@ -109,15 +109,22 @@ async function initDatabase() {
     // Enquanto este processo for cliente, vigia o dono: se ele sair (é o que
     // acontece com a instância velha a cada deploy), assume o banco em vez de
     // ficar órfão.
+    //
+    // O pingDatabase como verificador é o ponto central: a API só é liberada
+    // depois de uma query real passar. Antes isto liberava só por ter
+    // conseguido rodar a aquisição, mesmo voltando como cliente sem acesso —
+    // e aí as rotas respondiam 500 em vez de 503.
     superviseEmbeddedDatabase(
+      pingDatabase,
       () => {
         dbState.ready = true;
         dbState.error = null;
-        console.log("✅ Posse do banco assumida — API liberada.");
+        console.log("✅ Banco acessível — API liberada.");
       },
       (err) => {
+        dbState.ready = false;
         dbState.error = err;
-        console.error("Falha ao assumir a posse do banco:", err);
+        console.error("Banco indisponível:", err.message);
       },
     );
 
