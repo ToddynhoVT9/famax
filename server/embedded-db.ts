@@ -10,6 +10,7 @@
  */
 import { readFile, readdir, mkdir, stat } from "node:fs/promises";
 import { createHash } from "node:crypto";
+import net from "node:net";
 import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -119,65 +120,117 @@ export async function startEmbeddedDatabase(): Promise<void> {
     `  persistiu  : ${existed ? "sim (diretório já existia)" : "não (primeiro boot aqui)"}`,
   );
 
-  await mkdir(dataDir, { recursive: true });
-  db = await PGlite.create({ dataDir });
-  await applySchema(db);
+  // SONDA ANTES DE ABRIR O BANCO.
+  //
+  // O PGlite NÃO tranca o dataDir: um segundo processo abre os mesmos arquivos
+  // sem reclamar e passa a escrever em paralelo, corrompendo. E a hospedagem
+  // roda mais de uma instância (restart sobreposto, no mínimo). Então quem
+  // chega e encontra a porta servindo NÃO abre o PGlite: usa o banco da
+  // instância que já é dona, via socket. Um dono, N clientes, um escritor só.
+  if (await portIsServing()) {
+    console.log(
+      `  papel      : cliente (outra instância já serve 127.0.0.1:${config.PGLITE_PORT})`,
+    );
+    return;
+  }
 
-  await bindSocketWithRetry();
+  await mkdir(dataDir, { recursive: true });
+  const instance = await PGlite.create({ dataDir });
+
+  // Corrida: duas instâncias podem sondar a porta livre ao mesmo tempo. Quem
+  // perder o bind fecha o próprio PGlite na hora e vira cliente, para não
+  // ficar com os arquivos abertos junto com o dono.
+  const server = new PGLiteSocketServer({
+    db: instance,
+    host: "127.0.0.1",
+    port: config.PGLITE_PORT,
+    // Precisa acompanhar o `max` do pool em db.ts: o default é 1, e aí a
+    // segunda conexão que o pool abrisse ficaria pendurada.
+    maxConnections: 10,
+  });
+
+  try {
+    await server.start();
+  } catch (err) {
+    await server.stop().catch(() => {});
+    await instance.close().catch(() => {});
+
+    if ((err as NodeJS.ErrnoException).code === "EADDRINUSE") {
+      console.log("  papel      : cliente (perdi a corrida pelo socket)");
+      return;
+    }
+    throw err;
+  }
+
+  // Só agora assume a posse: o schema é aplicado por quem é dono, nunca por um
+  // cliente, senão voltariam a existir dois escritores.
+  db = instance;
+  socketServer = server;
+  await applySchema(instance);
+
+  console.log(`✅ PGlite escutando em 127.0.0.1:${config.PGLITE_PORT} (dono)`);
 }
 
 /**
- * Abre o socket, esperando a porta liberar se preciso.
+ * Alguém já está servindo Postgres na porta do PGlite?
  *
- * A hospedagem faz restart sobreposto: sobe a instância nova enquanto a velha
- * ainda está de pé. A nova encontra a porta ocupada e, sem retry, morria com
- * EADDRINUSE e ficava viva servindo 503 para sempre. Esperar é o certo — a
- * velha solta a porta em segundos, quando termina de desligar.
+ * Só um TCP connect: se alguém aceita, há um dono. ECONNREFUSED significa
+ * porta livre. Qualquer outro erro (timeout, por exemplo) é tratado como
+ * ocupada, porque assumir "livre" por engano é o caso perigoso — levaria a
+ * dois PGlite no mesmo diretório.
  */
-async function bindSocketWithRetry(): Promise<void> {
-  const attempts = 30;
-  const delayMs = 1000;
-
-  for (let i = 1; i <= attempts; i++) {
-    const server = new PGLiteSocketServer({
-      db: db!,
+function portIsServing(): Promise<boolean> {
+  return new Promise((resolve) => {
+    const socket = net.connect({
       host: "127.0.0.1",
       port: config.PGLITE_PORT,
-      // Precisa acompanhar o `max` do pool em db.ts: o default é 1, e aí a
-      // segunda conexão que o pool abrisse ficaria pendurada.
-      maxConnections: 10,
     });
+    const done = (answer: boolean) => {
+      socket.removeAllListeners();
+      socket.destroy();
+      resolve(answer);
+    };
+    socket.setTimeout(3000);
+    socket.on("connect", () => done(true));
+    socket.on("timeout", () => done(true));
+    socket.on("error", (err: NodeJS.ErrnoException) =>
+      done(err.code !== "ECONNREFUSED"),
+    );
+  });
+}
 
-    try {
-      await server.start();
-      socketServer = server;
-      console.log(`✅ PGlite escutando em 127.0.0.1:${config.PGLITE_PORT}`);
-      return;
-    } catch (err) {
-      const code = (err as NodeJS.ErrnoException).code;
-      if (code !== "EADDRINUSE") throw err;
+/**
+ * Vigia a posse do banco, promovendo este processo a dono se preciso.
+ *
+ * Um cliente depende do socket do dono. Em deploy, o dono é justamente a
+ * instância VELHA — quando ela desliga, o cliente fica sem banco e a app
+ * responde erro em tudo. Aqui o cliente percebe que a porta ficou livre e
+ * assume o banco, sem precisar de restart.
+ *
+ * Só promove quem é cliente: se já somos donos, não há nada a fazer.
+ */
+export function superviseEmbeddedDatabase(
+  onPromoted: () => void,
+  onError: (err: Error) => void,
+): void {
+  const intervalMs = 5000;
 
-      // Descarta a instância que falhou: o start() recusa ser chamado duas
-      // vezes no mesmo objeto ("Socket server already started").
-      await server.stop().catch(() => {});
-
-      if (i === attempts) {
-        throw new Error(
-          `Porta ${config.PGLITE_PORT} seguiu ocupada após ${attempts}s. ` +
-            `Outra instância do app ainda está de pé, ou PGLITE_PORT conflita ` +
-            `com outro processo da máquina.`,
-        );
+  const timer = setInterval(() => {
+    if (db) return; // já somos o dono
+    void (async () => {
+      if (await portIsServing()) return; // o dono segue de pé
+      console.log("O dono do banco saiu — assumindo a posse...");
+      try {
+        await startEmbeddedDatabase();
+        onPromoted();
+      } catch (err) {
+        onError(err as Error);
       }
+    })();
+  }, intervalMs);
 
-      if (i === 1) {
-        console.log(
-          `Porta ${config.PGLITE_PORT} ocupada (instância anterior ainda ` +
-            `desligando) — aguardando liberar...`,
-        );
-      }
-      await new Promise((r) => setTimeout(r, delayMs));
-    }
-  }
+  // Não segura o processo vivo só por causa do vigia.
+  timer.unref();
 }
 
 /** Fecha o socket e o banco, liberando o diretório de dados. */

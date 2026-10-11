@@ -99,10 +99,27 @@ app.use(errorHandler);
  */
 async function initDatabase() {
   if (config.DB_MODE === "embedded") {
-    const { startEmbeddedDatabase, stopEmbeddedDatabase } = await import(
-      "./embedded-db.js"
-    );
+    const {
+      startEmbeddedDatabase,
+      stopEmbeddedDatabase,
+      superviseEmbeddedDatabase,
+    } = await import("./embedded-db.js");
     await startEmbeddedDatabase();
+
+    // Enquanto este processo for cliente, vigia o dono: se ele sair (é o que
+    // acontece com a instância velha a cada deploy), assume o banco em vez de
+    // ficar órfão.
+    superviseEmbeddedDatabase(
+      () => {
+        dbState.ready = true;
+        dbState.error = null;
+        console.log("✅ Posse do banco assumida — API liberada.");
+      },
+      (err) => {
+        dbState.error = err;
+        console.error("Falha ao assumir a posse do banco:", err);
+      },
+    );
 
     // O painel de hospedagem manda SIGTERM a cada deploy/restart. Sem fechar o
     // PGlite, as escritas mais recentes podem não chegar ao disco e o

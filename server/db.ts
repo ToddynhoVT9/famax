@@ -22,6 +22,22 @@ export const pool = new Pool({
   ssl: useSsl ? { rejectUnauthorized: false } : false,
 });
 
+/**
+ * Sem este handler o processo MORRE.
+ *
+ * Quando uma conexão ociosa do pool cai — o pooler do Supabase expira
+ * conexões paradas, a rede oscila, o banco reinicia —, o pg.Pool emite
+ * 'error'. Um EventEmitter sem listener de 'error' faz o Node lançar
+ * "Unhandled 'error' event" e derrubar a aplicação inteira, bem longe de
+ * qualquer try/catch de rota.
+ *
+ * O pool descarta a conexão quebrada e abre outra na próxima query, então só
+ * registrar já é o tratamento correto.
+ */
+pool.on("error", (err) => {
+  console.error("Conexão ociosa do pool caiu (descartada):", err.message);
+});
+
 export async function pingDatabase(): Promise<void> {
   const client = await pool.connect();
   try {
