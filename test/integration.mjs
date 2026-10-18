@@ -84,6 +84,10 @@ process.env.NODE_ENV = "development";
 
 console.log("Subindo a API...");
 await import("../server/server.js");
+// Mesmo processo, mesmo módulo: o reset zera as contagens que a API usa. A
+// suíte faz mais logins/cadastros do que os limites de produção permitem, e
+// eles continuam valendo normalmente — só são zerados entre as seções.
+const { resetRateLimits } = await import("../server/lib/rate-limit.js");
 
 // Espera o BANCO, não só a porta: o servidor abre a porta antes de conectar no
 // banco (exigência da hospedagem, ver server.ts), e nessa janela as rotas de
@@ -226,6 +230,76 @@ check(
     loginTokenUse.status === 200,
     String(loginTokenUse.status),
 );
+
+// --- Rate limit do login e do cadastro --------------------------------------
+
+console.log("\n[0] Rate limit");
+
+// Por identificador: 5 tentativas erradas na mesma conta e a 6ª é barrada —
+// inclusive com a senha CERTA, senão o atacante saberia quando acertou.
+for (let i = 0; i < 5; i++) {
+    await call("POST", "/auth/login", {
+        body: { identifier: bob.username, password: "chute-errado" },
+    });
+}
+const loginBlocked = await fetch(`${BASE}/auth/login`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ identifier: bob.username, password: bob.password }),
+});
+check(
+    "login por identificador: 6ª tentativa → 429 com Retry-After",
+    loginBlocked.status === 429 && Number(loginBlocked.headers.get("retry-after")) > 0,
+    `${loginBlocked.status} retry-after=${loginBlocked.headers.get("retry-after")}`,
+);
+
+// O identificador é normalizado: maiúsculas não abrem um contador novo.
+const loginBlockedUpper = await call("POST", "/auth/login", {
+    body: { identifier: bob.username.toUpperCase(), password: "chute-errado" },
+});
+check(
+    "limite por identificador ignora maiúsculas",
+    loginBlockedUpper.status === 429,
+    String(loginBlockedUpper.status),
+);
+
+// Login com sucesso não consome o limite (skipSuccessful).
+resetRateLimits();
+let successBlocked = false;
+for (let i = 0; i < 7; i++) {
+    const ok = await call("POST", "/auth/login", {
+        body: { identifier: alice.username, password: alice.password },
+    });
+    if (ok.status !== 200) successBlocked = true;
+}
+check("logins com sucesso não são barrados", !successBlocked);
+
+// Por IP: identificadores diferentes, mesma origem — 10 falhas e a 11ª cai.
+resetRateLimits();
+for (let i = 0; i < 10; i++) {
+    await call("POST", "/auth/login", {
+        body: { identifier: `fantasma${i}-${stamp}`, password: "x" },
+    });
+}
+const ipBlocked = await call("POST", "/auth/login", {
+    body: { identifier: `fantasma-extra-${stamp}`, password: "x" },
+});
+check("login por IP: 11ª falha → 429", ipBlocked.status === 429, String(ipBlocked.status));
+
+// Cadastro: 5 por hora por IP. Corpos inválidos bastam — a tentativa conta
+// antes da validação, e assim o teste não paga 6 bcrypt.
+resetRateLimits();
+for (let i = 0; i < 5; i++) {
+    await call("POST", "/auth/register", { body: {} });
+}
+const registerBlocked = await call("POST", "/auth/register", { body: alice });
+check(
+    "cadastro: 6ª tentativa na hora → 429",
+    registerBlocked.status === 429,
+    String(registerBlocked.status),
+);
+
+resetRateLimits();
 
 // --- Sistema 2: comunidades -------------------------------------------------
 
@@ -440,6 +514,28 @@ const post = await call("POST", "/posts", {
 });
 check("membro publica", post.status === 201, JSON.stringify(post.body).slice(0, 200));
 const postId = post.body?.post?.post_id;
+
+// Subcategoria existe, mas é da comunidade do dave (criada no upload de capa).
+const daveCommunity = await call(
+    "GET",
+    `/communities/${coverOk.body?.community?.communityId}`,
+);
+const foreignSubCategoryId = daveCommunity.body?.categories?.[0]?.community_category_id;
+const postForeignCategory = await call("POST", "/posts", {
+    token: aliceToken,
+    body: {
+        communityId,
+        communityCategoryId: foreignSubCategoryId,
+        title: "Categoria errada",
+        content: "subcategoria de outra comunidade",
+    },
+});
+check(
+    "subcategoria de outra comunidade → 400",
+    postForeignCategory.status === 400 &&
+        postForeignCategory.body?.error === "Categoria não pertence a esta comunidade",
+    `${postForeignCategory.status} ${JSON.stringify(postForeignCategory.body)}`,
+);
 
 const joined = await call("POST", `/communities/${communityId}/join`, {
     token: bobToken,
@@ -680,6 +776,225 @@ check(
     "busca de usuários encontra o bob",
     userSearch.status === 200 && userSearch.body.data.length === 1,
     JSON.stringify(userSearch.body).slice(0, 160),
+);
+
+// --- Conta excluída ---------------------------------------------------------
+
+console.log("\n[0] Conta excluída");
+resetRateLimits();
+
+const erin = {
+    email: `erin${stamp}@famax.test`,
+    username: `erin${stamp}`,
+    password: "senha123!forte",
+    displayName: "Erin Teste",
+    termsAccepted: true,
+};
+const erinReg = await call("POST", "/auth/register", { body: erin });
+const erinToken = erinReg.body?.token;
+const erinBefore = await call("GET", "/me/communities", { token: erinToken });
+check("token da erin autentica antes da exclusão", erinBefore.status === 200);
+
+// Não há rota de excluir conta ainda: o soft delete vai direto no banco.
+await db.query("UPDATE users SET deleted_at = NOW() WHERE user_id = $1", [
+    erinReg.body?.user?.userId,
+]);
+
+const erinAfter = await call("GET", "/me/communities", { token: erinToken });
+check(
+    "token de usuário com deleted_at → 401",
+    erinAfter.status === 401,
+    `${erinAfter.status} ${JSON.stringify(erinAfter.body)}`,
+);
+
+const erinOptional = await call("GET", `/communities/${communityId}/posts`, {
+    token: erinToken,
+});
+check(
+    "rota com optionalAuth trata usuário excluído como visitante",
+    erinOptional.status === 200 && erinOptional.body?.data?.[0]?.liked_by_me === false,
+    `${erinOptional.status}`,
+);
+
+// --- Busca de usuários e perfil privado ---------------------------------------
+
+console.log("\n[Sistema 1] Busca e perfil privado");
+
+// Cadastro sem escolha nasce público: o dave nunca conversou com a carol.
+const carolToken = carolReg.body?.token;
+const defaultPublic = await call("GET", `/users?search=dave${stamp}`, {
+    token: carolToken,
+});
+check(
+    "cadastro sem isPrivate nasce público (aparece na busca)",
+    defaultPublic.status === 200 && defaultPublic.body.data.length === 1,
+    JSON.stringify(defaultPublic.body).slice(0, 160),
+);
+
+// O frank escolhe perfil privado no cadastro.
+const frank = {
+    email: `frank${stamp}@famax.test`,
+    username: `frank${stamp}`,
+    password: "senha123!forte",
+    displayName: "Frank Teste",
+    termsAccepted: true,
+    isPrivate: true,
+};
+const frankReg = await call("POST", "/auth/register", { body: frank });
+
+const privateHidden = await call("GET", `/users?search=frank${stamp}`, {
+    token: carolToken,
+});
+check(
+    "perfil privado não aparece na busca sem conversa",
+    privateHidden.status === 200 && privateHidden.body.data.length === 0,
+    JSON.stringify(privateHidden.body).slice(0, 160),
+);
+
+await call("POST", "/conversations", {
+    token: carolToken,
+    body: { userId: frankReg.body?.user?.userId },
+});
+const privateVisible = await call("GET", `/users?search=frank${stamp}`, {
+    token: carolToken,
+});
+check(
+    "perfil privado aparece na busca para quem já tem conversa",
+    privateVisible.status === 200 && privateVisible.body.data.length === 1,
+    JSON.stringify(privateVisible.body).slice(0, 160),
+);
+
+await db.query("UPDATE user_settings SET is_private = FALSE WHERE user_id = $1", [
+    frankReg.body?.user?.userId,
+]);
+const publicVisible = await call("GET", `/users?search=frank${stamp}`, {
+    token: aliceToken,
+});
+check(
+    "perfil público aparece na busca sem conversa",
+    publicVisible.status === 200 && publicVisible.body.data.length === 1,
+    JSON.stringify(publicVisible.body).slice(0, 160),
+);
+
+// --- Sessões, logout e /me ----------------------------------------------------
+
+console.log("\n[0] Sessões e /me");
+resetRateLimits();
+
+// Usuário próprio: o logout-all no fim derruba todas as sessões dele.
+const hank = {
+    email: `hank${stamp}@famax.test`,
+    username: `hank${stamp}`,
+    password: "senha123!forte",
+    displayName: "Hank Teste",
+    termsAccepted: true,
+};
+const hankReg = await call("POST", "/auth/register", { body: hank });
+const hankRegToken = hankReg.body?.token;
+const hankId = hankReg.body?.user?.userId;
+
+const { rows: hankSessions } = await db.query(
+    "SELECT jti, token, expires_at, created_at FROM user_sessions WHERE user_id = $1",
+    [hankId],
+);
+check(
+    "cadastro cria sessão com jti e sem token cru",
+    hankSessions.length === 1 &&
+        hankSessions[0].jti === jti(hankRegToken) &&
+        hankSessions[0].token === null,
+    JSON.stringify(hankSessions),
+);
+
+// JWT_EXPIRES_IN padrão é 7d: a validade da sessão tem que bater com o exp.
+const expPayload = JSON.parse(
+    Buffer.from(hankRegToken.split(".")[1], "base64url").toString(),
+);
+check(
+    "expires_at da sessão vem do exp do token",
+    hankSessions[0] &&
+        Math.abs(new Date(hankSessions[0].expires_at).getTime() - expPayload.exp * 1000) <
+            1000,
+    `${hankSessions[0]?.expires_at} vs ${expPayload.exp}`,
+);
+
+const me = await call("GET", "/me", { token: hankRegToken });
+const meFields = [
+    "userId", "email", "username", "displayName", "avatarUrl", "bannerUrl",
+    "bio", "nickname", "birthDate", "gender", "isPrivate", "isAdult",
+    "twoFactorEnabled", "createdAt",
+];
+check(
+    "GET /me devolve os campos esperados",
+    me.status === 200 &&
+        meFields.every((field) => field in (me.body?.user ?? {})) &&
+        me.body.user.userId === hankId &&
+        me.body.user.displayName === "Hank Teste" &&
+        me.body.user.isPrivate === false,
+    JSON.stringify(me.body).slice(0, 200),
+);
+check("GET /me sem token → 401", (await call("GET", "/me")).status === 401);
+
+// Assinatura válida sem sessão (como os tokens anteriores à migration 007)
+// não autentica mais.
+const jwt = (await import("jsonwebtoken")).default;
+const orphanToken = jwt.sign({ sub: hankId }, process.env.JWT_SECRET, {
+    expiresIn: "7d",
+    jwtid: "00000000-0000-4000-8000-000000000000",
+});
+const orphan = await call("GET", "/me", { token: orphanToken });
+check("token assinado sem sessão → 401", orphan.status === 401, String(orphan.status));
+
+// Duas "abas"/dispositivos: o logout de uma não derruba a outra.
+const hankLoginA = await call("POST", "/auth/login", {
+    body: { identifier: hank.username, password: hank.password },
+});
+const hankLoginB = await call("POST", "/auth/login", {
+    body: { identifier: hank.username, password: hank.password },
+});
+const tokenA = hankLoginA.body?.token;
+const tokenB = hankLoginB.body?.token;
+
+const logoutA = await call("POST", "/auth/logout", { token: tokenA });
+check("logout → 204", logoutA.status === 204, String(logoutA.status));
+check(
+    "token deslogado → 401 na chamada seguinte",
+    (await call("GET", "/me", { token: tokenA })).status === 401,
+);
+check(
+    "logout não derruba as outras sessões",
+    (await call("GET", "/me", { token: tokenB })).status === 200,
+);
+
+// Sessão expirada no banco, mesmo com o JWT ainda dentro do exp.
+const hankLoginC = await call("POST", "/auth/login", {
+    body: { identifier: hank.username, password: hank.password },
+});
+const tokenC = hankLoginC.body?.token;
+await db.query(
+    "UPDATE user_sessions SET expires_at = NOW() - INTERVAL '1 minute' WHERE jti = $1",
+    [jti(tokenC)],
+);
+check(
+    "token de sessão expirada → 401",
+    (await call("GET", "/me", { token: tokenC })).status === 401,
+);
+
+const logoutAll = await call("POST", "/auth/logout-all", { token: tokenB });
+check("logout-all → 204", logoutAll.status === 204, String(logoutAll.status));
+// Em sequência: o socket do PGlite atende uma conexão por vez, e chamadas
+// paralelas derrubam a do pool (ECONNRESET) — limitação do harness, não da API.
+const afterAll = [];
+for (const token of [tokenB, hankRegToken]) {
+    afterAll.push(await call("GET", "/me", { token }));
+}
+check(
+    "logout-all derruba todas as sessões do usuário",
+    afterAll.every((r) => r.status === 401),
+    afterAll.map((r) => r.status).join(","),
+);
+check(
+    "logout-all não afeta outros usuários",
+    (await call("GET", "/me", { token: aliceToken })).status === 200,
 );
 
 // ---------------------------------------------------------------------------

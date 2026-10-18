@@ -11,6 +11,7 @@
  *    load seria N+1 requests para conteúdo que quase sempre está fechado.
  */
 import { api, getCurrentUserId, getToken } from "./shared/api.js";
+import { goToLogin } from "./shared/auth-guard.js";
 import { initSidebar } from "./shared/sidebar.js";
 import { initHeaderDropdowns } from "./shared/header-dropdowns.js";
 import {
@@ -303,7 +304,7 @@ async function toggleLike(button: HTMLButtonElement): Promise<void> {
     if (!postId || !countEl) return;
 
     if (!getToken()) {
-        window.location.href = "user-pages/login.html";
+        goToLogin();
         return;
     }
 
@@ -354,7 +355,7 @@ async function submitComment(form: HTMLFormElement): Promise<void> {
     if (!content) return;
 
     if (!getToken()) {
-        window.location.href = "user-pages/login.html";
+        goToLogin();
         return;
     }
 
@@ -485,7 +486,7 @@ if (joinBtn instanceof HTMLButtonElement) {
     joinBtn.addEventListener("click", async () => {
         if (!communityId) return;
         if (!getToken()) {
-            window.location.href = "user-pages/login.html";
+            goToLogin();
             return;
         }
 
@@ -595,7 +596,7 @@ async function publishPost(): Promise<void> {
 
 btnCreatePost?.addEventListener("click", () => {
     if (!getToken()) {
-        window.location.href = "user-pages/login.html";
+        goToLogin();
         return;
     }
     clearModalError();

@@ -1,4 +1,8 @@
 import { api, setToken } from "../shared/api.js";
+import { redirectIfLoggedIn } from "../shared/auth-guard.js";
+import { pages } from "../shared/pages.js";
+
+redirectIfLoggedIn();
 
 const modal = document.getElementById("terms-modal");
 const errorElement = document.getElementById("register-error");
@@ -7,6 +11,7 @@ const passwordInput = document.getElementById("password");
 const confirmPasswordInput = document.getElementById("confirm-password");
 const usernameInput = document.getElementById("username");
 const displayNameInput = document.getElementById("display-name");
+const privateCheckbox = document.getElementById("private-checkbox");
 const termsCheckbox = document.getElementById("terms-checkbox");
 const termsTrigger = document.getElementById("termsTrigger");
 const closeModalButton = document.getElementById("closeModalButton");
@@ -20,6 +25,7 @@ if (
   confirmPasswordInput instanceof HTMLInputElement &&
   usernameInput instanceof HTMLInputElement &&
   displayNameInput instanceof HTMLInputElement &&
+  privateCheckbox instanceof HTMLInputElement &&
   termsCheckbox instanceof HTMLInputElement &&
   termsTrigger instanceof HTMLElement &&
   closeModalButton instanceof HTMLButtonElement &&
@@ -76,11 +82,13 @@ if (
             password,
             displayName,
             termsAccepted: true,
+            isPrivate: privateCheckbox.checked,
           }),
         },
       );
       setToken(token);
-      window.location.href = "../../index.html";
+      // Já sai logado do cadastro: vai direto para a home, como no login.
+      window.location.href = pages.home;
     } catch (err) {
       showError(err instanceof Error ? err.message : "Erro ao criar conta");
     } finally {

@@ -1,12 +1,61 @@
 import { Router } from "express";
 import bcrypt from "bcrypt";
-import jwt from "jsonwebtoken";
 import { z } from "zod";
 import { randomUUID } from "node:crypto";
 import { pool } from "../db.js";
-import { config } from "../config.js";
+import { rateLimit } from "../lib/rate-limit.js";
+import {
+  createSession,
+  revokeAllSessions,
+  revokeSession,
+} from "../lib/session.js";
+import { requireAuth } from "../middleware/auth.js";
 
 const router = Router();
+
+// ===========================================================================
+// Rate limit
+// ---------------------------------------------------------------------------
+// Sem sessão nessas rotas, o limite padrão cai no IP. No login isso não basta:
+// um ataque distribuído (muitos IPs, poucas tentativas cada) contra UMA conta
+// passaria ileso, então há um segundo limite por identificador. Os dois
+// contam só tentativas que falharam (skipSuccessful).
+// ===========================================================================
+
+const FIFTEEN_MINUTES = 15 * 60 * 1000;
+const ONE_HOUR = 60 * 60 * 1000;
+const tooManyLogins = "Muitas tentativas de login. Tente novamente mais tarde.";
+
+const loginLimitByIp = rateLimit({
+  name: "login-ip",
+  limit: 10,
+  windowMs: FIFTEEN_MINUTES,
+  message: tooManyLogins,
+  skipSuccessful: true,
+});
+
+const loginLimitByIdentifier = rateLimit({
+  name: "login-identifier",
+  limit: 5,
+  windowMs: FIFTEEN_MINUTES,
+  message: tooManyLogins,
+  skipSuccessful: true,
+  // Normalizado para "Alice" e "alice " não virarem contadores separados. O
+  // corpo ainda não passou pelo zod aqui, então o tipo é conferido à mão.
+  key: (req) => {
+    const identifier: unknown = req.body?.identifier;
+    return typeof identifier === "string" && identifier.trim()
+      ? identifier.trim().toLowerCase()
+      : null;
+  },
+});
+
+const registerLimitByIp = rateLimit({
+  name: "register-ip",
+  limit: 5,
+  windowMs: ONE_HOUR,
+  message: "Muitos cadastros a partir desta rede. Tente novamente mais tarde.",
+});
 
 // ===========================================================================
 // POST /api/auth/register
@@ -35,9 +84,11 @@ const registerSchema = z.object({
     errorMap: () => ({ message: "Você precisa aceitar os termos" }),
   }),
   termsVersion: z.string().default("2026-03"),
+  // Público por padrão (ver migration 006); privado é escolha no cadastro.
+  isPrivate: z.boolean().default(false),
 });
 
-router.post("/register", async (req, res, next) => {
+router.post("/register", registerLimitByIp, async (req, res, next) => {
   try {
     const data = registerSchema.parse(req.body);
 
@@ -56,6 +107,7 @@ router.post("/register", async (req, res, next) => {
     const settingsId = randomUUID();
     const acceptanceId = randomUUID();
 
+    let token: string;
     const client = await pool.connect();
     try {
       await client.query("BEGIN");
@@ -77,8 +129,8 @@ router.post("/register", async (req, res, next) => {
       await client.query(
         `INSERT INTO user_settings
          (settings_id, user_id, is_private)
-         VALUES ($1, $2, TRUE)`,
-        [settingsId, userId],
+         VALUES ($1, $2, $3)`,
+        [settingsId, userId, data.isPrivate],
       );
 
       await client.query(
@@ -87,6 +139,10 @@ router.post("/register", async (req, res, next) => {
          VALUES ($1, $2, $3, $4)`,
         [acceptanceId, userId, data.termsVersion, req.ip ?? null],
       );
+
+      // Na mesma transação: o cadastro já devolve um token, e todo token
+      // precisa de sessão para autenticar.
+      token = await createSession(userId, req, client);
 
       await client.query("COMMIT");
     } catch (err) {
@@ -97,10 +153,6 @@ router.post("/register", async (req, res, next) => {
     } finally {
       client.release();
     }
-
-    const token = jwt.sign({ sub: userId }, config.JWT_SECRET, {
-      expiresIn: config.JWT_EXPIRES_IN,
-    });
 
     return res.status(201).json({
       token,
@@ -130,7 +182,7 @@ const loginSchema = z.object({
   password: z.string().min(1, "Senha obrigatória"),
 });
 
-router.post("/login", async (req, res, next) => {
+router.post("/login", loginLimitByIp, loginLimitByIdentifier, async (req, res, next) => {
   try {
     const { identifier, password } = loginSchema.parse(req.body);
 
@@ -155,27 +207,9 @@ router.post("/login", async (req, res, next) => {
       return res.status(401).json({ error: "Credenciais inválidas" });
     }
 
-    // O jti é o que torna o token único. Sem ele o payload é só {sub,iat,exp},
-    // e iat/exp são em segundos inteiros — dois logins do mesmo usuário no
-    // mesmo segundo geravam tokens idênticos e o INSERT abaixo batia na
-    // constraint uq_user_sessions_token, devolvendo 500 (dois cliques no botão
-    // de entrar já reproduzem).
-    const token = jwt.sign({ sub: user.user_id }, config.JWT_SECRET, {
-      expiresIn: config.JWT_EXPIRES_IN,
-      jwtid: randomUUID(),
-    });
-
-    await pool.query(
-      `INSERT INTO user_sessions (session_id, user_id, token, ip_address, user_agent, expires_at)
-       VALUES ($1, $2, $3, $4, $5, NOW() + INTERVAL '7 days')`,
-      [
-        randomUUID(),
-        user.user_id,
-        token,
-        req.ip ?? null,
-        req.get("user-agent") ?? null,
-      ],
-    );
+    // O jti (gerado no createSession) é o que torna o token único — sem ele
+    // dois logins no mesmo segundo geravam tokens idênticos.
+    const token = await createSession(user.user_id, req);
 
     return res.json({
       token,
@@ -192,6 +226,32 @@ router.post("/login", async (req, res, next) => {
         .status(400)
         .json({ error: "Dados inválidos", details: err.flatten() });
     }
+    next(err);
+  }
+});
+
+// ===========================================================================
+// POST /api/auth/logout — encerra a sessão deste token
+// POST /api/auth/logout-all — encerra todas as sessões do usuário
+// ---------------------------------------------------------------------------
+// Atrás do requireAuth: um token já inválido recebe 401, e o front trata
+// igual (limpa o token e segue). Revogar é idempotente.
+// ===========================================================================
+
+router.post("/logout", requireAuth, async (req, res, next) => {
+  try {
+    await revokeSession(req.sessionId!);
+    res.status(204).end();
+  } catch (err) {
+    next(err);
+  }
+});
+
+router.post("/logout-all", requireAuth, async (req, res, next) => {
+  try {
+    await revokeAllSessions(req.userId!);
+    res.status(204).end();
+  } catch (err) {
     next(err);
   }
 });

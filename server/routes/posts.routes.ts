@@ -140,6 +140,23 @@ router.post(
   async (req, res, next) => {
     try {
       const data = createPostSchema.parse(req.body);
+
+      // A FK só garante que a subcategoria existe, não que é desta comunidade:
+      // sem esta checagem dava para publicar na comunidade A usando uma
+      // subcategoria da comunidade B.
+      if (data.communityCategoryId) {
+        const { rows: category } = await pool.query(
+          `SELECT 1 FROM community_categories
+           WHERE community_category_id = $1 AND community_id = $2`,
+          [data.communityCategoryId, data.communityId],
+        );
+        if (category.length === 0) {
+          return res
+            .status(400)
+            .json({ error: "Categoria não pertence a esta comunidade" });
+        }
+      }
+
       const postId = randomUUID();
 
       await pool.query(

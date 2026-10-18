@@ -38,10 +38,23 @@ node -e "console.log(require('crypto').randomBytes(48).toString('base64url'))"
 | `NODE_ENV` | não | `development` \| `production` |
 | `JWT_EXPIRES_IN` | não | Validade do token (padrão `7d`) |
 | `CORS_ORIGIN` | não | Origem liberada no CORS |
+| `TRUST_PROXY` | não | Proxies confiáveis à frente da API (`1`, `true`, `loopback`...). Padrão: nenhum |
 | `DATABASE_SSL` | não | `false` desliga o SSL (Postgres local) |
 | `SUPABASE_URL` | não | Project URL — necessária para upload de capa |
 | `SUPABASE_SERVICE_KEY` | não | Chave `service_role` — necessária para upload de capa |
 | `SUPABASE_COVERS_BUCKET` | não | Bucket das capas (padrão `community-covers`) |
+
+### Rate limit e proxy
+
+Login e cadastro têm rate limit em memória: login 10 tentativas falhas / 15 min
+por IP e 5 / 15 min por email ou username; cadastro 5 / hora por IP. Acima disso
+a API responde 429 com `Retry-After`.
+
+O limite por IP depende do `req.ip` ser o IP real do cliente. Atrás de um proxy
+reverso (o caso da hospedagem), defina `TRUST_PROXY` — normalmente `1`, o número
+de proxies à frente. Sem isso todos os usuários aparecem com o IP do proxy e
+dividem o mesmo limite. Rodando sem proxy, deixe vazio: confiar no
+`X-Forwarded-For` deixaria qualquer cliente forjar o próprio IP.
 
 Sem `SUPABASE_URL`/`SUPABASE_SERVICE_KEY` o upload de capa é desativado: a
 comunidade é criada sem imagem e o resto do fluxo continua funcionando.
@@ -59,6 +72,11 @@ npm run migrate -- --baseline   # aplica o schema base antes (banco vazio)
 
 O runner registra o que já rodou em `schema_migrations`, então rodar de novo é
 seguro. Migrations aplicadas cujo arquivo mudou depois aparecem com aviso.
+
+> **`007_sessions.sql` desloga todo mundo uma vez.** A partir dela todo token
+> precisa de uma sessão ativa em `user_sessions` (identificada pelo `jti`), e as
+> sessões antigas não têm `jti` — são revogadas. Cada usuário entra de novo uma
+> vez após o deploy.
 
 ## Desenvolvimento
 
@@ -97,11 +115,11 @@ client/            frontend (HTML + CSS + TS, sem framework)
   html/            páginas (entries do Vite, ver vite.config.ts)
   css/
   script/
-    shared/        api, dom, sidebar, chat-widget
+    shared/        api, pages, auth-guard, dom, sidebar, chat-widget
 server/            API Express
-  routes/          auth, communities, posts, comments, reactions, chat, users
+  routes/          auth, me, communities, posts, comments, reactions, chat, users
   middleware/      auth, membership, error
-  lib/             storage (Supabase Storage), rate-limit
+  lib/             session, storage (Supabase Storage), rate-limit
   sql/             migrations + baseline/
 scripts/           migrate.mjs
 test/              integration.mjs

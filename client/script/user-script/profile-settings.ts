@@ -1,11 +1,22 @@
 /**
  * FAMAX — Profile Settings (Editar Perfil) Script
  */
+import { logout, logoutAll } from "../shared/api.js";
+import { requireLogin } from "../shared/auth-guard.js";
 import { initSidebar } from "../shared/sidebar.js";
 import { initHeaderDropdowns } from "../shared/header-dropdowns.js";
 import { initToggleSwitches } from "../shared/toggle-switch.js";
 
+requireLogin();
 initSidebar();
+
+// Ponto de saída provisório: o prompt 03 leva o "Sair" para o menu do header.
+document.getElementById("btnLogout")?.addEventListener("click", () => {
+    void logout();
+});
+document.getElementById("btnLogoutAll")?.addEventListener("click", () => {
+    void logoutAll();
+});
 initHeaderDropdowns();
 
 // Toggle switches com callback para privar perfil

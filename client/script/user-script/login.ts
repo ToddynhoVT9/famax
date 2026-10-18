@@ -1,4 +1,7 @@
 import { api, setToken } from "../shared/api.js";
+import { afterLoginUrl, redirectIfLoggedIn } from "../shared/auth-guard.js";
+
+redirectIfLoggedIn();
 
 const usernameInput = document.getElementById("username");
 const passwordInput = document.getElementById("password");
@@ -37,7 +40,8 @@ if (
         },
       );
       setToken(token);
-      window.location.href = "../home.html";
+      // Volta para a página que pediu o login (?next=), ou a home.
+      window.location.href = afterLoginUrl();
     } catch (err) {
       showError(err instanceof Error ? err.message : "Erro ao fazer login");
     } finally {

@@ -1,3 +1,8 @@
+> **Documento histórico.** Este guia descreve o refactor que unificou frontend e
+> backend num único projeto — ele **já foi concluído**. O conteúdo está
+> desatualizado (cita bcrypt 5, não menciona multer etc.) e fica aqui só como
+> registro. Para o estado atual, veja o `README.md` da raiz.
+
 # FAMAX — Refactor: Unificar Frontend + Backend num Único Deploy
 
 Guia para transformar o monorepo atual (com `package.json` separados) em um **único projeto Node.js** onde o Express serve tanto a API quanto os arquivos estáticos do frontend Vite. Resultado: **um único repo, um único deploy, um único site na Hostinger**.

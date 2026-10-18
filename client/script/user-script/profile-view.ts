@@ -1,9 +1,11 @@
 /**
  * FAMAX — Profile View (Perfil Público) Script
  */
+import { requireLogin } from "../shared/auth-guard.js";
 import { initSidebar } from "../shared/sidebar.js";
 import { initHeaderDropdowns } from "../shared/header-dropdowns.js";
 
+requireLogin();
 initSidebar();
 initHeaderDropdowns();
 

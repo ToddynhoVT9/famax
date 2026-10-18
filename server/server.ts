@@ -13,11 +13,16 @@ import commentsRoutes from "./routes/comments.routes.js";
 import reactionsRoutes from "./routes/reactions.routes.js";
 import chatRoutes from "./routes/chat.routes.js";
 import usersRoutes from "./routes/users.routes.js";
+import meRoutes from "./routes/me.routes.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const publicDir = path.join(__dirname, "public");
 
 const app = express();
+
+// Faz o req.ip refletir o cliente real atrás do proxy da hospedagem — o rate
+// limit do login/cadastro depende disso. Ver TRUST_PROXY em config.ts.
+app.set("trust proxy", config.TRUST_PROXY);
 
 app.use(cors({ origin: true, credentials: true }));
 app.use(express.json({ limit: "1mb" }));
@@ -78,6 +83,7 @@ app.use("/api", postsRoutes);
 app.use("/api", commentsRoutes);
 app.use("/api", reactionsRoutes);
 app.use("/api", usersRoutes);
+app.use("/api", meRoutes);
 app.use("/api/conversations", chatRoutes);
 
 // FRONTEND ESTÁTICO

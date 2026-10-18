@@ -9,7 +9,10 @@
  *  - o botão é travado durante o request — dois cliques criariam duas
  *    comunidades.
  */
-import { api, getToken } from "./shared/api.js";
+import { api } from "./shared/api.js";
+import { requireLogin } from "./shared/auth-guard.js";
+
+requireLogin();
 
 const MAX_COVER_BYTES = 2 * 1024 * 1024;
 const ALLOWED_TYPES = ["image/png", "image/jpeg", "image/webp"];
@@ -35,10 +38,6 @@ if (
     submitBtn instanceof HTMLButtonElement &&
     formError instanceof HTMLElement
 ) {
-    if (!getToken()) {
-        window.location.href = "../user-pages/login.html";
-    }
-
     const showError = (message: string): void => {
         formError.textContent = message;
         formError.classList.add("show");

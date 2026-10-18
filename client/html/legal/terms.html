@@ -10,7 +10,7 @@
 <body>
 
     <div class="container">
-        <a href="../user-pages/register.html" class="btn-voltar">← Voltar para o Cadastro</a>
+        <a href="../user-pages/register.html" class="btn-voltar" id="backButton">← Voltar para o Cadastro</a>
         
         <h1>Termos de Uso e Condições</h1>
         <p style="text-align: center; margin-bottom: 40px; color: #888;">Última atualização: Março de 2026</p>
@@ -47,5 +47,16 @@
         <p>Em caso de dúvidas a respeito do processo, ou se necessitar reportar postagens irregulares, utilize a ferramenta oficial de "Denunciar Post" ou entre em contato direto com a administração/moderação ativa.</p>
     </div>
 
+    <script type="module">
+        // Quem chegou aqui pelo modal do cadastro (ou de outra página do site)
+        // volta para onde estava, com o formulário preenchido. Aberta direto,
+        // sem histórico, o href segue apontando para o cadastro.
+        document.getElementById("backButton")?.addEventListener("click", (event) => {
+            if (history.length > 1 && document.referrer.startsWith(location.origin)) {
+                event.preventDefault();
+                history.back();
+            }
+        });
+    </script>
 </body>
 </html>
