@@ -1,0 +1,72 @@
+/* ===================================
+   FAMAX — Página individual do post
+   (o post em si usa os estilos de community.css)
+   =================================== */
+
+.post-page {
+    max-width: 860px;
+    margin: 0 auto;
+}
+
+.post-page-bar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 16px;
+    flex-wrap: wrap;
+}
+
+.post-breadcrumb {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    min-width: 0;
+    color: #aaaaaa;
+    font-size: 0.95rem;
+}
+
+.post-breadcrumb a {
+    color: #ffffff;
+    text-decoration: none;
+    font-weight: 600;
+}
+
+.post-breadcrumb a:hover {
+    text-decoration: underline;
+}
+
+.post-breadcrumb [aria-current] {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.post-copy-link {
+    background: none;
+    border: 1px solid #ffffff;
+    color: #ffffff;
+    border-radius: 20px;
+    padding: 8px 18px;
+    font: inherit;
+    font-size: 0.9rem;
+    cursor: pointer;
+}
+
+.post-copy-link:hover {
+    background-color: rgba(255, 255, 255, 0.1);
+}
+
+.post-copy-link:disabled {
+    opacity: 0.5;
+    cursor: default;
+}
+
+/* Na página do post o título é o h1, e o conteúdo vai inteiro. */
+.tf-post--single .tf-post-title {
+    font-size: 1.6rem;
+}
+
+.tf-post--single:hover {
+    background-color: #ffffff;
+}

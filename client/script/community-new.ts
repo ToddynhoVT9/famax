@@ -1,5 +1,8 @@
 /**
- * FAMAX — Criação de Comunidade
+ * FAMAX — Criação e edição de Comunidade
+ *
+ * ?edit=<id> abre a mesma página em modo edição (só para o dono), com a
+ * exclusão da comunidade no fim.
  *
  * Diferenças em relação ao protótipo (_famax-tab/nova-comunidade.html):
  *  - o <select> de categoria vem de GET /api/categories (o protótipo tinha
@@ -12,6 +15,9 @@
 import { api } from "./shared/api.js";
 import { requireLogin } from "./shared/auth-guard.js";
 import { initLayout } from "./shared/layout.js";
+import { communityUrl, pages } from "./shared/pages.js";
+import { confirmDialog } from "./shared/dialog.js";
+import { queryParam } from "./shared/dom.js";
 
 requireLogin();
 initLayout();
@@ -28,6 +34,20 @@ const imagePreview = document.getElementById("imagePreview");
 const cancelBtn = document.getElementById("cancelBtn");
 const submitBtn = document.getElementById("submitBtn");
 const formError = document.getElementById("formError");
+const removeCoverField = document.getElementById("removeCoverField");
+const removeCover = document.getElementById("removeCover") as HTMLInputElement | null;
+const dangerZone = document.getElementById("dangerZone");
+const deleteBtn = document.getElementById("deleteCommunityBtn") as HTMLButtonElement | null;
+
+const editId = queryParam("edit");
+
+interface EditableCommunity {
+    name: string;
+    description: string | null;
+    cover_image_url: string | null;
+    category_id: string;
+    my_role: string | null;
+}
 
 if (
     form instanceof HTMLFormElement &&
@@ -88,7 +108,8 @@ if (
         }
     };
 
-    void loadCategories();
+    // O modo edição espera as opções existirem antes de selecionar a atual.
+    const categoryReady = loadCategories();
 
     // --- Preview da capa --------------------------------------------------
     // O FileReader continua sendo só preview local; o arquivo em si vai por
@@ -135,10 +156,89 @@ if (
         reader.readAsDataURL(file);
     });
 
+    // --- Modo edição (?edit=<id>) ----------------------------------------
+    // A mesma página serve para editar: o dono chega aqui pelo botão
+    // "Editar comunidade". Quem não é dono vê o erro e o formulário travado
+    // (o backend recusaria de qualquer forma).
+
+    const submitLabel = editId ? "Salvar alterações" : "Criar comunidade";
+    let editingName = "";
+
+    const showCurrentCover = (url: string): void => {
+        imagePreview.textContent = "";
+        const img = document.createElement("img");
+        img.src = url;
+        img.alt = "Capa atual da comunidade";
+        imagePreview.appendChild(img);
+    };
+
+    const loadForEdit = async (): Promise<void> => {
+        if (!editId) return;
+
+        const title = document.getElementById("pageTitle");
+        const subtitle = document.getElementById("pageSubtitle");
+        if (title) title.textContent = "Editar comunidade";
+        if (subtitle) subtitle.textContent = "Altere os dados da comunidade. Só o dono pode fazer isso.";
+        submitBtn.textContent = submitLabel;
+        document.title = "FAMAX - Editar Comunidade";
+
+        try {
+            const { community } = await api<{ community: EditableCommunity }>(
+                `/communities/${encodeURIComponent(editId)}`,
+            );
+            if (community.my_role !== "owner") {
+                showError("Só o dono pode editar esta comunidade.");
+                submitBtn.disabled = true;
+                return;
+            }
+
+            editingName = community.name;
+            nameInput.value = community.name;
+            descriptionInput.value = community.description ?? "";
+            categoryReady.then(() => {
+                categorySelect.value = community.category_id;
+            });
+            if (community.cover_image_url) {
+                showCurrentCover(community.cover_image_url);
+                if (removeCoverField) removeCoverField.hidden = false;
+            }
+            if (dangerZone) dangerZone.hidden = false;
+        } catch (err) {
+            showError(err instanceof Error ? err.message : "Comunidade não encontrada.");
+            submitBtn.disabled = true;
+        }
+    };
+
+    void loadForEdit();
+
+    deleteBtn?.addEventListener("click", async () => {
+        if (!editId || !editingName) return;
+        const ok = await confirmDialog({
+            title: "Excluir comunidade?",
+            message: "Todos deixam de ver a comunidade e as discussões dela.",
+            confirmLabel: "Excluir para sempre",
+            danger: true,
+            requireText: editingName,
+        });
+        if (!ok) return;
+
+        deleteBtn.disabled = true;
+        try {
+            await api(`/communities/${encodeURIComponent(editId)}`, {
+                method: "DELETE",
+                body: JSON.stringify({ confirmName: editingName }),
+            });
+            window.location.replace(pages.home);
+        } catch (err) {
+            showError(err instanceof Error ? err.message : "Não foi possível excluir.");
+            deleteBtn.disabled = false;
+        }
+    });
+
     // --- Submit -----------------------------------------------------------
 
     cancelBtn.addEventListener("click", () => {
-        window.location.href = "../home.html";
+        window.location.href = editId ? communityUrl(editId) : pages.home;
     });
 
     form.addEventListener("submit", async (event: SubmitEvent) => {
@@ -164,26 +264,34 @@ if (
         const body = new FormData();
         body.append("name", name);
         body.append("categoryId", categoryId);
-        if (description) body.append("description", description);
+        // Na edição a descrição vai sempre: vazia significa "apagar".
+        if (description || editId) body.append("description", description);
         if (file) body.append("cover", file);
+        else if (editId && removeCover?.checked) body.append("removeCover", "true");
 
         submitBtn.disabled = true;
-        submitBtn.textContent = "Criando...";
+        submitBtn.textContent = editId ? "Salvando..." : "Criando...";
 
         try {
+            if (editId) {
+                await api(`/communities/${encodeURIComponent(editId)}`, { method: "PATCH", body });
+                window.location.href = communityUrl(editId);
+                return;
+            }
+
             const { community } = await api<{
                 community: { communityId: string };
             }>("/communities", { method: "POST", body });
 
             // Leva direto para o que acabou de ser criado — o protótipo voltava
             // para a home, onde o usuário não via o resultado.
-            window.location.href = `../community.html?id=${encodeURIComponent(community.communityId)}`;
+            window.location.href = communityUrl(community.communityId);
         } catch (err) {
             showError(
-                err instanceof Error ? err.message : "Erro ao criar comunidade.",
+                err instanceof Error ? err.message : "Erro ao salvar a comunidade.",
             );
             submitBtn.disabled = false;
-            submitBtn.textContent = "Criar comunidade";
+            submitBtn.textContent = submitLabel;
         }
     });
 }

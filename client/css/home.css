@@ -43,16 +43,16 @@
 }
 
 .card {
+    width: 250px;
     min-width: 250px;
     height: 400px;
-    background-color: #828282;
+    background-color: #3a3a3a;
     border-radius: 8px;
     display: flex;
     flex-direction: column;
-    justify-content: center;
-    align-items: center;
     position: relative;
     flex-shrink: 0;
+    overflow: hidden;
     color: #ffffff;
     cursor: pointer;
     transition: transform 0.2s ease, filter 0.2s ease;
@@ -64,22 +64,88 @@
     filter: brightness(1.1);
 }
 
-.card-content {
-    font-size: 1.8rem;
-    font-weight: 500;
-    line-height: 1.3;
-    text-align: center;
-    margin: auto;
+/* Capa (ou o gradiente com a inicial) ocupa o topo do card. */
+.card-cover {
+    flex: 1;
+    background-size: cover;
+    background-position: center;
+}
+
+.card-cover--placeholder {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    /* A cor vem de .bg-* (avatarColor); o gradiente escurece por cima. */
+    background-image: linear-gradient(160deg, rgba(255, 255, 255, 0.18), rgba(0, 0, 0, 0.35));
+}
+
+.card-initial {
+    font-size: 5rem;
+    font-weight: 800;
+    color: rgba(255, 255, 255, 0.9);
+    text-shadow: 0 2px 8px rgba(0, 0, 0, 0.25);
 }
 
 .card-footer {
-    position: absolute;
-    bottom: 25px;
-    left: 0;
-    width: 100%;
-    text-align: center;
-    font-size: 1.2rem;
-    font-weight: 400;
+    padding: 14px 16px 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.card-name {
+    font-size: 1.15rem;
+    font-weight: 700;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.card-members {
+    font-size: 0.85rem;
+    color: #cccccc;
+}
+
+.card-description {
+    font-size: 0.85rem;
+    color: #dddddd;
+    line-height: 1.4;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+}
+
+/* ----- CHIPS DE CATEGORIA ----- */
+.home-chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-bottom: 28px;
+}
+
+.home-chip {
+    background: none;
+    border: 1px solid #777777;
+    color: #dddddd;
+    border-radius: 16px;
+    padding: 6px 14px;
+    font: inherit;
+    font-size: 0.9rem;
+    cursor: pointer;
+}
+
+.home-chip:hover {
+    border-color: #ffffff;
+    color: #ffffff;
+}
+
+.home-chip[aria-pressed="true"] {
+    background-color: #ffffff;
+    border-color: #ffffff;
+    color: #222222;
+    font-weight: 600;
 }
 
 /* ----- ESTADOS DO FEED ----- */

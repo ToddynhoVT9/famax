@@ -16,8 +16,8 @@
     <main class="main-content community-new-main">
     <div class="page-card">
         <div class="page-header">
-            <h1>Criar comunidade</h1>
-            <p>Preencha os dados para criar sua comunidade e escolha uma capa personalizada.</p>
+            <h1 id="pageTitle">Criar comunidade</h1>
+            <p id="pageSubtitle">Preencha os dados para criar sua comunidade e escolha uma capa personalizada.</p>
         </div>
         <div class="page-body">
             <form id="communityForm" novalidate>
@@ -49,6 +49,11 @@
                     <span class="field-hint">PNG, JPEG ou WebP. Máximo 2MB.</span>
                 </div>
 
+                <!-- Só no modo edição, quando a comunidade já tem capa. -->
+                <label class="checkbox-field" id="removeCoverField" hidden>
+                    <input type="checkbox" id="removeCover"> Remover a capa atual
+                </label>
+
                 <div class="image-preview" id="imagePreview">Nenhuma imagem selecionada</div>
 
                 <div class="actions">
@@ -56,6 +61,13 @@
                     <button type="submit" class="btn btn-primary" id="submitBtn">Criar comunidade</button>
                 </div>
             </form>
+
+            <!-- Só no modo edição: exclusão pelo dono, com o nome digitado. -->
+            <section class="danger-zone" id="dangerZone" hidden>
+                <h2>Excluir comunidade</h2>
+                <p>A comunidade some para todos os membros, junto com as discussões. Esta ação não pode ser desfeita pela interface.</p>
+                <button type="button" class="btn btn-danger" id="deleteCommunityBtn">Excluir comunidade</button>
+            </section>
         </div>
     </div>
     </main>

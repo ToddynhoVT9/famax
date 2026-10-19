@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FAMAX - Pesquisa</title>
+    <link rel="stylesheet" href="../css/global.css">
+    <link rel="stylesheet" href="../css/layout.css">
+    <link rel="stylesheet" href="../css/search.css">
+</head>
+<body>
+    <!-- Header e sidebar: montados por script/shared/layout.ts -->
+    <header id="app-header" class="header"></header>
+    <aside id="app-sidebar" class="sidebar"></aside>
+
+    <main class="main-content" id="main-content">
+        <div class="search-page">
+            <h1 class="search-title" id="searchTitle">Pesquisa</h1>
+
+            <div class="search-tabs" role="tablist" aria-label="Tipo de resultado" id="searchTabs">
+                <button type="button" class="search-tab" role="tab" data-type="all" aria-selected="true">Tudo</button>
+                <button type="button" class="search-tab" role="tab" data-type="communities" aria-selected="false" tabindex="-1">Comunidades</button>
+                <button type="button" class="search-tab" role="tab" data-type="users" aria-selected="false" tabindex="-1">Usuários</button>
+                <button type="button" class="search-tab" role="tab" data-type="posts" aria-selected="false" tabindex="-1">Posts</button>
+            </div>
+
+            <div class="search-results" id="searchResults" role="tabpanel" aria-live="polite"></div>
+
+            <nav class="search-pager" id="searchPager" aria-label="Páginas" hidden>
+                <button type="button" class="search-pager-btn" id="pagerPrev">← Anterior</button>
+                <span class="search-pager-info" id="pagerInfo"></span>
+                <button type="button" class="search-pager-btn" id="pagerNext">Próxima →</button>
+            </nav>
+        </div>
+    </main>
+
+    <script type="module" src="../script/search.ts"></script>
+    <script type="module" src="../script/shared/chat-widget.ts"></script>
+</body>
+</html>

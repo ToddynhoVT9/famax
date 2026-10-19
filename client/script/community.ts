@@ -1,159 +1,380 @@
 /**
- * FAMAX — Community Page Script
+ * FAMAX — Página da comunidade
  *
- * Substitui o markup fixo do protótipo por render a partir da API.
- *
- * Duas escolhas que valem o registro:
- *  - Delegação de eventos. O protótipo fazia querySelectorAll(...).forEach(on)
- *    no load; qualquer post vindo da API depois disso ficava sem handler.
- *    Aqui há um listener só, na lista, e ele funciona para tudo que aparecer.
- *  - Comentários sob demanda. Carregar os comentários de todos os posts no
- *    load seria N+1 requests para conteúdo que quase sempre está fechado.
+ * Topo (capa, descrição, participar/sair/editar), abas Conversas / Ajudar os
+ * outros / Categorias com o estado na URL e posts paginados com "carregar
+ * mais". O desenho dos posts, os comentários em árvore e as ações sobre eles
+ * ficam em shared/post-thread.ts (a página do post usa o mesmo módulo); o
+ * modal de criar/editar, em shared/post-editor.ts.
  */
-import { api, getCurrentUserId, getToken } from "./shared/api.js";
+import { api, getToken } from "./shared/api.js";
 import { goToLogin } from "./shared/auth-guard.js";
-import { profileUrl } from "./shared/pages.js";
 import { initLayout, refreshMyCommunities } from "./shared/layout.js";
-import {
-    avatarColor,
-    escapeHtml,
-    initials,
-    queryParam,
-    timeAgo,
-} from "./shared/dom.js";
-
-// Os links da comunidade ainda não têm página própria (prompt 06).
-initLayout({
-    pageLinks: ["Discussões", "Regras", "Membros", "Eventos", "Suporte"].map(
-        (label) => ({ label, href: "#" }),
-    ),
-});
-
-// ===========================================================================
-// Tipos
-// ===========================================================================
-
-interface Post {
-    post_id: string;
-    title: string;
-    content: string;
-    likes_count: number;
-    comments_count: number;
-    created_at: string;
-    author_id: string;
-    author_username: string;
-    author_display_name: string | null;
-    author_avatar_url: string | null;
-    category_name: string | null;
-    liked_by_me: boolean;
-}
-
-interface Comment {
-    comment_id: string;
-    content: string;
-    created_at: string;
-    author_id: string;
-    author_username: string;
-    author_display_name: string | null;
-}
-
-interface CommunityCategory {
-    community_category_id: string;
-    name: string;
-}
+import { communityEditUrl, communityUrl } from "./shared/pages.js";
+import { avatarColor, queryParam } from "./shared/dom.js";
+import { confirmDialog, toast } from "./shared/dialog.js";
+import { createPostThread, type Post } from "./shared/post-thread.js";
+import { openPostEditor, type PostCategory } from "./shared/post-editor.js";
 
 interface Community {
     community_id: string;
     name: string;
     description: string | null;
+    cover_image_url: string | null;
+    owner_id: string;
     category_name: string | null;
     members_count: number;
+    my_role: "owner" | "moderator" | "member" | null;
 }
+
+type Tab = "all" | "unanswered" | "categories";
+
+const POSTS_PER_PAGE = 10;
 
 // ===========================================================================
 // Estado
 // ===========================================================================
 
 const communityId = queryParam("id");
-const currentUserId = getCurrentUserId();
 
-const postsList = document.getElementById("tfPostsList");
-const feedStatus = document.getElementById("tfFeedStatus");
-const communityNameEl = document.getElementById("communityName");
-const communityMetaEl = document.getElementById("communityMeta");
-const joinBtn = document.getElementById("btnJoinCommunity");
+let community: Community | null = null;
+let categories: PostCategory[] = [];
 
-/** Posts cujos comentários já foram buscados — evita refetch a cada toggle. */
-const loadedComments = new Set<string>();
+let tab: Tab = "all";
+let categoryFilter: string | null = null;
+let page = 0;
+let totalPages = 0;
+// Descarta respostas de uma aba/filtro que o usuário já deixou para trás.
+let feedSeq = 0;
+
+const $ = <T extends HTMLElement = HTMLElement>(id: string) =>
+    document.getElementById(id) as T | null;
+
+const postsList = $("tfPostsList");
+const loadMoreBtn = $<HTMLButtonElement>("tfLoadMore");
+const chipsEl = $("tfCategoryChips");
+const tabHint = $("tfTabHint");
+
+initLayout({
+    pageLinks: communityId
+        ? [
+              {
+                  label: "Discussões",
+                  href: communityUrl(communityId),
+                  current: true,
+                  // Volta para a aba Conversas sem recarregar a página.
+                  onClick: (event) => {
+                      event.preventDefault();
+                      selectTab("all");
+                      $("main-content")?.scrollIntoView({ behavior: "smooth" });
+                  },
+              },
+              // Ainda sem página própria: desativados com "Em breve".
+              { label: "Regras" },
+              { label: "Membros" },
+              { label: "Eventos" },
+              { label: "Suporte" },
+          ]
+        : [],
+});
+
+const thread = postsList
+    ? createPostThread(postsList, {
+          onEditPost: (post) => void editPost(post),
+          onPostDeleted: () => {
+              if (thread?.posts.size === 0) showFeedStatus(emptyMessage());
+          },
+      })
+    : null;
 
 // ===========================================================================
-// Render
+// Utilidades
 // ===========================================================================
 
-function authorName(post: Post | Comment): string {
-    return post.author_display_name?.trim() || post.author_username;
+function errorMessage(err: unknown, fallback: string): string {
+    return err instanceof Error ? err.message : fallback;
 }
 
-/**
- * Todo dado de usuário passa por escapeHtml.
- *
- * O protótipo montava o post com innerHTML e interpolação crua — um título
- * contendo <img src=x onerror=...> executava para todos os visitantes.
- */
-function renderPost(post: Post): string {
-    const name = authorName(post);
-    const category = post.category_name ?? "Discussões";
-
-    return `
-        <article class="tf-post" data-post-id="${escapeHtml(post.post_id)}">
-            <div class="tf-post-avatar-container" data-author-id="${escapeHtml(post.author_id)}">
-                <div class="tf-avatar ${avatarColor(post.author_id)}">${escapeHtml(initials(name))}</div>
-            </div>
-            <div class="tf-post-body">
-                <div class="tf-post-meta">
-                    <strong data-author-id="${escapeHtml(post.author_id)}">${escapeHtml(name)}</strong> • Perguntado em ${escapeHtml(category)}
-                </div>
-                <h3 class="tf-post-title">${escapeHtml(post.title)}</h3>
-                <div class="tf-post-snippet">${escapeHtml(post.content)}</div>
-                <div class="tf-post-stats">
-                    <button type="button" class="tf-stat tf-stat-like${post.liked_by_me ? " active" : ""}"
-                            data-liked="${post.liked_by_me}" aria-pressed="${post.liked_by_me}">
-                        👍 <span class="like-count">${post.likes_count}</span>
-                    </button>
-                    <button type="button" class="tf-stat tf-stat-comment-toggle" aria-expanded="false">
-                        💬 <span class="comment-count">${post.comments_count}</span>
-                    </button>
-                    <span class="tf-stat-user">
-                        <div class="tf-avatar-small">${escapeHtml(initials(name))}</div>
-                        ${escapeHtml(timeAgo(post.created_at))}
-                    </span>
-                </div>
-                <div class="tf-post-comments" hidden>
-                    <div class="tf-comment-list"></div>
-                    <form class="tf-comment-form">
-                        <input type="text" class="tf-comment-input" maxlength="2000"
-                               placeholder="Escreva um comentário..." aria-label="Comentário" />
-                        <button type="submit">Enviar</button>
-                    </form>
-                </div>
-            </div>
-        </article>
-    `;
+/** Exige sessão; sem ela manda para o login e devolve false. */
+function ensureLoggedIn(): boolean {
+    if (getToken()) return true;
+    goToLogin();
+    return false;
 }
 
-function renderComment(comment: Comment): string {
-    const name = authorName(comment);
-    const isMine = comment.author_id === currentUserId;
+// ===========================================================================
+// Topo da comunidade
+// ===========================================================================
 
-    return `
-        <div class="tf-comment-item" data-comment-id="${escapeHtml(comment.comment_id)}">
-            <strong>${escapeHtml(name)}</strong>
-            <p>${escapeHtml(comment.content)}</p>
-            <span class="tf-comment-time">${escapeHtml(timeAgo(comment.created_at))}</span>
-            ${isMine ? '<button type="button" class="tf-comment-delete" title="Excluir comentário">✕</button>' : ""}
-        </div>
-    `;
+function renderHero(): void {
+    if (!community) return;
+    const c = community;
+
+    document.title = `FAMAX - ${c.name}`;
+    const name = $("communityName");
+    if (name) name.textContent = c.name;
+
+    const meta = $("communityMeta");
+    if (meta) {
+        meta.textContent = [
+            c.category_name,
+            `${c.members_count} ${c.members_count === 1 ? "membro" : "membros"}`,
+        ]
+            .filter(Boolean)
+            .join(" • ");
+    }
+
+    const description = $("communityDescription");
+    if (description) {
+        description.textContent = c.description ?? "";
+        description.hidden = !c.description;
+    }
+
+    // Capa ou, sem ela, a inicial na cor estável da comunidade.
+    const banner = $("communityBanner");
+    const initial = $("communityInitial");
+    if (banner) {
+        banner.className = "tf-community-banner";
+        if (c.cover_image_url) {
+            banner.style.backgroundImage = `url(${JSON.stringify(c.cover_image_url)})`;
+            banner.classList.add("has-image");
+            if (initial) initial.textContent = "";
+        } else {
+            banner.style.backgroundImage = "";
+            banner.classList.add(avatarColor(c.community_id));
+            if (initial) initial.textContent = c.name.trim().charAt(0).toUpperCase();
+        }
+    }
+
+    renderActions();
+    $("communityHero")?.removeAttribute("aria-busy");
 }
+
+function renderActions(): void {
+    const actions = $("communityActions");
+    if (!actions || !community) return;
+    actions.replaceChildren();
+
+    const button = (label: string, className = "tf-btn-join"): HTMLButtonElement => {
+        const b = document.createElement("button");
+        b.type = "button";
+        b.className = className;
+        b.textContent = label;
+        return b;
+    };
+
+    // Dono: editar (sair não existe para ele — ver leave no backend).
+    if (community.my_role === "owner") {
+        const badge = document.createElement("span");
+        badge.className = "tf-owner-badge";
+        badge.textContent = "Você é o dono";
+        const edit = document.createElement("a");
+        edit.className = "tf-btn-join";
+        edit.href = communityEditUrl(community.community_id);
+        edit.textContent = "Editar comunidade";
+        actions.append(badge, edit);
+        return;
+    }
+
+    // Membro: "Participando ✓" abre um menu com "Sair".
+    if (community.my_role) {
+        const wrapper = document.createElement("div");
+        wrapper.className = "tf-member-menu";
+        const toggle = button("Participando ✓", "tf-btn-join tf-btn-joined");
+        toggle.setAttribute("aria-haspopup", "menu");
+        toggle.setAttribute("aria-expanded", "false");
+        const menu = document.createElement("div");
+        menu.className = "tf-menu-list";
+        menu.setAttribute("role", "menu");
+        menu.hidden = true;
+        const leave = button("Sair da comunidade", "tf-menu-item tf-menu-item--danger");
+        leave.setAttribute("role", "menuitem");
+        menu.append(leave);
+        wrapper.append(toggle, menu);
+        actions.append(wrapper);
+
+        toggle.addEventListener("click", (event) => {
+            event.stopPropagation();
+            menu.hidden = !menu.hidden;
+            toggle.setAttribute("aria-expanded", String(!menu.hidden));
+        });
+        document.addEventListener("click", (event) => {
+            if (!wrapper.contains(event.target as Node)) {
+                menu.hidden = true;
+                toggle.setAttribute("aria-expanded", "false");
+            }
+        });
+        leave.addEventListener("click", () => void leaveCommunity());
+        return;
+    }
+
+    // Visitante ou não-membro: participar (visitante vai ao login).
+    const join = button("Participar");
+    join.addEventListener("click", () => void joinCommunity(join));
+    actions.append(join);
+}
+
+async function loadCommunity(): Promise<void> {
+    if (!communityId) return;
+    try {
+        const result = await api<{ community: Community; categories: PostCategory[] }>(
+            `/communities/${encodeURIComponent(communityId)}`,
+        );
+        community = result.community;
+        categories = result.categories;
+        renderHero();
+        renderChips();
+    } catch (err) {
+        const name = $("communityName");
+        if (name) name.textContent = errorMessage(err, "Comunidade não encontrada");
+        $("communityHero")?.removeAttribute("aria-busy");
+    }
+}
+
+async function joinCommunity(button?: HTMLButtonElement): Promise<boolean> {
+    if (!communityId || !ensureLoggedIn()) return false;
+    if (button) button.disabled = true;
+    try {
+        await api(`/communities/${encodeURIComponent(communityId)}/join`, { method: "POST" });
+        await loadCommunity(); // atualiza papel e contagem de membros
+        void refreshMyCommunities();
+        toast("Agora você participa desta comunidade.");
+        return true;
+    } catch (err) {
+        toast(errorMessage(err, "Não foi possível participar."), "error");
+        if (button) button.disabled = false;
+        return false;
+    }
+}
+
+async function leaveCommunity(): Promise<void> {
+    if (!communityId || !community) return;
+    const ok = await confirmDialog({
+        title: "Sair da comunidade?",
+        message: `Você deixará de participar de "${community.name}". Seus posts e comentários continuam publicados.`,
+        confirmLabel: "Sair",
+        danger: true,
+    });
+    if (!ok) return;
+
+    try {
+        await api(`/communities/${encodeURIComponent(communityId)}/leave`, { method: "POST" });
+        await loadCommunity();
+        void refreshMyCommunities();
+        toast("Você saiu da comunidade.");
+    } catch (err) {
+        toast(errorMessage(err, "Não foi possível sair da comunidade."), "error");
+    }
+}
+
+// ===========================================================================
+// Abas, categorias e URL
+// ===========================================================================
+
+const TAB_HINTS: Record<Tab, string | null> = {
+    all: null,
+    unanswered: "Discussões que ainda não receberam nenhuma resposta. Que tal ajudar?",
+    categories: "Escolha uma categoria para ver só as discussões dela.",
+};
+
+/** Reflete aba e categoria na URL, para recarregar ou compartilhar. */
+function syncUrl(): void {
+    const url = new URL(window.location.href);
+    url.searchParams.delete("tab");
+    url.searchParams.delete("categoryId");
+    if (tab !== "all") url.searchParams.set("tab", tab);
+    if (tab === "categories" && categoryFilter) url.searchParams.set("categoryId", categoryFilter);
+    history.replaceState(null, "", url);
+}
+
+function renderTabs(): void {
+    document.querySelectorAll<HTMLButtonElement>(".tf-tab").forEach((button) => {
+        const active = button.dataset.tab === tab;
+        button.classList.toggle("active", active);
+        button.setAttribute("aria-selected", String(active));
+        button.tabIndex = active ? 0 : -1;
+        if (active) $("tfFeedPanel")?.setAttribute("aria-labelledby", button.id);
+    });
+    if (tabHint) {
+        tabHint.textContent = TAB_HINTS[tab] ?? "";
+        tabHint.hidden = !TAB_HINTS[tab];
+    }
+    if (chipsEl) chipsEl.hidden = tab !== "categories";
+    updateIndicator();
+}
+
+function renderChips(): void {
+    if (!chipsEl) return;
+    const chip = (label: string, value: string | null): HTMLButtonElement => {
+        const b = document.createElement("button");
+        b.type = "button";
+        b.className = "tf-chip";
+        b.textContent = label;
+        b.dataset.categoryId = value ?? "";
+        b.setAttribute("aria-pressed", String(categoryFilter === value));
+        return b;
+    };
+    chipsEl.replaceChildren(
+        chip("Todas", null),
+        ...categories.map((c) => chip(c.name, c.community_category_id)),
+    );
+}
+
+function selectTab(next: Tab, nextCategory: string | null = null): void {
+    tab = next;
+    categoryFilter = next === "categories" ? nextCategory : null;
+    renderTabs();
+    renderChips();
+    syncUrl();
+    void loadPosts(true);
+}
+
+document.querySelectorAll<HTMLButtonElement>(".tf-tab").forEach((button) => {
+    button.addEventListener("click", () => {
+        const next = button.dataset.tab as Tab;
+        if (next !== tab) selectTab(next);
+    });
+});
+
+// Teclado no padrão de tablist: setas, Home e End mudam de aba.
+$("tfTabsContainer")?.addEventListener("keydown", (event) => {
+    const tabs = Array.from(document.querySelectorAll<HTMLButtonElement>(".tf-tab"));
+    const index = tabs.findIndex((t) => t.dataset.tab === tab);
+    let target = -1;
+    if (event.key === "ArrowRight") target = (index + 1) % tabs.length;
+    else if (event.key === "ArrowLeft") target = (index - 1 + tabs.length) % tabs.length;
+    else if (event.key === "Home") target = 0;
+    else if (event.key === "End") target = tabs.length - 1;
+    if (target < 0) return;
+    event.preventDefault();
+    tabs[target].focus();
+    selectTab(tabs[target].dataset.tab as Tab);
+});
+
+chipsEl?.addEventListener("click", (event) => {
+    const chip = (event.target as Element).closest<HTMLButtonElement>(".tf-chip");
+    if (!chip) return;
+    selectTab("categories", chip.dataset.categoryId || null);
+});
+
+function updateIndicator(): void {
+    const activeTab = document.querySelector<HTMLElement>(".tf-tab.active");
+    const indicator = $("tfTabIndicator");
+    const container = $("tfTabsContainer");
+    if (activeTab && indicator && container) {
+        const containerRect = container.getBoundingClientRect();
+        const tabRect = activeTab.getBoundingClientRect();
+        indicator.style.width = `${tabRect.width}px`;
+        indicator.style.transform = `translateX(${tabRect.left - containerRect.left}px)`;
+    }
+}
+
+window.addEventListener("load", () => setTimeout(updateIndicator, 50));
+window.addEventListener("resize", updateIndicator);
+
+// ===========================================================================
+// Posts
+// ===========================================================================
 
 function showFeedStatus(message: string, isError = false): void {
     if (!postsList) return;
@@ -162,510 +383,120 @@ function showFeedStatus(message: string, isError = false): void {
     if (el) el.textContent = message;
 }
 
-// ===========================================================================
-// Carregamento
-// ===========================================================================
+function emptyMessage(): string {
+    if (tab === "unanswered") return "Todas as discussões já têm resposta. 🎉";
+    if (tab === "categories" && categoryFilter) return "Nenhuma discussão nesta categoria ainda.";
+    return "Nenhuma discussão ainda. Seja o primeiro a publicar!";
+}
 
-async function loadCommunity(): Promise<void> {
-    if (!communityId) return;
+async function loadPosts(reset: boolean): Promise<void> {
+    if (!communityId || !postsList || !loadMoreBtn || !thread) return;
+
+    const seq = ++feedSeq;
+    if (reset) {
+        page = 0;
+        totalPages = 0;
+        thread.clear();
+        showFeedStatus("Carregando discussões...");
+        loadMoreBtn.hidden = true;
+    }
+    loadMoreBtn.disabled = true;
+
+    const params = new URLSearchParams({ page: String(page + 1), limit: String(POSTS_PER_PAGE) });
+    if (tab === "unanswered") params.set("unanswered", "true");
+    if (tab === "categories" && categoryFilter) params.set("categoryId", categoryFilter);
 
     try {
-        const { community, categories } = await api<{
-            community: Community;
-            categories: CommunityCategory[];
-        }>(`/communities/${communityId}`);
+        const result = await api<{ data: Post[]; pagination: { totalPages: number } }>(
+            `/communities/${encodeURIComponent(communityId)}/posts?${params}`,
+        );
+        if (seq !== feedSeq) return;
 
-        if (communityNameEl) communityNameEl.textContent = community.name;
-        if (communityMetaEl) {
-            const parts = [
-                community.category_name,
-                `${community.members_count} ${community.members_count === 1 ? "membro" : "membros"}`,
-            ].filter(Boolean);
-            communityMetaEl.textContent = parts.join(" • ");
-        }
+        page += 1;
+        totalPages = result.pagination.totalPages;
 
-        document.title = `FAMAX - ${community.name}`;
-        fillCategorySelect(categories);
+        if (reset) postsList.innerHTML = "";
+        thread.add(result.data);
+
+        if (thread.posts.size === 0) showFeedStatus(emptyMessage());
+        loadMoreBtn.hidden = page >= totalPages;
     } catch (err) {
-        if (communityNameEl) {
-            communityNameEl.textContent =
-                err instanceof Error ? err.message : "Comunidade não encontrada";
+        if (seq !== feedSeq) return;
+        if (reset) {
+            showFeedStatus(`Não foi possível carregar as discussões: ${errorMessage(err, "erro")}`, true);
+        } else {
+            toast(errorMessage(err, "Não foi possível carregar mais."), "error");
         }
-    }
-}
-
-function fillCategorySelect(categories: CommunityCategory[]): void {
-    const select = document.getElementById("newPostCategory");
-    if (!(select instanceof HTMLSelectElement)) return;
-
-    select.innerHTML = '<option value="">Selecione uma categoria...</option>';
-    for (const category of categories) {
-        const option = document.createElement("option");
-        option.value = category.community_category_id;
-        option.textContent = category.name;
-        select.appendChild(option);
-    }
-}
-
-async function loadPosts(): Promise<void> {
-    if (!communityId || !postsList) return;
-
-    try {
-        const { data } = await api<{ data: Post[] }>(
-            `/communities/${communityId}/posts?limit=20`,
-        );
-
-        if (data.length === 0) {
-            showFeedStatus("Nenhuma discussão ainda. Seja o primeiro a publicar!");
-            return;
-        }
-
-        postsList.innerHTML = data.map(renderPost).join("");
-    } catch (err) {
-        showFeedStatus(
-            err instanceof Error
-                ? `Não foi possível carregar as discussões: ${err.message}`
-                : "Não foi possível carregar as discussões.",
-            true,
-        );
-    }
-}
-
-async function loadMembership(): Promise<void> {
-    if (!communityId || !getToken() || !(joinBtn instanceof HTMLButtonElement)) {
-        return;
-    }
-
-    try {
-        const { isMember } = await api<{ isMember: boolean }>(
-            `/communities/${communityId}/membership`,
-        );
-        joinBtn.hidden = isMember;
-    } catch {
-        // Falha aqui só significa não saber o estado; o botão fica escondido e
-        // o backend continua rejeitando escrita de não-membro.
-    }
-}
-
-async function loadComments(post: HTMLElement): Promise<void> {
-    const postId = post.dataset.postId;
-    const list = post.querySelector<HTMLElement>(".tf-comment-list");
-    if (!postId || !list) return;
-
-    list.innerHTML = '<div class="tf-comment-status">Carregando comentários...</div>';
-
-    try {
-        const { data } = await api<{ data: Comment[] }>(
-            `/posts/${postId}/comments?limit=100`,
-        );
-
-        loadedComments.add(postId);
-        list.innerHTML =
-            data.length > 0
-                ? data.map(renderComment).join("")
-                : '<div class="tf-comment-status">Nenhum comentário ainda.</div>';
-    } catch (err) {
-        loadedComments.delete(postId);
-        list.innerHTML = '<div class="tf-comment-status"></div>';
-        const status = list.querySelector(".tf-comment-status");
-        if (status) {
-            status.textContent =
-                err instanceof Error ? err.message : "Erro ao carregar comentários.";
-        }
-    }
-}
-
-// ===========================================================================
-// Ações (delegação de eventos)
-// ===========================================================================
-
-async function toggleLike(button: HTMLButtonElement): Promise<void> {
-    const post = button.closest<HTMLElement>(".tf-post");
-    const postId = post?.dataset.postId;
-    const countEl = button.querySelector<HTMLElement>(".like-count");
-    if (!postId || !countEl) return;
-
-    if (!getToken()) {
-        goToLogin();
-        return;
-    }
-
-    // Atualiza otimista e reverte se a API recusar — o clique responde na hora
-    // mesmo com a rede lenta.
-    const wasLiked = button.dataset.liked === "true";
-    const previousCount = Number(countEl.textContent ?? "0");
-
-    const optimisticLiked = !wasLiked;
-    const optimisticCount = Math.max(0, previousCount + (optimisticLiked ? 1 : -1));
-    applyLikeState(button, countEl, optimisticLiked, optimisticCount);
-
-    button.disabled = true;
-    try {
-        const { liked, likesCount } = await api<{
-            liked: boolean;
-            likesCount: number;
-        }>(`/posts/${postId}/reactions`, { method: "POST" });
-
-        applyLikeState(button, countEl, liked, likesCount);
-    } catch {
-        applyLikeState(button, countEl, wasLiked, previousCount);
     } finally {
-        button.disabled = false;
+        if (seq === feedSeq) loadMoreBtn.disabled = false;
     }
 }
 
-function applyLikeState(
-    button: HTMLButtonElement,
-    countEl: HTMLElement,
-    liked: boolean,
-    count: number,
-): void {
-    button.dataset.liked = String(liked);
-    button.setAttribute("aria-pressed", String(liked));
-    button.classList.toggle("active", liked);
-    countEl.textContent = String(count);
-}
-
-async function submitComment(form: HTMLFormElement): Promise<void> {
-    const post = form.closest<HTMLElement>(".tf-post");
-    const postId = post?.dataset.postId;
-    const input = form.querySelector<HTMLInputElement>(".tf-comment-input");
-    const submitButton = form.querySelector<HTMLButtonElement>('button[type="submit"]');
-    if (!post || !postId || !input) return;
-
-    const content = input.value.trim();
-    if (!content) return;
-
-    if (!getToken()) {
-        goToLogin();
-        return;
-    }
-
-    if (submitButton) submitButton.disabled = true;
-
-    try {
-        const { comment } = await api<{ comment: Comment }>(
-            `/posts/${postId}/comments`,
-            { method: "POST", body: JSON.stringify({ content }) },
-        );
-
-        const list = post.querySelector<HTMLElement>(".tf-comment-list");
-        if (list) {
-            // Remove o "nenhum comentário ainda" antes de inserir o primeiro.
-            list.querySelector(".tf-comment-status")?.remove();
-            list.insertAdjacentHTML("beforeend", renderComment(comment));
-        }
-
-        const countEl = post.querySelector<HTMLElement>(".comment-count");
-        if (countEl) {
-            countEl.textContent = String(Number(countEl.textContent ?? "0") + 1);
-        }
-
-        input.value = "";
-    } catch (err) {
-        window.alert(
-            err instanceof Error ? err.message : "Não foi possível comentar.",
-        );
-    } finally {
-        if (submitButton) submitButton.disabled = false;
-    }
-}
-
-async function deleteComment(button: HTMLButtonElement): Promise<void> {
-    const item = button.closest<HTMLElement>(".tf-comment-item");
-    const post = button.closest<HTMLElement>(".tf-post");
-    const commentId = item?.dataset.commentId;
-    if (!item || !post || !commentId) return;
-
-    if (!window.confirm("Excluir este comentário?")) return;
-
-    button.disabled = true;
-    try {
-        await api(`/comments/${commentId}`, { method: "DELETE" });
-        item.remove();
-
-        const countEl = post.querySelector<HTMLElement>(".comment-count");
-        if (countEl) {
-            countEl.textContent = String(
-                Math.max(0, Number(countEl.textContent ?? "0") - 1),
-            );
-        }
-    } catch (err) {
-        button.disabled = false;
-        window.alert(
-            err instanceof Error ? err.message : "Não foi possível excluir.",
-        );
-    }
-}
-
-if (postsList) {
-    postsList.addEventListener("click", (event: MouseEvent) => {
-        const target = event.target;
-        if (!(target instanceof Element)) return;
-
-        const likeBtn = target.closest<HTMLButtonElement>(".tf-stat-like");
-        if (likeBtn) {
-            void toggleLike(likeBtn);
-            return;
-        }
-
-        const commentToggle = target.closest<HTMLButtonElement>(
-            ".tf-stat-comment-toggle",
-        );
-        if (commentToggle) {
-            const post = commentToggle.closest<HTMLElement>(".tf-post");
-            const comments = post?.querySelector<HTMLElement>(".tf-post-comments");
-            if (!post || !comments) return;
-
-            comments.hidden = !comments.hidden;
-            commentToggle.setAttribute("aria-expanded", String(!comments.hidden));
-
-            if (!comments.hidden) {
-                const postId = post.dataset.postId;
-                if (postId && !loadedComments.has(postId)) {
-                    void loadComments(post);
-                }
-                post.querySelector<HTMLInputElement>(".tf-comment-input")?.focus();
-            }
-            return;
-        }
-
-        const deleteBtn = target.closest<HTMLButtonElement>(".tf-comment-delete");
-        if (deleteBtn) {
-            void deleteComment(deleteBtn);
-            return;
-        }
-
-        // Pelo id, não pelo nome: nomes de exibição se repetem e mudam.
-        const authorId = target.closest<HTMLElement>("[data-author-id]")?.dataset.authorId;
-        if (authorId) {
-            window.location.href = profileUrl(authorId);
-        }
-    });
-
-    // submit borbulha, então um listener na lista cobre todos os formulários.
-    postsList.addEventListener("submit", (event: SubmitEvent) => {
-        const form = (event.target as Element | null)?.closest<HTMLFormElement>(
-            ".tf-comment-form",
-        );
-        if (!form) return;
-        event.preventDefault();
-        void submitComment(form);
-    });
-}
+loadMoreBtn?.addEventListener("click", () => void loadPosts(false));
 
 // ===========================================================================
-// Participar da comunidade
+// Criar e editar post
 // ===========================================================================
 
-if (joinBtn instanceof HTMLButtonElement) {
-    joinBtn.addEventListener("click", async () => {
-        if (!communityId) return;
-        if (!getToken()) {
-            goToLogin();
-            return;
-        }
-
-        joinBtn.disabled = true;
-        try {
-            await api(`/communities/${communityId}/join`, { method: "POST" });
-            joinBtn.hidden = true;
-            void refreshMyCommunities();
-        } catch (err) {
-            window.alert(
-                err instanceof Error ? err.message : "Não foi possível participar.",
-            );
-        } finally {
-            joinBtn.disabled = false;
-        }
-    });
+/** O post novo aparece na lista atual se ela o incluiria. */
+function matchesCurrentFilter(post: Post): boolean {
+    if (tab === "categories" && categoryFilter) return post.community_category_id === categoryFilter;
+    return true; // "Conversas" e "Ajudar os outros" (post novo tem 0 respostas)
 }
 
-// ===========================================================================
-// Modal de criação de post
-// ===========================================================================
-
-const btnCreatePost = document.getElementById("btnCreatePost");
-const createPostModal = document.getElementById("createPostModal");
-const closePostModal = document.getElementById("closePostModal");
-const cancelPostModal = document.getElementById("cancelPostModal");
-const publishPostBtn = document.getElementById("publishPostBtn");
-const newPostTitle = document.getElementById("newPostTitle");
-const newPostCategory = document.getElementById("newPostCategory");
-const newPostContent = document.getElementById("newPostContent");
-const postModalError = document.getElementById("postModalError");
-
-const openModal = (): void => createPostModal?.classList.add("show");
-const closeModal = (): void => createPostModal?.classList.remove("show");
-
-const showModalError = (message: string): void => {
-    if (!postModalError) return;
-    postModalError.textContent = message;
-    postModalError.classList.add("show");
-};
-
-const clearModalError = (): void => {
-    if (!postModalError) return;
-    postModalError.textContent = "";
-    postModalError.classList.remove("show");
-};
-
-async function publishPost(): Promise<void> {
-    if (
-        !(newPostTitle instanceof HTMLInputElement) ||
-        !(newPostContent instanceof HTMLTextAreaElement) ||
-        !(publishPostBtn instanceof HTMLButtonElement) ||
-        !communityId
-    ) {
-        return;
+async function editPost(post: Post): Promise<void> {
+    if (!communityId || !thread) return;
+    const saved = await openPostEditor({ communityId, categories, post });
+    if (saved) {
+        thread.replace(saved);
+        toast("Discussão atualizada.");
     }
+}
 
-    clearModalError();
-
-    const title = newPostTitle.value.trim();
-    const content = newPostContent.value.trim();
-    const categoryId =
-        newPostCategory instanceof HTMLSelectElement ? newPostCategory.value : "";
-
-    if (title.length < 3) {
-        showModalError("O título deve ter no mínimo 3 caracteres.");
-        return;
-    }
-    if (!content) {
-        showModalError("Escreva o conteúdo da discussão.");
-        return;
-    }
-
-    publishPostBtn.disabled = true;
-    publishPostBtn.textContent = "Publicando...";
-
-    try {
-        const { post } = await api<{ post: Post }>("/posts", {
-            method: "POST",
-            body: JSON.stringify({
-                communityId,
-                communityCategoryId: categoryId || null,
-                title,
-                content,
-            }),
+$("btnCreatePost")?.addEventListener("click", async () => {
+    if (!communityId || !thread || !postsList || !ensureLoggedIn()) return;
+    if (!community?.my_role) {
+        // Só membros publicam: oferece entrar em vez de deixar o erro 403.
+        const ok = await confirmDialog({
+            title: "Participar para publicar?",
+            message: "Só quem participa da comunidade pode criar discussões.",
+            confirmLabel: "Participar",
         });
+        if (!ok || !(await joinCommunity())) return;
+    }
 
-        // Insere no topo: a listagem é ORDER BY created_at DESC.
-        if (postsList) {
-            postsList.querySelector(".tf-feed-status")?.remove();
-            postsList.insertAdjacentHTML("afterbegin", renderPost(post));
-        }
+    const post = await openPostEditor({ communityId, categories });
+    if (post && matchesCurrentFilter(post)) {
+        if (thread.posts.size === 0) postsList.innerHTML = "";
+        thread.add([post], "prepend");
+    }
+});
 
-        newPostTitle.value = "";
-        newPostContent.value = "";
-        if (newPostCategory instanceof HTMLSelectElement) newPostCategory.value = "";
-        closeModal();
-    } catch (err) {
-        showModalError(
-            err instanceof Error ? err.message : "Não foi possível publicar.",
-        );
-    } finally {
-        publishPostBtn.disabled = false;
-        publishPostBtn.textContent = "Publicar Post";
+// ===========================================================================
+// Início
+// ===========================================================================
+
+function readUrlState(): void {
+    const params = new URLSearchParams(window.location.search);
+    const urlCategory = params.get("categoryId");
+    const urlTab = params.get("tab");
+    if (urlCategory || urlTab === "categories") {
+        tab = "categories";
+        categoryFilter = urlCategory;
+    } else if (urlTab === "unanswered") {
+        tab = "unanswered";
     }
 }
-
-btnCreatePost?.addEventListener("click", () => {
-    if (!getToken()) {
-        goToLogin();
-        return;
-    }
-    clearModalError();
-    openModal();
-});
-closePostModal?.addEventListener("click", closeModal);
-cancelPostModal?.addEventListener("click", closeModal);
-publishPostBtn?.addEventListener("click", () => void publishPost());
-
-createPostModal?.addEventListener("click", (event: MouseEvent) => {
-    if (event.target === createPostModal) closeModal();
-});
-
-document.addEventListener("keydown", (event: KeyboardEvent) => {
-    if (event.key === "Escape") closeModal();
-});
-
-// ===========================================================================
-// Tabs (indicador deslizante — comportamento visual preservado do protótipo)
-// ===========================================================================
-
-function updateIndicator(): void {
-    const activeTab = document.querySelector<HTMLElement>(".tf-tab.active");
-    const indicator = document.getElementById("tfTabIndicator");
-    const container = document.getElementById("tfTabsContainer");
-
-    if (activeTab && indicator && container) {
-        const containerRect = container.getBoundingClientRect();
-        const tabRect = activeTab.getBoundingClientRect();
-        indicator.style.width = `${tabRect.width}px`;
-        indicator.style.transform = `translateX(${tabRect.left - containerRect.left}px)`;
-    }
-}
-
-function updateWidgetIndicator(): void {
-    const activeTab = document.querySelector<HTMLElement>(".tf-w-tab.active");
-    const indicator = document.getElementById("tfWidgetTabIndicator");
-    const container = document.getElementById("tfWidgetTabsContainer");
-
-    if (activeTab && indicator && container) {
-        const containerRect = container.getBoundingClientRect();
-        const tabRect = activeTab.getBoundingClientRect();
-        indicator.style.width = `${tabRect.width}px`;
-        indicator.style.transform = `translateX(${tabRect.left - containerRect.left}px)`;
-    }
-}
-
-document.querySelectorAll<HTMLElement>(".tf-tab").forEach((tab) => {
-    tab.addEventListener("click", (event: MouseEvent) => {
-        event.preventDefault();
-        document
-            .querySelectorAll<HTMLElement>(".tf-tab")
-            .forEach((t) => t.classList.remove("active"));
-        tab.classList.add("active");
-        updateIndicator();
-    });
-});
-
-document.querySelectorAll<HTMLElement>(".tf-w-tab").forEach((tab) => {
-    tab.addEventListener("click", (event: MouseEvent) => {
-        event.preventDefault();
-        document
-            .querySelectorAll<HTMLElement>(".tf-w-tab")
-            .forEach((t) => t.classList.remove("active"));
-        tab.classList.add("active");
-        updateWidgetIndicator();
-    });
-});
-
-window.addEventListener("load", () => {
-    setTimeout(updateIndicator, 50);
-    setTimeout(updateWidgetIndicator, 50);
-});
-
-window.addEventListener("resize", () => {
-    updateIndicator();
-    updateWidgetIndicator();
-});
-
-// ===========================================================================
-// Boot
-// ===========================================================================
 
 if (!communityId) {
-    showFeedStatus(
-        "Nenhuma comunidade selecionada. Volte para a home e escolha uma.",
-        true,
-    );
-    if (communityNameEl) communityNameEl.textContent = "Comunidade";
+    showFeedStatus("Nenhuma comunidade selecionada. Volte para a home e escolha uma.", true);
+    const name = $("communityName");
+    if (name) name.textContent = "Comunidade";
 } else {
+    readUrlState();
+    renderTabs();
     void loadCommunity();
-    void loadPosts();
-    void loadMembership();
+    void loadPosts(true);
 }
 
 export {};

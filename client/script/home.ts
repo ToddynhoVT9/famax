@@ -1,65 +1,97 @@
 /**
  * FAMAX — Home Page Script
  *
- * Monta o feed a partir de GET /api/communities, agrupando por categoria.
- * Antes a home tinha um card fixo apontando para community.html sem ?id=, o
- * que agora levaria a uma página sem comunidade selecionada.
+ * Monta o feed a partir de GET /api/communities, agrupando por categoria, com
+ * chips para filtrar uma categoria só (?categoryId=, refletido na URL). Cada
+ * card mostra a capa — ou um gradiente com a inicial —, membros e o começo
+ * da descrição.
  */
 import { api } from "./shared/api.js";
 import { initLayout } from "./shared/layout.js";
-import { escapeHtml } from "./shared/dom.js";
+import { communityUrl } from "./shared/pages.js";
+import { avatarColor, escapeHtml, truncate } from "./shared/dom.js";
 
 initLayout();
 
 interface CommunityCard {
     community_id: string;
     name: string;
+    description: string | null;
     cover_image_url: string | null;
     category_id: string | null;
     category_name: string | null;
     members_count: number;
 }
 
-const mainContent = document.getElementById("main-content");
+interface Category {
+    category_id: string;
+    name: string;
+}
+
+const feed = document.getElementById("homeFeed");
+const chipsEl = document.getElementById("homeChips");
+
+let categoryFilter = new URLSearchParams(window.location.search).get("categoryId");
+let feedSeq = 0;
 
 function renderCard(community: CommunityCard): string {
-    const href = `community.html?id=${encodeURIComponent(community.community_id)}`;
-
-    // A capa entra como background-image porque .card já define tamanho e
-    // cantos; uma <img> exigiria reescrever o layout do card.
-    const cover = community.cover_image_url
-        ? `style="background-image:url('${escapeHtml(community.cover_image_url)}');background-size:cover;background-position:center"`
+    const href = escapeHtml(communityUrl(community.community_id));
+    const members = `${community.members_count} ${community.members_count === 1 ? "membro" : "membros"}`;
+    const description = community.description
+        ? `<span class="card-description">${escapeHtml(truncate(community.description, 90))}</span>`
         : "";
 
-    const content = community.cover_image_url
-        ? ""
-        : '<div class="card-content">Imagem/<br>Capa</div>';
+    // A capa entra como background-image porque .card já define tamanho e
+    // cantos. Sem capa: gradiente na cor estável da comunidade + a inicial.
+    const cover = community.cover_image_url
+        ? `<div class="card-cover" style="background-image:url('${escapeHtml(community.cover_image_url)}')"></div>`
+        : `<div class="card-cover card-cover--placeholder ${avatarColor(community.community_id)}">
+               <span class="card-initial" aria-hidden="true">${escapeHtml(community.name.trim().charAt(0).toUpperCase())}</span>
+           </div>`;
 
     return `
-        <a href="${href}" class="card" ${cover}>
-            ${content}
-            <div class="card-footer">${escapeHtml(community.name)}</div>
+        <a href="${href}" class="card">
+            ${cover}
+            <div class="card-footer">
+                <span class="card-name">${escapeHtml(community.name)}</span>
+                <span class="card-members">${escapeHtml(members)}</span>
+                ${description}
+            </div>
         </a>
     `;
 }
 
 function showStatus(message: string, isError = false): void {
-    if (!mainContent) return;
-    mainContent.innerHTML = `<div class="feed-status${isError ? " error" : ""}"></div>`;
-    const el = mainContent.querySelector(".feed-status");
+    if (!feed) return;
+    feed.innerHTML = `<div class="feed-status${isError ? " error" : ""}"></div>`;
+    const el = feed.querySelector(".feed-status");
     if (el) el.textContent = message;
 }
 
+function syncUrl(): void {
+    const url = new URL(window.location.href);
+    if (categoryFilter) url.searchParams.set("categoryId", categoryFilter);
+    else url.searchParams.delete("categoryId");
+    history.replaceState(null, "", url);
+}
+
 async function loadFeed(): Promise<void> {
-    if (!mainContent) return;
+    if (!feed) return;
+    const seq = ++feedSeq;
+    showStatus("Carregando comunidades...");
 
     try {
-        const { data } = await api<{ data: CommunityCard[] }>(
-            "/communities?limit=50",
-        );
+        const params = new URLSearchParams({ limit: "50" });
+        if (categoryFilter) params.set("categoryId", categoryFilter);
+        const { data } = await api<{ data: CommunityCard[] }>(`/communities?${params}`);
+        if (seq !== feedSeq) return;
 
         if (data.length === 0) {
-            showStatus("Nenhuma comunidade ainda. Crie a primeira!");
+            showStatus(
+                categoryFilter
+                    ? "Nenhuma comunidade nesta categoria ainda."
+                    : "Nenhuma comunidade ainda. Crie a primeira!",
+            );
             return;
         }
 
@@ -68,14 +100,11 @@ async function loadFeed(): Promise<void> {
         for (const community of data) {
             const key = community.category_name ?? "Outros";
             const list = groups.get(key);
-            if (list) {
-                list.push(community);
-            } else {
-                groups.set(key, [community]);
-            }
+            if (list) list.push(community);
+            else groups.set(key, [community]);
         }
 
-        mainContent.innerHTML = Array.from(groups.entries())
+        feed.innerHTML = Array.from(groups.entries())
             .map(
                 ([categoryName, communities]) => `
                     <section class="category-section">
@@ -88,6 +117,7 @@ async function loadFeed(): Promise<void> {
             )
             .join("");
     } catch (err) {
+        if (seq !== feedSeq) return;
         showStatus(
             err instanceof Error
                 ? `Não foi possível carregar as comunidades: ${err.message}`
@@ -97,6 +127,45 @@ async function loadFeed(): Promise<void> {
     }
 }
 
+function renderChips(categories: Category[]): void {
+    if (!chipsEl) return;
+    const chip = (label: string, value: string | null): HTMLButtonElement => {
+        const button = document.createElement("button");
+        button.type = "button";
+        button.className = "home-chip";
+        button.textContent = label;
+        button.dataset.categoryId = value ?? "";
+        button.setAttribute("aria-pressed", String(categoryFilter === value));
+        return button;
+    };
+    chipsEl.replaceChildren(
+        chip("Todas", null),
+        ...categories.map((c) => chip(c.name, c.category_id)),
+    );
+}
+
+async function loadCategories(): Promise<void> {
+    try {
+        const { data } = await api<{ data: Category[] }>("/categories");
+        renderChips(data);
+    } catch {
+        // Sem chips a home continua funcionando, só sem o filtro.
+        if (chipsEl) chipsEl.hidden = true;
+    }
+}
+
+chipsEl?.addEventListener("click", (event) => {
+    const chip = (event.target as Element).closest<HTMLButtonElement>(".home-chip");
+    if (!chip) return;
+    categoryFilter = chip.dataset.categoryId || null;
+    chipsEl.querySelectorAll<HTMLButtonElement>(".home-chip").forEach((c) =>
+        c.setAttribute("aria-pressed", String(c === chip)),
+    );
+    syncUrl();
+    void loadFeed();
+});
+
+void loadCategories();
 void loadFeed();
 
 export {};

@@ -11,6 +11,7 @@ import { readFile, readdir } from "node:fs/promises";
 import { fileURLToPath } from "node:url";
 import path from "node:path";
 import { PGlite } from "@electric-sql/pglite";
+import { pg_trgm } from "@electric-sql/pglite/contrib/pg_trgm";
 import { PGLiteSocketServer } from "@electric-sql/pglite-socket";
 
 const root = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
@@ -54,7 +55,8 @@ async function call(method, endpoint, { token, body, raw } = {}) {
 // ---------------------------------------------------------------------------
 
 console.log("Iniciando Postgres em processo (PGlite)...");
-const db = await PGlite.create();
+// pg_trgm carregado como em produção: a busca (migration 011) usa trigramas.
+const db = await PGlite.create({ extensions: { pg_trgm } });
 const pgServer = new PGLiteSocketServer({ db, port: DB_PORT, host: "127.0.0.1" });
 await pgServer.start();
 
@@ -1510,6 +1512,433 @@ check("resetToken não serve duas vezes", resetAgain.status === 400, JSON.string
 // 3 pedidos já feitos para este e-mail nesta janela: o 4º é barrado.
 const forgotLimited = await call("POST", "/auth/forgot-password", { body: { email: kate.email } });
 check("forgot-password limitado por e-mail → 429", forgotLimited.status === 429, String(forgotLimited.status));
+
+// --- Comunidade completa ----------------------------------------------------------
+
+console.log("\n[Comunidade] Membros, posts e comentários");
+resetRateLimits();
+
+// Comunidade nova da alice, com o bob como membro comum.
+const c6 = await call("POST", "/communities", {
+    token: aliceToken,
+    body: { name: `Completa ${stamp}`, categoryId, description: "Descrição completa" },
+});
+const c6Id = c6.body?.community?.communityId;
+await call("POST", `/communities/${c6Id}/join`, { token: bobToken });
+
+const c6AsBob = await call("GET", `/communities/${c6Id}`, { token: bobToken });
+check(
+    "GET /communities/:id traz descrição, capa, dono, categoria e my_role",
+    c6AsBob.body?.community?.description === "Descrição completa" &&
+        "cover_image_url" in (c6AsBob.body?.community ?? {}) &&
+        c6AsBob.body.community.owner_id === aliceReg.body?.user?.userId &&
+        c6AsBob.body.community.category_id === categoryId &&
+        c6AsBob.body.community.my_role === "member",
+    JSON.stringify(c6AsBob.body?.community).slice(0, 240),
+);
+check(
+    "my_role é null para visitante",
+    (await call("GET", `/communities/${c6Id}`)).body?.community?.my_role === null,
+);
+
+// leave
+const ownerLeave = await call("POST", `/communities/${c6Id}/leave`, { token: aliceToken });
+check("dono não pode sair → 409", ownerLeave.status === 409, JSON.stringify(ownerLeave.body));
+const carolJoinLeave = await call("POST", `/communities/${c6Id}/join`, { token: carolToken });
+const carolLeave = await call("POST", `/communities/${c6Id}/leave`, { token: carolToken });
+check(
+    "membro sai da comunidade",
+    carolJoinLeave.status === 200 &&
+        carolLeave.status === 200 &&
+        (await call("GET", `/communities/${c6Id}`, { token: carolToken })).body?.community?.my_role === null,
+);
+
+// Posts: editar e excluir só pelo autor.
+const subcats = c6AsBob.body?.categories ?? [];
+const bobPost6 = await call("POST", "/posts", {
+    token: bobToken,
+    body: { communityId: c6Id, title: "Post do Bob", content: "Original" },
+});
+const bobPost6Id = bobPost6.body?.post?.post_id;
+check(
+    "post novo não aparece como editado",
+    bobPost6.body?.post?.edited_at === null,
+    JSON.stringify(bobPost6.body?.post).slice(0, 160),
+);
+
+// Curtir mexe em posts.updated_at (trigger), mas não pode marcar "editado".
+await call("POST", `/posts/${bobPost6Id}/reactions`, { token: aliceToken });
+const afterLike = await call("GET", `/communities/${c6Id}/posts`);
+check(
+    "curtida não marca o post como editado",
+    afterLike.body?.data?.[0]?.edited_at === null,
+    JSON.stringify(afterLike.body?.data?.[0]).slice(0, 160),
+);
+
+const editByOther = await call("PATCH", `/posts/${bobPost6Id}`, {
+    token: aliceToken,
+    body: { title: "Sequestrado" },
+});
+check("editar post alheio → 404", editByOther.status === 404, String(editByOther.status));
+
+const editOwn = await call("PATCH", `/posts/${bobPost6Id}`, {
+    token: bobToken,
+    body: { title: "Post do Bob (editado)", content: "Novo conteúdo", communityCategoryId: subcats[1]?.community_category_id },
+});
+check(
+    "autor edita título, conteúdo e subcategoria; edited_at preenchido",
+    editOwn.status === 200 &&
+        editOwn.body?.post?.title === "Post do Bob (editado)" &&
+        editOwn.body.post.content === "Novo conteúdo" &&
+        editOwn.body.post.category_name === subcats[1]?.name &&
+        editOwn.body.post.edited_at !== null &&
+        editOwn.body.post.liked_by_me === false,
+    JSON.stringify(editOwn.body).slice(0, 200),
+);
+
+const editForeignCategory = await call("PATCH", `/posts/${bobPost6Id}`, {
+    token: bobToken,
+    body: { communityCategoryId: subCategoryId },
+});
+check(
+    "editar para subcategoria de outra comunidade → 400",
+    editForeignCategory.status === 400,
+    JSON.stringify(editForeignCategory.body),
+);
+
+// Filtro unanswered: o post do bob ainda não tem comentário.
+const alicePost6 = await call("POST", "/posts", {
+    token: aliceToken,
+    body: { communityId: c6Id, title: "Post da Alice", content: "Vai ter comentário" },
+});
+const alicePost6Id = alicePost6.body?.post?.post_id;
+await call("POST", `/posts/${alicePost6Id}/comments`, {
+    token: bobToken,
+    body: { content: "Respondendo a Alice" },
+});
+const unanswered = await call("GET", `/communities/${c6Id}/posts?unanswered=true`);
+check(
+    "filtro unanswered traz só posts sem comentário",
+    unanswered.status === 200 &&
+        unanswered.body?.data?.length === 1 &&
+        unanswered.body.data[0].post_id === bobPost6Id &&
+        unanswered.body.pagination?.total === 1,
+    JSON.stringify(unanswered.body?.pagination),
+);
+
+// Comentários aninhados, edição e "[comentário removido]".
+const rootComment = await call("POST", `/posts/${alicePost6Id}/comments`, {
+    token: aliceToken,
+    body: { content: "Raiz da conversa" },
+});
+const rootId = rootComment.body?.comment?.comment_id;
+const reply1 = await call("POST", `/posts/${alicePost6Id}/comments`, {
+    token: bobToken,
+    body: { content: "Resposta nível 1", parentCommentId: rootId },
+});
+const reply2 = await call("POST", `/posts/${alicePost6Id}/comments`, {
+    token: aliceToken,
+    body: { content: "Resposta nível 2", parentCommentId: reply1.body?.comment?.comment_id },
+});
+check(
+    "resposta volta com parent_comment_id",
+    reply2.status === 201 && reply2.body?.comment?.parent_comment_id === reply1.body?.comment?.comment_id,
+);
+
+const tree = await call("GET", `/posts/${alicePost6Id}/comments`);
+const byId = new Map((tree.body?.data ?? []).map((c) => [c.comment_id, c]));
+check(
+    "comentários vêm planos com parent_comment_id e replies_count",
+    tree.status === 200 &&
+        byId.get(rootId)?.replies_count === 1 &&
+        byId.get(reply1.body?.comment?.comment_id)?.replies_count === 1 &&
+        byId.get(reply2.body?.comment?.comment_id)?.parent_comment_id === reply1.body?.comment?.comment_id,
+    JSON.stringify(tree.body).slice(0, 240),
+);
+
+const editCommentOther = await call("PATCH", `/comments/${rootId}`, {
+    token: bobToken,
+    body: { content: "Não é meu" },
+});
+check("editar comentário alheio → 404", editCommentOther.status === 404);
+const editComment = await call("PATCH", `/comments/${rootId}`, {
+    token: aliceToken,
+    body: { content: "Raiz editada" },
+});
+check(
+    "autor edita o comentário",
+    editComment.status === 200 &&
+        editComment.body?.comment?.content === "Raiz editada" &&
+        editComment.body.comment.edited_at !== null,
+    JSON.stringify(editComment.body).slice(0, 160),
+);
+
+await call("DELETE", `/comments/${rootId}`, { token: aliceToken });
+const treeAfterDelete = await call("GET", `/posts/${alicePost6Id}/comments`);
+const removedRoot = treeAfterDelete.body?.data?.find((c) => c.comment_id === rootId);
+check(
+    "comentário apagado com respostas vira [removido] sem autor nem texto",
+    removedRoot?.is_deleted === true &&
+        removedRoot.content === null &&
+        removedRoot.author_id === null &&
+        treeAfterDelete.body.data.some((c) => c.comment_id === reply2.body?.comment?.comment_id),
+    JSON.stringify(removedRoot),
+);
+
+// Folha apagada some de vez.
+const leaf = await call("POST", `/posts/${alicePost6Id}/comments`, {
+    token: bobToken,
+    body: { content: "Folha que será apagada" },
+});
+await call("DELETE", `/comments/${leaf.body?.comment?.comment_id}`, { token: bobToken });
+const treeLeaf = await call("GET", `/posts/${alicePost6Id}/comments`);
+check(
+    "comentário apagado sem respostas some da listagem",
+    !treeLeaf.body?.data?.some((c) => c.comment_id === leaf.body?.comment?.comment_id),
+);
+
+// Paginação por cursor nas raízes: 3 raízes vivas a mais, limite 2.
+for (const text of ["Raiz A", "Raiz B", "Raiz C"]) {
+    await call("POST", `/posts/${alicePost6Id}/comments`, { token: bobToken, body: { content: text } });
+}
+const page1 = await call("GET", `/posts/${alicePost6Id}/comments?limit=2`);
+const page2 = await call(
+    "GET",
+    `/posts/${alicePost6Id}/comments?limit=2&cursor=${encodeURIComponent(page1.body?.nextCursor ?? "")}`,
+);
+const rootsOf = (body) => (body?.data ?? []).filter((c) => c.parent_comment_id === null).map((c) => c.comment_id);
+check(
+    "comentários paginam por cursor sem repetir raízes",
+    page1.body?.nextCursor &&
+        rootsOf(page1.body).length === 2 &&
+        rootsOf(page2.body).length >= 1 &&
+        !rootsOf(page2.body).some((id) => rootsOf(page1.body).includes(id)),
+    `${JSON.stringify(rootsOf(page1.body))} / ${JSON.stringify(rootsOf(page2.body))}`,
+);
+check(
+    "cursor inválido → 400",
+    (await call("GET", `/posts/${alicePost6Id}/comments?cursor=lixo`)).status === 400,
+);
+
+// Excluir post: só o autor; some da listagem e bloqueia comentário e like.
+const deleteByOther = await call("DELETE", `/posts/${bobPost6Id}`, { token: aliceToken });
+check("excluir post alheio → 404", deleteByOther.status === 404);
+const deleteOwnPost = await call("DELETE", `/posts/${bobPost6Id}`, { token: bobToken });
+check("autor exclui o próprio post → 204", deleteOwnPost.status === 204);
+const listAfterDelete = await call("GET", `/communities/${c6Id}/posts`);
+check(
+    "post excluído some da listagem",
+    !listAfterDelete.body?.data?.some((p) => p.post_id === bobPost6Id),
+);
+check(
+    "post excluído bloqueia comentário",
+    (await call("POST", `/posts/${bobPost6Id}/comments`, { token: aliceToken, body: { content: "oi" } }))
+        .status === 404,
+);
+check(
+    "post excluído bloqueia like",
+    (await call("POST", `/posts/${bobPost6Id}/reactions`, { token: aliceToken })).status === 404,
+);
+check(
+    "comentários de post excluído → 404",
+    (await call("GET", `/posts/${bobPost6Id}/comments`)).status === 404,
+);
+
+console.log("\n[Comunidade] Edição e exclusão pelo dono");
+
+const editCommunityByMember = await call("PATCH", `/communities/${c6Id}`, {
+    token: bobToken,
+    body: { description: "Tentando editar" },
+});
+check("membro não edita a comunidade → 403", editCommunityByMember.status === 403);
+
+const editCommunity = await call("PATCH", `/communities/${c6Id}`, {
+    token: aliceToken,
+    body: { name: `Completa Editada ${stamp}`, description: "" },
+});
+check(
+    "dono edita nome e apaga a descrição",
+    editCommunity.status === 200 &&
+        editCommunity.body?.community?.name === `Completa Editada ${stamp}` &&
+        editCommunity.body.community.description === null,
+    JSON.stringify(editCommunity.body),
+);
+
+const editDuplicate = await call("PATCH", `/communities/${c6Id}`, {
+    token: aliceToken,
+    body: { name: communityName },
+});
+check("renomear para nome já usado → 409", editDuplicate.status === 409);
+
+const editNotImage = new FormData();
+editNotImage.append("cover", new Blob([new TextEncoder().encode("não é imagem")]), "x.png");
+const editCoverNoStorage = await call("PATCH", `/communities/${c6Id}`, {
+    token: aliceToken,
+    body: editNotImage,
+    raw: true,
+});
+check(
+    "capa nova sem Storage configurado → 503 previsível",
+    editCoverNoStorage.status === 503,
+    `${editCoverNoStorage.status} ${JSON.stringify(editCoverNoStorage.body)}`,
+);
+
+const deleteByMember = await call("DELETE", `/communities/${c6Id}`, {
+    token: bobToken,
+    body: { confirmName: `Completa Editada ${stamp}` },
+});
+check("membro não exclui a comunidade → 403", deleteByMember.status === 403);
+
+const deleteWrongName = await call("DELETE", `/communities/${c6Id}`, {
+    token: aliceToken,
+    body: { confirmName: "nome errado" },
+});
+check("excluir sem o nome certo → 400", deleteWrongName.status === 400);
+
+const deleteCommunity = await call("DELETE", `/communities/${c6Id}`, {
+    token: aliceToken,
+    body: { confirmName: `Completa Editada ${stamp}` },
+});
+check("dono exclui a comunidade → 204", deleteCommunity.status === 204);
+check(
+    "comunidade excluída some (404) e sai do feed",
+    (await call("GET", `/communities/${c6Id}`)).status === 404 &&
+        !(await call("GET", "/communities?limit=50")).body?.data?.some((c) => c.community_id === c6Id),
+);
+
+// O nome de uma comunidade excluída pode ser reutilizado.
+const reuseName = await call("POST", "/communities", {
+    token: aliceToken,
+    body: { name: `Completa Editada ${stamp}`, categoryId },
+});
+check("nome de comunidade excluída pode ser reutilizado", reuseName.status === 201, JSON.stringify(reuseName.body));
+
+// --- Busca e página do post ----------------------------------------------------
+
+console.log("\n[Busca] Comunidades, usuários e posts");
+resetRateLimits();
+
+// Dados com termos únicos desta execução, para não depender do resto da suíte.
+const tag = `zq${stamp}`.slice(0, 14);
+const searchCommunity = await call("POST", "/communities", {
+    token: aliceToken,
+    body: { name: `Torrefação ${tag}`, categoryId },
+});
+const searchCommunityId = searchCommunity.body?.community?.communityId;
+const searchPost = await call("POST", "/posts", {
+    token: aliceToken,
+    body: {
+        communityId: searchCommunityId,
+        title: `Moagem para espresso ${tag}`,
+        content: "Comparando moedores cônicos e planos para extração equilibrada.",
+    },
+});
+const searchPostId = searchPost.body?.post?.post_id;
+
+const sCommunities = await call("GET", `/search?q=${encodeURIComponent(`torrefa ${tag}`.slice(0, 7))}&type=communities`);
+check(
+    "busca de comunidades acha por pedaço do nome",
+    sCommunities.status === 200 &&
+        sCommunities.body?.results?.communities?.data?.some((c) => c.community_id === searchCommunityId),
+    JSON.stringify(sCommunities.body).slice(0, 200),
+);
+
+// Tolerância a erro de digitação (pg_trgm): uma letra trocada no nome único.
+const typo = `${tag.slice(0, -1)}x`;
+const sTypo = await call("GET", `/search?q=${encodeURIComponent(`Torrefação ${typo}`)}&type=communities`);
+check(
+    "busca de comunidades tolera erro de digitação",
+    sTypo.body?.results?.communities?.data?.[0]?.community_id === searchCommunityId,
+    JSON.stringify(sTypo.body?.results?.communities?.data?.map((c) => c.name)),
+);
+
+const sPosts = await call("GET", `/search?q=${encodeURIComponent(`moedor ${tag}`)}&type=posts`);
+check(
+    "busca de posts por prefixo de palavra (full-text)",
+    sPosts.status === 200 &&
+        sPosts.body?.results?.posts?.data?.[0]?.post_id === searchPostId &&
+        sPosts.body.results.posts.data[0].community_name === `Torrefação ${tag}`,
+    JSON.stringify(sPosts.body).slice(0, 200),
+);
+
+const sOperators = await call("GET", `/search?q=${encodeURIComponent("' | & !:* ()")}&type=posts`);
+check(
+    "operadores de tsquery digitados não quebram a busca",
+    sOperators.status === 200 || sOperators.status === 400,
+    String(sOperators.status),
+);
+
+const sAll = await call("GET", `/search?q=${encodeURIComponent(tag)}`);
+check(
+    "type=all devolve as três seções",
+    sAll.status === 200 &&
+        ["communities", "users", "posts"].every((k) => Array.isArray(sAll.body?.results?.[k]?.data)),
+    JSON.stringify(sAll.body).slice(0, 200),
+);
+
+check("busca com 1 caractere → 400", (await call("GET", "/search?q=a")).status === 400);
+check("tipo de busca inválido → 400", (await call("GET", `/search?q=${tag}&type=tudo`)).status === 400);
+
+// Privacidade: o mesmo critério da busca do chat.
+const lena = {
+    email: `lena${stamp}@famax.test`,
+    username: `lena${tag}`,
+    password: "senha123!forte",
+    displayName: "Lena Privada",
+    termsAccepted: true,
+    isPrivate: true,
+};
+const lenaReg = await call("POST", "/auth/register", { body: lena });
+const lenaToken = lenaReg.body?.token;
+const findLena = (body) =>
+    body?.results?.users?.data?.some((u) => u.user_id === lenaReg.body?.user?.userId) ?? false;
+
+check(
+    "perfil privado não aparece para visitante",
+    !findLena((await call("GET", `/search?q=lena${tag}&type=users`)).body),
+);
+check(
+    "perfil privado não aparece para quem não conversa com ele",
+    !findLena((await call("GET", `/search?q=lena${tag}&type=users`, { token: bobToken })).body),
+);
+check(
+    "o dono encontra o próprio perfil privado",
+    findLena((await call("GET", `/search?q=lena${tag}&type=users`, { token: lenaToken })).body),
+);
+await call("POST", "/conversations", { token: bobToken, body: { userId: lenaReg.body?.user?.userId } });
+check(
+    "perfil privado aparece para quem já conversa com ele",
+    findLena((await call("GET", `/search?q=lena${tag}&type=users`, { token: bobToken })).body),
+);
+
+console.log("\n[Post] Página individual");
+
+const singlePost = await call("GET", `/posts/${searchPostId}`, { token: aliceToken });
+check(
+    "GET /posts/:id traz o post com a comunidade e liked_by_me",
+    singlePost.status === 200 &&
+        singlePost.body?.post?.post_id === searchPostId &&
+        singlePost.body.post.community_id === searchCommunityId &&
+        singlePost.body.post.community_name === `Torrefação ${tag}` &&
+        singlePost.body.post.liked_by_me === false,
+    JSON.stringify(singlePost.body).slice(0, 200),
+);
+check(
+    "GET /posts/:id com id inválido → 400",
+    (await call("GET", "/posts/nao-e-uuid")).status === 400,
+);
+
+await call("DELETE", `/posts/${searchPostId}`, { token: aliceToken });
+check(
+    "GET /posts/:id de post excluído → 404",
+    (await call("GET", `/posts/${searchPostId}`)).status === 404,
+);
+const sAfterDelete = await call("GET", `/search?q=${encodeURIComponent(`moedor ${tag}`)}&type=posts`);
+check(
+    "post excluído não aparece na busca",
+    sAfterDelete.status === 200 && sAfterDelete.body?.results?.posts?.total === 0,
+    JSON.stringify(sAfterDelete.body?.results?.posts),
+);
 
 // ---------------------------------------------------------------------------
 

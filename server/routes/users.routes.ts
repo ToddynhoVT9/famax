@@ -222,7 +222,7 @@ router.get("/users/:userId/posts", optionalAuth, async (req, res, next) => {
        WHERE p.author_id = $1
          AND p.deleted_at IS NULL
          AND c.deleted_at IS NULL
-       ORDER BY p.created_at DESC
+       ORDER BY p.created_at DESC, p.post_id DESC
        LIMIT $2 OFFSET $3`,
       [userId, limit, (page - 1) * limit],
     );
@@ -272,7 +272,7 @@ router.get("/users/:userId/comments", optionalAuth, async (req, res, next) => {
          AND cm.deleted_at IS NULL
          AND p.deleted_at IS NULL
          AND c.deleted_at IS NULL
-       ORDER BY cm.created_at DESC
+       ORDER BY cm.created_at DESC, cm.comment_id DESC
        LIMIT $2 OFFSET $3`,
       [userId, limit, (page - 1) * limit],
     );

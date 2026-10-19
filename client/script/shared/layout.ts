@@ -25,7 +25,15 @@ import { initSidebar } from "./sidebar.js";
 
 export interface SidebarLink {
     label: string;
-    href: string;
+    /** Sem href o link aparece desativado, com o selo "Em breve". */
+    href?: string;
+    /**
+     * Ação no lugar da navegação (ex.: "Discussões" volta para a aba sem
+     * recarregar). O href continua lá para abrir em nova aba.
+     */
+    onClick?: (event: MouseEvent) => void;
+    /** Mantém o destaque de página atual mesmo com query diferente. */
+    current?: boolean;
 }
 
 export interface LayoutOptions {
@@ -48,27 +56,30 @@ const HEADER_HTML = `
         <span class="logo-subtext">Logo</span>
     </a>
 
-    <div class="search-container">
-        <input type="text" id="searchInput" class="search-input" placeholder="Pesquisar comunidade">
-        <div class="search-suggestions" id="searchSuggestions">
-            <div class="suggestion-item">Carregando sugestões...</div>
-        </div>
-    </div>
+    <form class="search-container" id="searchForm" role="search">
+        <input type="search" id="searchInput" class="search-input" placeholder="Pesquisar"
+               autocomplete="off" maxlength="80" aria-label="Pesquisar"
+               role="combobox" aria-autocomplete="list" aria-expanded="false"
+               aria-controls="searchSuggestions">
+        <div class="search-suggestions" id="searchSuggestions" role="listbox" aria-label="Sugestões"></div>
+    </form>
 
     <div class="header-actions">
         <div class="filtros-container">
-            <button type="button" class="btn-filtros" id="btnFiltros">Filtros</button>
-            <div class="filtros-dropdown" id="filtrosDropdown">
+            <button type="button" class="btn-filtros" id="btnFiltros"
+                    aria-haspopup="true" aria-expanded="false" aria-controls="filtrosDropdown">Filtros</button>
+            <!-- O filtro escolhe o tipo da busca (ver header-dropdowns.ts). -->
+            <div class="filtros-dropdown" id="filtrosDropdown" role="radiogroup" aria-label="Pesquisar em">
                 <label class="filtro-item">
-                    <input type="radio" name="filtroOpcao" value="categorias" checked>
-                    <span class="custom-radio"></span>Categorias
+                    <input type="radio" name="filtroOpcao" value="all" checked>
+                    <span class="custom-radio"></span>Tudo
                 </label>
                 <label class="filtro-item">
-                    <input type="radio" name="filtroOpcao" value="comunidades">
+                    <input type="radio" name="filtroOpcao" value="communities">
                     <span class="custom-radio"></span>Comunidades
                 </label>
                 <label class="filtro-item">
-                    <input type="radio" name="filtroOpcao" value="usuarios">
+                    <input type="radio" name="filtroOpcao" value="users">
                     <span class="custom-radio"></span>Usuários
                 </label>
                 <label class="filtro-item">
@@ -282,9 +293,22 @@ function renderSidebar(sidebar: HTMLElement, options: LayoutOptions): void {
     const home = el("div", "sidebar-header");
     home.append(sidebarLink("Página Inicial", pages.home));
 
-    const pageLinks = (options.pageLinks ?? []).map((link) =>
-        sidebarLink(link.label, link.href),
-    );
+    const pageLinks = (options.pageLinks ?? []).map((link) => {
+        if (!link.href) {
+            // Recurso que ainda não existe: visível, mas sem fingir que é link.
+            const disabled = el("span", "sidebar-link sidebar-link--disabled");
+            disabled.setAttribute("aria-disabled", "true");
+            disabled.append(link.label, el("span", "sidebar-badge", "Em breve"));
+            return disabled;
+        }
+        const anchor = sidebarLink(link.label, link.href);
+        if (link.current) {
+            anchor.classList.add("active");
+            anchor.setAttribute("aria-current", "page");
+        }
+        if (link.onClick) anchor.addEventListener("click", link.onClick);
+        return anchor;
+    });
 
     const create = el("div", "sidebar-header sidebar-section");
     create.append(

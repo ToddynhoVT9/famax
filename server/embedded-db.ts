@@ -15,6 +15,7 @@ import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { PGlite } from "@electric-sql/pglite";
+import { pg_trgm } from "@electric-sql/pglite/contrib/pg_trgm";
 import { PGLiteSocketServer } from "@electric-sql/pglite-socket";
 import { config } from "./config.js";
 
@@ -142,7 +143,9 @@ export async function startEmbeddedDatabase(): Promise<DbRole> {
   }
 
   await mkdir(dataDir, { recursive: true });
-  const instance = await PGlite.create({ dataDir });
+  // pg_trgm carregado para a busca ter o mesmo comportamento do Postgres de
+  // produção (ver migration 011); sem ele a busca cairia para ILIKE.
+  const instance = await PGlite.create({ dataDir, extensions: { pg_trgm } });
 
   // Corrida: duas instâncias podem sondar a porta livre ao mesmo tempo. Quem
   // perder o bind fecha o próprio PGlite na hora e vira cliente, para não

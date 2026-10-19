@@ -14,6 +14,7 @@ import reactionsRoutes from "./routes/reactions.routes.js";
 import chatRoutes from "./routes/chat.routes.js";
 import usersRoutes from "./routes/users.routes.js";
 import meRoutes from "./routes/me.routes.js";
+import searchRoutes from "./routes/search.routes.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const publicDir = path.join(__dirname, "public");
@@ -84,6 +85,7 @@ app.use("/api", commentsRoutes);
 app.use("/api", reactionsRoutes);
 app.use("/api", usersRoutes);
 app.use("/api", meRoutes);
+app.use("/api", searchRoutes);
 app.use("/api/conversations", chatRoutes);
 
 // FRONTEND ESTÁTICO

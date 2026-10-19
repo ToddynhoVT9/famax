@@ -35,6 +35,8 @@ export default defineConfig({
           "./client/html/user-pages/profile-settings.html",
         ),
         terms: resolvePath("./client/html/legal/terms.html"),
+        search: resolvePath("./client/html/search.html"),
+        post: resolvePath("./client/html/post.html"),
       },
     },
   },

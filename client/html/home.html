@@ -16,7 +16,11 @@
 
     <!-- Conteúdo Principal do Feed (renderizado por home.ts) -->
     <main class="main-content" id="main-content">
-        <div class="feed-status" id="feedStatus">Carregando comunidades...</div>
+        <!-- Filtro por categoria (home.ts); a escolha vai para ?categoryId= -->
+        <div class="home-chips" id="homeChips" role="group" aria-label="Filtrar por categoria"></div>
+        <div id="homeFeed">
+            <div class="feed-status">Carregando comunidades...</div>
+        </div>
     </main>
 
     <script type="module" src="../script/home.ts"></script>

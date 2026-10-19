@@ -1,15 +1,17 @@
-import { Router } from "express";
+import { Router, type Response } from "express";
 import multer from "multer";
 import { z } from "zod";
 import { randomUUID } from "node:crypto";
 import { pool } from "../db.js";
-import { requireAuth } from "../middleware/auth.js";
+import { optionalAuth, requireAuth } from "../middleware/auth.js";
 import { rateLimit } from "../lib/rate-limit.js";
 import {
   MAX_COVER_BYTES,
+  deleteImageByUrl,
   isStorageEnabled,
   uploadCommunityCover,
 } from "../lib/storage.js";
+import { config } from "../config.js";
 
 const router = Router();
 
@@ -261,7 +263,9 @@ const communityIdParam = z.object({
   communityId: z.string().uuid("ID de comunidade inválido"),
 });
 
-router.get("/communities/:communityId", async (req, res, next) => {
+// optionalAuth: o papel de quem vê (my_role) vem junto, e a página não
+// precisa de uma segunda chamada a /membership só para desenhar o botão.
+router.get("/communities/:communityId", optionalAuth, async (req, res, next) => {
   try {
     const { communityId } = communityIdParam.parse(req.params);
 
@@ -273,13 +277,16 @@ router.get("/communities/:communityId", async (req, res, next) => {
          c.cover_image_url,
          c.created_at,
          c.owner_id,
+         c.category_id,
          cat.name AS category_name,
          (SELECT COUNT(*) FROM community_members cm
-          WHERE cm.community_id = c.community_id)::int AS members_count
+          WHERE cm.community_id = c.community_id)::int AS members_count,
+         (SELECT cm.role FROM community_members cm
+          WHERE cm.community_id = c.community_id AND cm.user_id = $2) AS my_role
        FROM communities c
        LEFT JOIN categories cat ON cat.category_id = c.category_id
        WHERE c.community_id = $1 AND c.deleted_at IS NULL`,
-      [communityId],
+      [communityId, req.userId ?? null],
     );
 
     if (rows.length === 0) {
@@ -359,6 +366,220 @@ router.post(
     } catch (err) {
       if (err instanceof z.ZodError) {
         return res.status(400).json({ error: "ID de comunidade inválido" });
+      }
+      next(err);
+    }
+  },
+);
+
+// ===========================================================================
+// POST /api/communities/:communityId/leave
+// ---------------------------------------------------------------------------
+// O dono não sai: a comunidade ficaria sem ninguém com poder sobre ela. Ele
+// precisa transferir (prompt de moderação) ou excluir a comunidade.
+// ===========================================================================
+
+router.post(
+  "/communities/:communityId/leave",
+  requireAuth,
+  async (req, res, next) => {
+    try {
+      const { communityId } = communityIdParam.parse(req.params);
+
+      const { rows } = await pool.query<{ role: string }>(
+        `SELECT cm.role
+         FROM community_members cm
+         INNER JOIN communities c ON c.community_id = cm.community_id
+         WHERE cm.community_id = $1 AND cm.user_id = $2 AND c.deleted_at IS NULL`,
+        [communityId, req.userId],
+      );
+
+      if (rows[0]?.role === "owner") {
+        return res.status(409).json({
+          error:
+            "O dono não pode sair da comunidade. Transfira a comunidade para outra pessoa ou exclua-a.",
+        });
+      }
+
+      // Idempotente, como o join: sair sem ser membro não é erro.
+      await pool.query(
+        `DELETE FROM community_members
+         WHERE community_id = $1 AND user_id = $2 AND role <> 'owner'`,
+        [communityId, req.userId],
+      );
+
+      res.json({ left: true });
+    } catch (err) {
+      if (err instanceof z.ZodError) {
+        return res.status(400).json({ error: "ID de comunidade inválido" });
+      }
+      next(err);
+    }
+  },
+);
+
+/**
+ * Só o dono edita ou exclui. Devolve a comunidade (viva) se quem pede é o
+ * dono; senão já responde 404/403 e devolve null.
+ */
+async function requireOwner(
+  communityId: string,
+  userId: string | undefined,
+  res: Response,
+): Promise<{ name: string; cover_image_url: string | null } | null> {
+  const { rows } = await pool.query<{
+    owner_id: string;
+    name: string;
+    cover_image_url: string | null;
+  }>(
+    `SELECT owner_id, name, cover_image_url
+     FROM communities
+     WHERE community_id = $1 AND deleted_at IS NULL`,
+    [communityId],
+  );
+  const community = rows[0];
+  if (!community) {
+    res.status(404).json({ error: "Comunidade não encontrada" });
+    return null;
+  }
+  if (community.owner_id !== userId) {
+    res.status(403).json({ error: "Só o dono pode alterar a comunidade" });
+    return null;
+  }
+  return community;
+}
+
+// ===========================================================================
+// PATCH /api/communities/:communityId — dono edita nome, descrição,
+// categoria e capa (multipart, como a criação)
+// ===========================================================================
+
+const editCommunitySchema = z
+  .object({
+    name: createCommunitySchema.shape.name.optional(),
+    categoryId: createCommunitySchema.shape.categoryId.optional(),
+    // Vazio apaga a descrição.
+    description: z.string().trim().max(500).optional(),
+    // Multipart só tem texto: "true" remove a capa atual.
+    removeCover: z.enum(["true", "false"]).optional(),
+  })
+  .strict();
+
+router.patch(
+  "/communities/:communityId",
+  requireAuth,
+  rateLimit({ name: "edit-community", limit: 10, windowMs: 60_000 }),
+  upload.single("cover"),
+  async (req, res, next) => {
+    try {
+      const { communityId } = communityIdParam.parse(req.params);
+      const data = editCommunitySchema.parse(req.body ?? {});
+
+      const community = await requireOwner(communityId, req.userId, res);
+      if (!community) return;
+
+      const sets: string[] = [];
+      const params: unknown[] = [communityId];
+      const set = (column: string, value: unknown) => {
+        params.push(value);
+        sets.push(`${column} = $${params.length}`);
+      };
+
+      if (data.name !== undefined) set("name", data.name);
+      if (data.categoryId !== undefined) set("category_id", data.categoryId);
+      if (data.description !== undefined) set("description", data.description || null);
+
+      // Capa nova substitui; removeCover sem arquivo apaga. A antiga sai do
+      // Storage só depois que o banco já aponta para a nova.
+      let oldCover: string | null = null;
+      if (req.file) {
+        if (!isStorageEnabled()) {
+          return res
+            .status(503)
+            .json({ error: "Upload de imagens não está configurado no servidor" });
+        }
+        set("cover_image_url", await uploadCommunityCover(req.file.buffer, communityId));
+        oldCover = community.cover_image_url;
+      } else if (data.removeCover === "true") {
+        set("cover_image_url", null);
+        oldCover = community.cover_image_url;
+      }
+
+      if (sets.length === 0) {
+        return res.status(400).json({ error: "Nada para atualizar" });
+      }
+
+      await pool.query(
+        `UPDATE communities SET ${sets.join(", ")} WHERE community_id = $1`,
+        params,
+      );
+      await deleteImageByUrl(oldCover, config.SUPABASE_COVERS_BUCKET);
+
+      const { rows } = await pool.query(
+        `SELECT c.community_id, c.name, c.description, c.cover_image_url,
+                c.category_id, cat.name AS category_name
+         FROM communities c
+         LEFT JOIN categories cat ON cat.category_id = c.category_id
+         WHERE c.community_id = $1`,
+        [communityId],
+      );
+      res.json({ community: rows[0] });
+    } catch (err) {
+      if (err instanceof z.ZodError) {
+        return res
+          .status(400)
+          .json({ error: err.issues[0]?.message ?? "Dados inválidos", details: err.flatten() });
+      }
+      const code = (err as { code?: string }).code;
+      if (code === "23505") {
+        return res.status(409).json({ error: "Já existe uma comunidade com esse nome" });
+      }
+      if (code === "23503") {
+        return res.status(400).json({ error: "Categoria inválida" });
+      }
+      next(err);
+    }
+  },
+);
+
+// ===========================================================================
+// DELETE /api/communities/:communityId — soft delete pelo dono
+// ---------------------------------------------------------------------------
+// Exige o nome da comunidade no corpo ({ confirmName }), o mesmo que o front
+// pede para digitar: uma requisição acidental não apaga nada sem o nome exato.
+// ===========================================================================
+
+router.delete(
+  "/communities/:communityId",
+  requireAuth,
+  async (req, res, next) => {
+    try {
+      const { communityId } = communityIdParam.parse(req.params);
+      const { confirmName } = z
+        .object({
+          confirmName: z.string({ required_error: "Confirme digitando o nome da comunidade" }),
+        })
+        .parse(req.body ?? {});
+
+      const community = await requireOwner(communityId, req.userId, res);
+      if (!community) return;
+
+      if (confirmName.trim() !== community.name) {
+        return res
+          .status(400)
+          .json({ error: "O nome digitado não confere com o nome da comunidade" });
+      }
+
+      await pool.query(
+        "UPDATE communities SET deleted_at = NOW() WHERE community_id = $1",
+        [communityId],
+      );
+      res.status(204).end();
+    } catch (err) {
+      if (err instanceof z.ZodError) {
+        return res
+          .status(400)
+          .json({ error: err.issues[0]?.message ?? "Dados inválidos" });
       }
       next(err);
     }

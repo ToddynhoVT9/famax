@@ -18,7 +18,23 @@ export const pages = {
   profile: `${BASE}html/user-pages/profile-view.html`,
   settings: `${BASE}html/user-pages/profile-settings.html`,
   newCommunity: `${BASE}html/community/new.html`,
+  search: `${BASE}html/search.html`,
+  post: `${BASE}html/post.html`,
 } as const;
+
+export type SearchType = "all" | "communities" | "users" | "posts";
+
+/** Página de resultados da busca. */
+export function searchUrl(q: string, type: SearchType = "all"): string {
+  const params = new URLSearchParams({ q });
+  if (type !== "all") params.set("type", type);
+  return `${pages.search}?${params}`;
+}
+
+/** Página individual de um post. */
+export function postUrl(postId: string): string {
+  return `${pages.post}?id=${encodeURIComponent(postId)}`;
+}
 
 /** Perfil de alguém; sem id, o próprio. */
 export function profileUrl(userId?: string): string {
@@ -29,6 +45,11 @@ export function profileUrl(userId?: string): string {
 
 export function communityUrl(communityId: string): string {
   return `${BASE}html/community.html?id=${encodeURIComponent(communityId)}`;
+}
+
+/** A página de criação em modo edição. */
+export function communityEditUrl(communityId: string): string {
+  return `${pages.newCommunity}?edit=${encodeURIComponent(communityId)}`;
 }
 
 // Páginas de quem ainda não entrou. Um 401 nelas não redireciona (seria

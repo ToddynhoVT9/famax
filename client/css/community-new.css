@@ -178,3 +178,41 @@ body.community-new-page {
         flex: 1;
     }
 }
+
+/* ----- Modo edição (?edit=<id>) ----- */
+.checkbox-field {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 12px;
+    color: #dddddd;
+    cursor: pointer;
+}
+
+.danger-zone {
+    margin-top: 32px;
+    padding: 20px;
+    border: 1px solid rgba(217, 83, 79, 0.6);
+    border-radius: 12px;
+}
+
+.danger-zone h2 {
+    font-size: 1.15rem;
+    margin-bottom: 8px;
+    color: #ff8a85;
+}
+
+.danger-zone p {
+    color: #cccccc;
+    margin-bottom: 16px;
+    line-height: 1.5;
+}
+
+.btn-danger {
+    background-color: #d9534f;
+    color: #ffffff;
+}
+
+.btn-danger:hover {
+    background-color: #c9302c;
+}
