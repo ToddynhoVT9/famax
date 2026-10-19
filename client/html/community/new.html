@@ -42,6 +42,13 @@
                               maxlength="500" placeholder="Sobre o que é a sua comunidade?"></textarea>
                 </div>
 
+                <!-- Só no modo edição: as regras aparecem na vista "Regras" da comunidade. -->
+                <div class="form-field" id="rulesField" hidden>
+                    <label for="communityRules">Regras <span class="field-hint">(opcional)</span></label>
+                    <textarea id="communityRules" name="communityRules" maxlength="5000" rows="6"
+                              placeholder="Uma regra por linha. Ex.: 1. Respeite os outros membros."></textarea>
+                </div>
+
                 <div class="form-field">
                     <label for="communityCover">Capa da comunidade <span class="field-hint">(opcional)</span></label>
                     <input id="communityCover" name="communityCover" type="file"

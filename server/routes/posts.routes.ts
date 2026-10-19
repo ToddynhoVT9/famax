@@ -5,6 +5,7 @@ import { pool } from "../db.js";
 import { optionalAuth, requireAuth } from "../middleware/auth.js";
 import { requireMembership } from "../middleware/membership.js";
 import { rateLimit } from "../lib/rate-limit.js";
+import { removePost } from "../lib/moderation.js";
 
 const router = Router();
 
@@ -30,7 +31,10 @@ const postIdParam = z.object({
 /**
  * Formato único de post para listagem, criação e edição — o front insere ou
  * substitui na lista sem remontar o objeto. $1 é o usuário atual (ou null),
- * usado só no liked_by_me.
+ * usado no liked_by_me e no viewer_role.
+ *
+ * author_role desenha o selo "Dono"/"Moderador"; viewer_role diz ao front se
+ * quem vê pode moderar o post (a regra final continua no DELETE).
  */
 const POST_SELECT = `
   SELECT
@@ -50,6 +54,10 @@ const POST_SELECT = `
     up.avatar_url       AS author_avatar_url,
     cc.name             AS category_name,
     cc.slug             AS category_slug,
+    (SELECT r.role FROM community_members r
+     WHERE r.community_id = p.community_id AND r.user_id = p.author_id) AS author_role,
+    (SELECT r.role FROM community_members r
+     WHERE r.community_id = p.community_id AND r.user_id = $1) AS viewer_role,
     EXISTS (
       SELECT 1 FROM post_reactions r
       WHERE r.post_id = p.post_id
@@ -315,25 +323,21 @@ router.patch("/posts/:postId", requireAuth, async (req, res, next) => {
 });
 
 // ===========================================================================
-// DELETE /api/posts/:postId — soft delete pelo autor
+// DELETE /api/posts/:postId — soft delete pelo autor ou pela moderação
 // ---------------------------------------------------------------------------
 // Comentários e reações ficam no banco; o post some das listagens e o
 // requirePostMembership (que filtra deleted_at) passa a recusar comentário e
-// curtida nele. O prompt de moderação estende a regra para moderadores.
+// curtida nele. Dono e moderadores também removem, respeitando a hierarquia
+// (lib/moderation.ts); deleted_by registra quem foi.
 // ===========================================================================
 
 router.delete("/posts/:postId", requireAuth, async (req, res, next) => {
   try {
     const { postId } = postIdParam.parse(req.params);
 
-    // O UPDATE condicional é a própria autorização.
-    const { rowCount } = await pool.query(
-      `UPDATE posts SET deleted_at = NOW()
-       WHERE post_id = $1 AND author_id = $2 AND deleted_at IS NULL`,
-      [postId, req.userId],
-    );
-    if (!rowCount) {
-      return res.status(404).json({ error: "Post não encontrado ou não é seu" });
+    const result = await removePost(postId, { userId: req.userId! });
+    if (!result.ok) {
+      return res.status(result.status).json({ error: result.error });
     }
 
     res.status(204).end();

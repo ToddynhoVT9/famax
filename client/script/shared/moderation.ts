@@ -1,0 +1,287 @@
+/**
+ * FAMAX — Denúncia e moderação (Shared)
+ *
+ * Os diálogos de denunciar e de banir, o selo de papel ("Dono",
+ * "Moderador") e a regra de quem pode moderar quem. Usados pelo feed, pela
+ * página do post, pelo perfil, pela lista de membros e pela fila de moderação.
+ *
+ * A hierarquia aqui só decide o que MOSTRAR; quem decide de verdade é o
+ * backend (server/middleware/community-role.ts), com a mesma regra.
+ */
+import { api } from "./api.js";
+import { escapeHtml } from "./dom.js";
+import { toast } from "./dialog.js";
+
+export type CommunityRole = "owner" | "moderator" | "member";
+
+const RANK: Record<CommunityRole, number> = { owner: 3, moderator: 2, member: 1 };
+
+/** Quem vê pode moderar o conteúdo/pessoa? Só quem está acima na hierarquia. */
+export function canModerate(viewer: CommunityRole | null | undefined, target: CommunityRole | null | undefined): boolean {
+    if (!viewer || viewer === "member") return false;
+    return RANK[viewer] > RANK[target ?? "member"];
+}
+
+export function isStaff(role: CommunityRole | null | undefined): boolean {
+    return role === "owner" || role === "moderator";
+}
+
+export const ROLE_LABEL: Record<CommunityRole, string> = {
+    owner: "Dono",
+    moderator: "Moderador",
+    member: "Membro",
+};
+
+/** Selo ao lado do nome; membro comum não tem selo. HTML já escapado. */
+export function roleBadgeHtml(role: CommunityRole | null | undefined): string {
+    if (role !== "owner" && role !== "moderator") return "";
+    return `<span class="role-badge role-badge--${role}">${escapeHtml(ROLE_LABEL[role])}</span>`;
+}
+
+// ===========================================================================
+// Diálogo base com formulário
+// ===========================================================================
+
+function el<K extends keyof HTMLElementTagNameMap>(tag: K, className = "", text?: string) {
+    const node = document.createElement(tag);
+    if (className) node.className = className;
+    if (text !== undefined) node.textContent = text;
+    return node;
+}
+
+interface FormDialogOptions {
+    title: string;
+    message?: string;
+    submitLabel: string;
+    danger?: boolean;
+    /** Monta os campos; devolve uma função que lê/valida (string = erro). */
+    build: (body: HTMLElement) => () => unknown | string;
+    /** Envia; um erro lançado aparece dentro do diálogo. */
+    submit: (value: unknown) => Promise<void>;
+}
+
+/** Resolve true se enviou, false se cancelou. Mesmo comportamento do confirmDialog. */
+function formDialog(options: FormDialogOptions): Promise<boolean> {
+    return new Promise((resolve) => {
+        const previousFocus = document.activeElement as HTMLElement | null;
+
+        const overlay = el("div", "dialog-overlay");
+        const form = el("form", "dialog-box");
+        form.noValidate = true;
+        form.setAttribute("role", "dialog");
+        form.setAttribute("aria-modal", "true");
+
+        const title = el("h2", "dialog-title", options.title);
+        title.id = `dialog-title-${Date.now()}`;
+        form.setAttribute("aria-labelledby", title.id);
+        form.append(title);
+        if (options.message) form.append(el("p", "dialog-message", options.message));
+
+        const body = el("div", "dialog-body");
+        const read = options.build(body);
+        const error = el("p", "dialog-error");
+        error.setAttribute("role", "alert");
+        error.hidden = true;
+
+        const actions = el("div", "dialog-actions");
+        const cancel = el("button", "dialog-btn", "Cancelar");
+        cancel.type = "button";
+        const submit = el(
+            "button",
+            `dialog-btn dialog-btn--primary${options.danger ? " dialog-btn--danger" : ""}`,
+            options.submitLabel,
+        );
+        submit.type = "submit";
+        actions.append(cancel, submit);
+
+        form.append(body, error, actions);
+        overlay.append(form);
+        document.body.append(overlay);
+
+        const close = (result: boolean): void => {
+            document.removeEventListener("keydown", onKey);
+            overlay.remove();
+            previousFocus?.focus();
+            resolve(result);
+        };
+        const onKey = (event: KeyboardEvent): void => {
+            if (event.key === "Escape") {
+                event.stopPropagation();
+                close(false);
+            }
+        };
+
+        cancel.addEventListener("click", () => close(false));
+        overlay.addEventListener("click", (event) => {
+            if (event.target === overlay) close(false);
+        });
+        document.addEventListener("keydown", onKey);
+
+        form.addEventListener("submit", async (event) => {
+            event.preventDefault();
+            const value = read();
+            if (typeof value === "string") {
+                error.textContent = value;
+                error.hidden = false;
+                return;
+            }
+            submit.disabled = true;
+            error.hidden = true;
+            try {
+                await options.submit(value);
+                close(true);
+            } catch (err) {
+                error.textContent = err instanceof Error ? err.message : "Não foi possível enviar.";
+                error.hidden = false;
+                submit.disabled = false;
+            }
+        });
+
+        form.querySelector<HTMLElement>("input, textarea, select")?.focus();
+    });
+}
+
+// ===========================================================================
+// Denunciar
+// ===========================================================================
+
+const REPORT_REASONS = [
+    "Spam ou propaganda",
+    "Assédio ou discurso de ódio",
+    "Conteúdo impróprio ou ofensivo",
+    "Informação falsa",
+    "Fora do tema da comunidade",
+    "Outro",
+];
+
+export type ReportTarget = "post" | "comment" | "user";
+
+const REPORT_TITLE: Record<ReportTarget, string> = {
+    post: "Denunciar discussão",
+    comment: "Denunciar comentário",
+    user: "Denunciar usuário",
+};
+
+/**
+ * Motivo pré-definido + texto livre (obrigatório em "Outro"). Vai para a fila
+ * de moderação da comunidade — ou do site, se for um usuário.
+ */
+export async function openReportDialog(targetType: ReportTarget, targetId: string): Promise<boolean> {
+    const sent = await formDialog({
+        title: REPORT_TITLE[targetType],
+        message:
+            targetType === "user"
+                ? "A denúncia vai para a administração do FAMAX. Quem você denunciou não fica sabendo."
+                : "A denúncia vai para os moderadores da comunidade. Quem você denunciou não fica sabendo.",
+        submitLabel: "Enviar denúncia",
+        build(body) {
+            const group = el("fieldset", "dialog-options");
+            group.append(el("legend", "dialog-label", "Motivo"));
+            REPORT_REASONS.forEach((reason, i) => {
+                const label = el("label", "dialog-option");
+                const radio = el("input");
+                radio.type = "radio";
+                radio.name = "reportReason";
+                radio.value = reason;
+                if (i === 0) radio.checked = true;
+                label.append(radio, ` ${reason}`);
+                group.append(label);
+            });
+
+            const detailsLabel = el("label", "dialog-label", "Detalhes (opcional)");
+            const details = el("textarea", "dialog-input dialog-textarea");
+            details.maxLength = 800;
+            details.rows = 3;
+            details.placeholder = "Conte o que aconteceu, se ajudar a moderação.";
+            detailsLabel.append(details);
+            body.append(group, detailsLabel);
+
+            return () => {
+                const reason = group.querySelector<HTMLInputElement>("input:checked")?.value ?? "Outro";
+                const text = details.value.trim();
+                if (reason === "Outro" && text.length < 3) return "Descreva o motivo da denúncia.";
+                return { reason: text ? `${reason} — ${text}` : reason };
+            };
+        },
+        async submit(value) {
+            const { reason } = value as { reason: string };
+            await api("/reports", {
+                method: "POST",
+                body: JSON.stringify({ targetType, targetId, reason }),
+            });
+        },
+    });
+    if (sent) toast("Denúncia enviada. Obrigado por ajudar a manter a comunidade.");
+    return sent;
+}
+
+// ===========================================================================
+// Banir
+// ===========================================================================
+
+const BAN_DURATIONS: Array<{ label: string; days: number | null }> = [
+    { label: "1 dia", days: 1 },
+    { label: "7 dias", days: 7 },
+    { label: "30 dias", days: 30 },
+    { label: "Permanente", days: null },
+];
+
+export interface BanChoice {
+    durationDays: number | null;
+    reason: string | null;
+}
+
+/**
+ * Escolhe prazo e motivo; o ban tira a pessoa dos membros na hora. Por padrão
+ * envia para POST /bans; a fila de denúncias passa `send` para banir
+ * resolvendo a denúncia no mesmo pedido.
+ */
+export async function openBanDialog(
+    communityId: string,
+    userId: string,
+    name: string,
+    send?: (choice: BanChoice) => Promise<void>,
+): Promise<boolean> {
+    const sent = await formDialog({
+        title: `Banir ${name}?`,
+        message: "A pessoa sai da comunidade e não consegue entrar, postar nem comentar enquanto o banimento valer. O que ela já publicou continua lá.",
+        submitLabel: "Banir",
+        danger: true,
+        build(body) {
+            const durationLabel = el("label", "dialog-label", "Duração");
+            const duration = el("select", "dialog-input");
+            BAN_DURATIONS.forEach((option, i) => {
+                duration.append(new Option(option.label, String(i)));
+            });
+            duration.value = "1"; // 7 dias
+            durationLabel.append(duration);
+
+            const reasonLabel = el("label", "dialog-label", "Motivo (opcional)");
+            const reason = el("input", "dialog-input");
+            reason.type = "text";
+            reason.maxLength = 500;
+            reasonLabel.append(reason);
+            body.append(durationLabel, reasonLabel);
+
+            return () => ({
+                durationDays: BAN_DURATIONS[Number(duration.value)]?.days ?? null,
+                reason: reason.value.trim() || null,
+            });
+        },
+        async submit(value) {
+            if (send) return send(value as BanChoice);
+            await api(
+                `/communities/${encodeURIComponent(communityId)}/bans/${encodeURIComponent(userId)}`,
+                { method: "POST", body: JSON.stringify(value) },
+            );
+        },
+    });
+    if (sent) toast(`${name} foi banido da comunidade.`);
+    return sent;
+}
+
+/** "até 12/05/2026" ou "permanente". */
+export function banUntil(expiresAt: string | null): string {
+    if (!expiresAt) return "permanente";
+    return `até ${new Date(expiresAt).toLocaleDateString("pt-BR")}`;
+}

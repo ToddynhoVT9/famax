@@ -1,0 +1,242 @@
+/* ===================================
+   FAMAX — Moderação da comunidade e denúncias do admin
+   =================================== */
+
+.mod-page {
+    max-width: 900px;
+    margin: 0 auto;
+}
+
+.mod-breadcrumb {
+    display: flex;
+    gap: 8px;
+    color: #aaaaaa;
+    font-size: 0.92rem;
+    margin-bottom: 10px;
+    overflow-wrap: anywhere;
+}
+
+.mod-breadcrumb a {
+    color: #dddddd;
+}
+
+.mod-title {
+    font-size: 1.8rem;
+    font-weight: 800;
+    margin-bottom: 8px;
+    overflow-wrap: anywhere;
+}
+
+.mod-intro,
+.mod-status {
+    color: #aaaaaa;
+    margin-bottom: 18px;
+    line-height: 1.5;
+}
+
+.mod-section {
+    margin-top: 24px;
+}
+
+.mod-section-title {
+    font-size: 1.2rem;
+    font-weight: 700;
+    margin-bottom: 12px;
+}
+
+/* ----- Fila (shared/report-queue.ts) ----- */
+.report-summary {
+    color: #aaaaaa;
+    font-size: 0.9rem;
+    margin: 10px 0;
+}
+
+.report-list {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.report-card {
+    background-color: #ffffff;
+    color: #111111;
+    border-radius: 8px;
+    padding: 16px 18px;
+}
+
+.report-head {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 10px;
+}
+
+.report-type {
+    font-weight: 700;
+}
+
+.report-status {
+    font-size: 0.78rem;
+    font-weight: 700;
+    border-radius: 10px;
+    padding: 2px 8px;
+    background-color: #eeeeee;
+    color: #444444;
+}
+
+.report-status--pending {
+    background-color: #fdecc8;
+    color: #7a5200;
+}
+
+.report-status--reviewing {
+    background-color: #dbe8fb;
+    color: #1d4f91;
+}
+
+.report-status--resolved {
+    background-color: #d8f0e3;
+    color: #1e6b45;
+}
+
+.report-meta {
+    font-size: 0.85rem;
+    color: #666666;
+}
+
+.report-reason {
+    border-left: 3px solid #d9534f;
+    padding: 4px 0 4px 12px;
+    margin: 0 0 12px;
+    color: #222222;
+    overflow-wrap: anywhere;
+}
+
+.report-target {
+    background-color: #f6f6f6;
+    border-radius: 6px;
+    padding: 10px 12px;
+    font-size: 0.93rem;
+}
+
+.report-target-title {
+    font-weight: 700;
+    overflow-wrap: anywhere;
+}
+
+.report-target-content {
+    margin-top: 6px;
+    color: #333333;
+    line-height: 1.45;
+    overflow-wrap: anywhere;
+}
+
+.report-target-author {
+    margin-top: 6px;
+    color: #555555;
+    font-size: 0.85rem;
+}
+
+.report-removed {
+    display: inline-block;
+    margin-top: 6px;
+    font-size: 0.8rem;
+    font-weight: 700;
+    color: #c0392b;
+}
+
+.report-actions {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px;
+    margin-top: 12px;
+}
+
+.report-btn {
+    background: none;
+    border: 1px solid #bbbbbb;
+    border-radius: 14px;
+    padding: 6px 14px;
+    font: inherit;
+    font-size: 0.88rem;
+    color: #333333;
+    cursor: pointer;
+}
+
+.report-btn:hover {
+    background-color: #f0f0f0;
+}
+
+.report-btn:disabled {
+    opacity: 0.5;
+    cursor: default;
+}
+
+.report-btn--primary {
+    background-color: #222222;
+    border-color: #222222;
+    color: #ffffff;
+}
+
+.report-btn--primary:hover {
+    background-color: #444444;
+}
+
+.report-btn--danger {
+    border-color: #e3a3a0;
+    color: #c0392b;
+}
+
+.report-hint {
+    font-size: 0.82rem;
+    color: #777777;
+}
+
+.report-closed {
+    margin-top: 12px;
+    font-size: 0.85rem;
+    color: #666666;
+}
+
+/* ----- Banidos ----- */
+.mod-bans {
+    list-style: none;
+    background-color: #ffffff;
+    border-radius: 8px;
+    overflow: hidden;
+}
+
+.mod-ban {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px 18px;
+    color: #111111;
+    border-bottom: 1px solid #e6e6e6;
+}
+
+.mod-ban:last-child {
+    border-bottom: none;
+}
+
+.mod-ban-info {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.mod-ban-name {
+    font-weight: 700;
+    overflow-wrap: anywhere;
+}
+
+.mod-ban-meta,
+.mod-ban-reason {
+    font-size: 0.85rem;
+    color: #666666;
+    overflow-wrap: anywhere;
+}

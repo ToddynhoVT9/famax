@@ -32,6 +32,9 @@
             </div>
         </section>
 
+        <!-- Vista "Discussões" (padrão): abas, feed e widgets -->
+        <div id="viewDiscussions">
+
         <!-- Abas -->
         <div class="tf-tabs" id="tfTabsContainer" role="tablist" aria-label="Discussões da comunidade">
             <button type="button" class="tf-tab active" role="tab" id="tab-all" data-tab="all"
@@ -69,6 +72,25 @@
                 </div>
             </div>
         </div>
+
+        </div>
+
+        <!-- Vista "Regras" (?view=rules) -->
+        <section class="tf-view" id="viewRules" aria-labelledby="rulesTitle" hidden>
+            <div class="tf-view-header">
+                <h2 class="tf-view-title" id="rulesTitle">Regras</h2>
+                <a class="tf-view-action" id="rulesEdit" hidden>Editar regras</a>
+            </div>
+            <div class="tf-rules-text" id="rulesText"></div>
+        </section>
+
+        <!-- Vista "Membros" (?view=members), montada por community-members.ts -->
+        <section class="tf-view" id="viewMembers" aria-labelledby="membersTitle" hidden>
+            <div class="tf-view-header">
+                <h2 class="tf-view-title" id="membersTitle">Membros</h2>
+            </div>
+            <div id="membersRoot"></div>
+        </section>
 
     </main>
 

@@ -1,5 +1,6 @@
 import type { Request, Response, NextFunction, RequestHandler } from "express";
 import { pool } from "../db.js";
+import { ACTIVE_BAN } from "./community-role.js";
 
 declare module "express-serve-static-core" {
   interface Request {
@@ -13,6 +14,9 @@ declare module "express-serve-static-core" {
  *
  * Criar post, comentar e curtir são todas escritas restritas a membros; sem isso
  * cada rota repetiria a mesma checagem. Usar sempre depois de requireAuth.
+ *
+ * Banir já remove a pessoa dos membros; a checagem do banimento aqui cobre a
+ * corrida em que ela volta a entrar entre o ban e a remoção.
  */
 export function requireMembership(
   resolveCommunityId: (req: Request) => string | undefined,
@@ -24,14 +28,25 @@ export function requireMembership(
     }
 
     try {
-      const { rows } = await pool.query(
-        `SELECT 1 FROM community_members
-         WHERE community_id = $1 AND user_id = $2
-         LIMIT 1`,
+      const { rows } = await pool.query<{ is_member: boolean; is_banned: boolean }>(
+        `SELECT
+           EXISTS (
+             SELECT 1 FROM community_members
+             WHERE community_id = $1 AND user_id = $2
+           ) AS is_member,
+           EXISTS (
+             SELECT 1 FROM community_bans b
+             WHERE b.community_id = $1 AND b.user_id = $2 AND ${ACTIVE_BAN("b")}
+           ) AS is_banned`,
         [communityId, req.userId],
       );
 
-      if (rows.length === 0) {
+      if (rows[0]?.is_banned) {
+        return res
+          .status(403)
+          .json({ error: "Você está banido desta comunidade" });
+      }
+      if (!rows[0]?.is_member) {
         return res
           .status(403)
           .json({ error: "Você precisa participar da comunidade" });
@@ -66,7 +81,13 @@ export const requirePostMembership: RequestHandler = async (req, res, next) => {
            SELECT 1 FROM community_members cm
            WHERE cm.community_id = p.community_id
              AND cm.user_id = $2
-         ) AS is_member
+         ) AS is_member,
+         EXISTS (
+           SELECT 1 FROM community_bans b
+           WHERE b.community_id = p.community_id
+             AND b.user_id = $2
+             AND ${ACTIVE_BAN("b")}
+         ) AS is_banned
        FROM posts p
        WHERE p.post_id = $1 AND p.deleted_at IS NULL`,
       [postId, req.userId],
@@ -75,6 +96,11 @@ export const requirePostMembership: RequestHandler = async (req, res, next) => {
     const post = rows[0];
     if (!post) {
       return res.status(404).json({ error: "Post não encontrado" });
+    }
+    if (post.is_banned) {
+      return res
+        .status(403)
+        .json({ error: "Você está banido desta comunidade" });
     }
     if (!post.is_member) {
       return res

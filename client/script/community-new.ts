@@ -29,6 +29,8 @@ const form = document.getElementById("communityForm");
 const nameInput = document.getElementById("communityName");
 const categorySelect = document.getElementById("communityCategory");
 const descriptionInput = document.getElementById("communityDescription");
+const rulesInput = document.getElementById("communityRules");
+const rulesField = document.getElementById("rulesField");
 const coverInput = document.getElementById("communityCover");
 const imagePreview = document.getElementById("imagePreview");
 const cancelBtn = document.getElementById("cancelBtn");
@@ -44,6 +46,7 @@ const editId = queryParam("edit");
 interface EditableCommunity {
     name: string;
     description: string | null;
+    rules: string | null;
     cover_image_url: string | null;
     category_id: string;
     my_role: string | null;
@@ -195,6 +198,10 @@ if (
             editingName = community.name;
             nameInput.value = community.name;
             descriptionInput.value = community.description ?? "";
+            if (rulesInput instanceof HTMLTextAreaElement) {
+                rulesInput.value = community.rules ?? "";
+                if (rulesField) rulesField.hidden = false;
+            }
             categoryReady.then(() => {
                 categorySelect.value = community.category_id;
             });
@@ -266,6 +273,10 @@ if (
         body.append("categoryId", categoryId);
         // Na edição a descrição vai sempre: vazia significa "apagar".
         if (description || editId) body.append("description", description);
+        // Regras só existem no modo edição; vazio apaga.
+        if (editId && rulesInput instanceof HTMLTextAreaElement) {
+            body.append("rules", rulesInput.value.trim());
+        }
         if (file) body.append("cover", file);
         else if (editId && removeCover?.checked) body.append("removeCover", "true");
 

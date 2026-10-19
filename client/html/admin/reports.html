@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FAMAX - Denúncias de usuários</title>
+    <link rel="stylesheet" href="../../css/global.css">
+    <link rel="stylesheet" href="../../css/layout.css">
+    <link rel="stylesheet" href="../../css/community.css">
+    <link rel="stylesheet" href="../../css/moderation.css">
+</head>
+<body>
+    <!-- Header e sidebar: montados por script/shared/layout.ts -->
+    <header id="app-header" class="header"></header>
+    <aside id="app-sidebar" class="sidebar"></aside>
+
+    <main class="main-content" id="main-content">
+        <div class="mod-page">
+            <h1 class="mod-title">Denúncias de usuários</h1>
+            <p class="mod-intro">
+                Perfis denunciados em qualquer lugar do FAMAX. Denúncias de discussões e
+                comentários ficam com a moderação de cada comunidade.
+            </p>
+            <p class="mod-status" id="modStatus">Carregando...</p>
+            <div id="reportQueue" hidden></div>
+        </div>
+    </main>
+
+    <script type="module" src="../../script/admin-reports.ts"></script>
+    <script type="module" src="../../script/shared/chat-widget.ts"></script>
+</body>
+</html>

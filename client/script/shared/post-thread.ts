@@ -2,8 +2,9 @@
  * FAMAX — Posts e comentários (Shared)
  *
  * O desenho de um post, os comentários em árvore e todas as ações sobre eles
- * (curtir, comentar, responder, editar, excluir), usados pelo feed da
- * comunidade e pela página individual do post.
+ * (curtir, comentar, responder, editar, excluir, denunciar e, para dono e
+ * moderadores, remover e banir), usados pelo feed da comunidade e pela
+ * página individual do post.
  *
  *  - Delegação de eventos: um listener no container cobre todos os posts,
  *    inclusive os que chegam depois pelo "carregar mais".
@@ -17,6 +18,13 @@ import { goToLogin } from "./auth-guard.js";
 import { postUrl, profileUrl } from "./pages.js";
 import { avatarColor, escapeHtml, initials, timeAgo } from "./dom.js";
 import { confirmDialog, toast } from "./dialog.js";
+import {
+    canModerate,
+    openBanDialog,
+    openReportDialog,
+    roleBadgeHtml,
+    type CommunityRole,
+} from "./moderation.js";
 
 // ===========================================================================
 // Tipos
@@ -39,6 +47,9 @@ export interface Post {
     author_avatar_url: string | null;
     category_name: string | null;
     liked_by_me: boolean;
+    /** Papel do autor na comunidade (selo) e de quem vê (pode moderar?). */
+    author_role: CommunityRole | null;
+    viewer_role: CommunityRole | null;
 }
 
 /** Comentário apagado com respostas chega com is_deleted e sem autor/texto. */
@@ -53,6 +64,7 @@ export interface Comment {
     author_id: string | null;
     author_username: string | null;
     author_display_name: string | null;
+    author_role?: CommunityRole | null;
 }
 
 export interface PostThreadOptions {
@@ -91,20 +103,37 @@ const cssId = (id: string) => CSS.escape(id);
 // Render
 // ===========================================================================
 
+const menuItem = (action: string, label: string, danger = false) =>
+    `<button type="button" class="tf-menu-item${danger ? " tf-menu-item--danger" : ""}" role="menuitem" data-action="${action}">${label}</button>`;
+
+/**
+ * Itens do "⋯": o autor edita e exclui; os outros denunciam; dono e
+ * moderadores, acima do autor na hierarquia, também removem e banem.
+ * Visitante não tem menu.
+ */
+function postMenuItems(post: Post): string {
+    if (!getToken()) return "";
+    if (post.author_id === getCurrentUserId()) {
+        return menuItem("edit-post", "Editar") + menuItem("delete-post", "Excluir", true);
+    }
+    let items = menuItem("report-post", "Denunciar");
+    if (canModerate(post.viewer_role, post.author_role)) {
+        items += menuItem("mod-remove-post", "Remover", true) + menuItem("ban-post-author", "Banir autor", true);
+    }
+    return items;
+}
+
 export function renderPost(post: Post, options: { single?: boolean } = {}): string {
     const name = authorName(post);
-    const mine = post.author_id === getCurrentUserId();
     const id = escapeHtml(post.post_id);
     const title = escapeHtml(post.title);
 
-    const menu = mine
+    const items = postMenuItems(post);
+    const menu = items
         ? `<div class="tf-post-menu">
                <button type="button" class="tf-post-menu-btn" data-action="post-menu"
                        aria-haspopup="menu" aria-expanded="false" aria-label="Opções do post">⋯</button>
-               <div class="tf-menu-list" role="menu" hidden>
-                   <button type="button" class="tf-menu-item" role="menuitem" data-action="edit-post">Editar</button>
-                   <button type="button" class="tf-menu-item tf-menu-item--danger" role="menuitem" data-action="delete-post">Excluir</button>
-               </div>
+               <div class="tf-menu-list" role="menu" hidden>${items}</div>
            </div>`
         : "";
 
@@ -121,7 +150,7 @@ export function renderPost(post: Post, options: { single?: boolean } = {}): stri
             <div class="tf-post-body">
                 <div class="tf-post-meta">
                     <span>
-                        <strong data-author-id="${escapeHtml(post.author_id)}">${escapeHtml(name)}</strong>
+                        <strong data-author-id="${escapeHtml(post.author_id)}">${escapeHtml(name)}</strong>${roleBadgeHtml(post.author_role)}
                         • ${post.category_name ? `em ${escapeHtml(post.category_name)} • ` : ""}${escapeHtml(timeAgo(post.created_at))}${post.edited_at ? ' <span class="tf-edited">(editado)</span>' : ""}
                     </span>
                     ${menu}
@@ -165,7 +194,8 @@ export function markOverflow(root: ParentNode): void {
     });
 }
 
-function renderCommentMain(comment: Comment): string {
+/** viewerRole: papel de quem vê na comunidade do post (vem do post). */
+function renderCommentMain(comment: Comment, viewerRole: CommunityRole | null = null): string {
     if (comment.is_deleted) {
         return `<div class="tf-comment-main">
                     <p class="tf-comment-removed">[comentário removido]</p>
@@ -173,26 +203,32 @@ function renderCommentMain(comment: Comment): string {
                 </div>`;
     }
     const mine = comment.author_id === getCurrentUserId();
+    let actions = "";
+    if (mine) {
+        actions = `<button type="button" class="tf-comment-action" data-action="edit-comment">Editar</button>
+                   <button type="button" class="tf-comment-action tf-comment-action--danger" data-action="delete-comment">Excluir</button>`;
+    } else if (getToken()) {
+        actions = `<button type="button" class="tf-comment-action" data-action="report-comment">Denunciar</button>`;
+        if (canModerate(viewerRole, comment.author_role)) {
+            actions += `<button type="button" class="tf-comment-action tf-comment-action--danger" data-action="mod-remove-comment">Remover</button>
+                        <button type="button" class="tf-comment-action tf-comment-action--danger" data-action="ban-comment-author">Banir</button>`;
+        }
+    }
     return `<div class="tf-comment-main">
-                <strong data-author-id="${escapeHtml(comment.author_id ?? "")}">${escapeHtml(authorName(comment))}</strong>
+                <strong data-author-id="${escapeHtml(comment.author_id ?? "")}">${escapeHtml(authorName(comment))}</strong>${roleBadgeHtml(comment.author_role)}
                 <p class="tf-comment-text">${escapeHtml(comment.content ?? "")}</p>
                 <div class="tf-comment-footer">
                     <span class="tf-comment-time">${escapeHtml(timeAgo(comment.created_at))}${comment.edited_at ? " · editado" : ""}</span>
                     <button type="button" class="tf-comment-action" data-action="reply">Responder</button>
-                    ${
-                        mine
-                            ? `<button type="button" class="tf-comment-action" data-action="edit-comment">Editar</button>
-                               <button type="button" class="tf-comment-action tf-comment-action--danger" data-action="delete-comment">Excluir</button>`
-                            : ""
-                    }
+                    ${actions}
                 </div>
             </div>`;
 }
 
-function renderComment(comment: Comment, depth: number): string {
+function renderComment(comment: Comment, depth: number, viewerRole: CommunityRole | null): string {
     return `<div class="tf-comment-item${comment.is_deleted ? " is-deleted" : ""}"
                  data-comment-id="${escapeHtml(comment.comment_id)}" data-depth="${depth}">
-                ${renderCommentMain(comment)}
+                ${renderCommentMain(comment, viewerRole)}
                 <div class="tf-comment-replies"></div>
             </div>`;
 }
@@ -262,14 +298,17 @@ export function createPostThread(container: HTMLElement, options: PostThreadOpti
 
     // ----- Excluir post ---------------------------------------------------
 
-    async function deletePost(article: HTMLElement): Promise<void> {
+    /** asModerator: dono/moderador removendo o post de outra pessoa. */
+    async function deletePost(article: HTMLElement, asModerator = false): Promise<void> {
         const postId = article.dataset.postId;
         if (!postId) return;
 
         const ok = await confirmDialog({
-            title: "Excluir discussão?",
-            message: "A discussão some da comunidade para todos. Esta ação não pode ser desfeita.",
-            confirmLabel: "Excluir",
+            title: asModerator ? "Remover discussão?" : "Excluir discussão?",
+            message: asModerator
+                ? "Você está removendo como moderação. A discussão some da comunidade para todos e as denúncias abertas sobre ela são encerradas."
+                : "A discussão some da comunidade para todos. Esta ação não pode ser desfeita.",
+            confirmLabel: asModerator ? "Remover" : "Excluir",
             danger: true,
         });
         if (!ok) return;
@@ -278,7 +317,7 @@ export function createPostThread(container: HTMLElement, options: PostThreadOpti
             await api(`/posts/${encodeURIComponent(postId)}`, { method: "DELETE" });
             article.remove();
             posts.delete(postId);
-            toast("Discussão excluída.");
+            toast(asModerator ? "Discussão removida." : "Discussão excluída.");
             options.onPostDeleted?.(postId);
         } catch (err) {
             toast(errorMessage(err, "Não foi possível excluir."), "error");
@@ -295,6 +334,7 @@ export function createPostThread(container: HTMLElement, options: PostThreadOpti
         const list = postEl.querySelector<HTMLElement>(".tf-comment-list");
         if (!list) return;
         list.querySelector(".tf-comment-status")?.remove();
+        const viewerRole = posts.get(postEl.dataset.postId ?? "")?.viewer_role ?? null;
 
         for (const comment of comments) {
             const parent = comment.parent_comment_id
@@ -302,7 +342,7 @@ export function createPostThread(container: HTMLElement, options: PostThreadOpti
                 : null;
             const target = parent ? parent.querySelector<HTMLElement>(":scope > .tf-comment-replies") : list;
             const depth = parent ? Number(parent.dataset.depth ?? "0") + 1 : 0;
-            target?.insertAdjacentHTML("beforeend", renderComment(comment, depth));
+            target?.insertAdjacentHTML("beforeend", renderComment(comment, depth, viewerRole));
         }
     }
 
@@ -443,7 +483,8 @@ export function createPostThread(container: HTMLElement, options: PostThreadOpti
                 body: JSON.stringify({ content }),
             });
             const main = item.querySelector(":scope > .tf-comment-main");
-            main?.insertAdjacentHTML("afterend", renderCommentMain(comment));
+            const viewerRole = posts.get(postEl.dataset.postId ?? "")?.viewer_role ?? null;
+            main?.insertAdjacentHTML("afterend", renderCommentMain(comment, viewerRole));
             main?.remove();
         } catch (err) {
             setInlineError(postEl, errorMessage(err, "Não foi possível editar."));
@@ -451,15 +492,17 @@ export function createPostThread(container: HTMLElement, options: PostThreadOpti
         }
     }
 
-    async function deleteComment(item: HTMLElement): Promise<void> {
+    async function deleteComment(item: HTMLElement, asModerator = false): Promise<void> {
         const commentId = item.dataset.commentId;
         const postEl = item.closest<HTMLElement>(".tf-post");
         if (!commentId || !postEl) return;
 
         const ok = await confirmDialog({
-            title: "Excluir comentário?",
-            message: "Se houver respostas, elas continuam visíveis e o comentário aparece como removido.",
-            confirmLabel: "Excluir",
+            title: asModerator ? "Remover comentário?" : "Excluir comentário?",
+            message: asModerator
+                ? "Você está removendo como moderação. Se houver respostas, elas continuam visíveis e o comentário aparece como removido."
+                : "Se houver respostas, elas continuam visíveis e o comentário aparece como removido.",
+            confirmLabel: asModerator ? "Remover" : "Excluir",
             danger: true,
         });
         if (!ok) return;
@@ -494,6 +537,23 @@ export function createPostThread(container: HTMLElement, options: PostThreadOpti
         } catch (err) {
             toast(errorMessage(err, "Não foi possível excluir."), "error");
         }
+    }
+
+    // ----- Banir autor ------------------------------------------------------
+
+    /**
+     * Depois do ban a pessoa deixa de ser membro: os selos dela somem da tela.
+     * Remover o que ela publicou é uma decisão separada (menu "Remover").
+     */
+    async function banAuthor(communityId: string, userId: string, name: string): Promise<void> {
+        if (!(await openBanDialog(communityId, userId, name))) return;
+        for (const post of posts.values()) {
+            if (post.author_id === userId) post.author_role = null;
+        }
+        container.querySelectorAll<HTMLElement>(`strong[data-author-id="${cssId(userId)}"]`).forEach((strong) => {
+            const badge = strong.nextElementSibling;
+            if (badge?.classList.contains("role-badge")) badge.remove();
+        });
     }
 
     // ----- Menus e delegação de eventos ------------------------------------
@@ -561,6 +621,20 @@ export function createPostThread(container: HTMLElement, options: PostThreadOpti
                     closeMenus();
                     void deletePost(postEl);
                     return;
+                case "report-post":
+                    closeMenus();
+                    void openReportDialog("post", postId);
+                    return;
+                case "mod-remove-post":
+                    closeMenus();
+                    void deletePost(postEl, true);
+                    return;
+                case "ban-post-author": {
+                    closeMenus();
+                    const post = posts.get(postId);
+                    if (post) void banAuthor(post.community_id, post.author_id, authorName(post));
+                    return;
+                }
                 case "reply":
                     if (item) openReplyForm(item);
                     return;
@@ -570,6 +644,20 @@ export function createPostThread(container: HTMLElement, options: PostThreadOpti
                 case "delete-comment":
                     if (item) void deleteComment(item);
                     return;
+                case "report-comment":
+                    if (item?.dataset.commentId) void openReportDialog("comment", item.dataset.commentId);
+                    return;
+                case "mod-remove-comment":
+                    if (item) void deleteComment(item, true);
+                    return;
+                case "ban-comment-author": {
+                    const post = posts.get(postId);
+                    const author = item?.querySelector<HTMLElement>(":scope > .tf-comment-main strong[data-author-id]");
+                    if (post && author?.dataset.authorId) {
+                        void banAuthor(post.community_id, author.dataset.authorId, author.textContent ?? "");
+                    }
+                    return;
+                }
                 case "cancel-form": {
                     const form = actionEl.closest<HTMLFormElement>("form");
                     if (form?.dataset.form === "edit-comment") {

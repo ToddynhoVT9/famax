@@ -37,6 +37,8 @@ export default defineConfig({
         terms: resolvePath("./client/html/legal/terms.html"),
         search: resolvePath("./client/html/search.html"),
         post: resolvePath("./client/html/post.html"),
+        moderation: resolvePath("./client/html/community/moderation.html"),
+        adminReports: resolvePath("./client/html/admin/reports.html"),
       },
     },
   },

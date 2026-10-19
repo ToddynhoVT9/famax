@@ -631,8 +631,10 @@ check(
     feedAnon.body?.data?.[0]?.liked_by_me === false,
 );
 
+// A dona da comunidade (alice) agora pode remover como moderadora; quem não
+// tem papel nenhum (dave) continua recebendo 404.
 const deleteOther = await call("DELETE", `/comments/${commentId}`, {
-    token: aliceToken,
+    token: daveToken,
 });
 check(
     "não dá para apagar comentário alheio → 404",
@@ -1720,8 +1722,9 @@ check(
     (await call("GET", `/posts/${alicePost6Id}/comments?cursor=lixo`)).status === 400,
 );
 
-// Excluir post: só o autor; some da listagem e bloqueia comentário e like.
-const deleteByOther = await call("DELETE", `/posts/${bobPost6Id}`, { token: aliceToken });
+// Excluir post: o autor (ou a moderação — ver [Moderação]); quem não tem
+// papel recebe 404. Some da listagem e bloqueia comentário e like.
+const deleteByOther = await call("DELETE", `/posts/${bobPost6Id}`, { token: daveToken });
 check("excluir post alheio → 404", deleteByOther.status === 404);
 const deleteOwnPost = await call("DELETE", `/posts/${bobPost6Id}`, { token: bobToken });
 check("autor exclui o próprio post → 204", deleteOwnPost.status === 204);
@@ -1938,6 +1941,425 @@ check(
     "post excluído não aparece na busca",
     sAfterDelete.status === 200 && sAfterDelete.body?.results?.posts?.total === 0,
     JSON.stringify(sAfterDelete.body?.results?.posts),
+);
+
+console.log("\n[Moderação] Papéis, banimentos e denúncias");
+resetRateLimits();
+
+// Elenco próprio: dona, moderador, dois membros e um admin do site.
+async function newUser(name) {
+    const reg = await call("POST", "/auth/register", {
+        body: {
+            email: `${name}${stamp}@famax.test`,
+            username: `${name}${stamp}`.slice(0, 30),
+            password: "senha123!forte",
+            displayName: name,
+            termsAccepted: true,
+        },
+    });
+    return { token: reg.body?.token, id: reg.body?.user?.userId };
+}
+const owner = await newUser("dona");
+const mod = await newUser("mode");
+const member = await newUser("membro");
+const troll = await newUser("troll");
+const admin = await newUser("admin");
+await db.query("UPDATE users SET is_admin = true WHERE user_id = $1", [admin.id]);
+
+const modCommunity = await call("POST", "/communities", {
+    token: owner.token,
+    body: { name: `Moderada ${stamp}`, categoryId },
+});
+const modCid = modCommunity.body?.community?.communityId;
+for (const u of [mod, member, troll]) {
+    await call("POST", `/communities/${modCid}/join`, { token: u.token });
+}
+
+// --- Papéis ------------------------------------------------------------------
+
+check(
+    "membro comum não promove ninguém → 403",
+    (await call("PATCH", `/communities/${modCid}/members/${troll.id}`, {
+        token: member.token,
+        body: { role: "moderator" },
+    })).status === 403,
+);
+const promote = await call("PATCH", `/communities/${modCid}/members/${mod.id}`, {
+    token: owner.token,
+    body: { role: "moderator" },
+});
+check(
+    "dono promove a moderador",
+    promote.status === 200 && promote.body?.member?.role === "moderator",
+    JSON.stringify(promote.body),
+);
+check(
+    "papel inválido → 400",
+    (await call("PATCH", `/communities/${modCid}/members/${member.id}`, {
+        token: owner.token,
+        body: { role: "owner" },
+    })).status === 400,
+);
+
+const members = await call("GET", `/communities/${modCid}/members`);
+check(
+    "lista de membros: dono primeiro, depois moderador, com data de entrada",
+    members.status === 200 &&
+        members.body?.data?.[0]?.role === "owner" &&
+        members.body.data[1]?.role === "moderator" &&
+        members.body.data[1].user_id === mod.id &&
+        Boolean(members.body.data[0].joined_at) &&
+        members.body.pagination.total === 4,
+    JSON.stringify(members.body).slice(0, 200),
+);
+const onlyMods = await call("GET", `/communities/${modCid}/members?role=moderator`);
+check(
+    "filtro de membros por papel",
+    onlyMods.body?.data?.length === 1 && onlyMods.body.data[0].user_id === mod.id,
+    JSON.stringify(onlyMods.body).slice(0, 200),
+);
+
+// --- Remoção de conteúdo ------------------------------------------------------
+
+const trollPost = await call("POST", "/posts", {
+    token: troll.token,
+    body: { communityId: modCid, title: "Post problemático", content: "conteúdo ruim" },
+});
+const trollPostId = trollPost.body?.post?.post_id;
+check(
+    "post traz o papel do autor e de quem vê",
+    trollPost.body?.post?.author_role === "member" && trollPost.body.post.viewer_role === "member",
+    JSON.stringify(trollPost.body?.post).slice(0, 200),
+);
+const ownerPost = await call("POST", "/posts", {
+    token: owner.token,
+    body: { communityId: modCid, title: "Aviso da dona", content: "bem-vindos" },
+});
+const ownerPostId = ownerPost.body?.post?.post_id;
+
+check(
+    "membro comum não remove post de outro",
+    (await call("DELETE", `/posts/${trollPostId}`, { token: member.token })).status === 404,
+);
+check(
+    "moderador não remove post do dono → 403",
+    (await call("DELETE", `/posts/${ownerPostId}`, { token: mod.token })).status === 403,
+);
+
+const trollComment = await call("POST", `/posts/${ownerPostId}/comments`, {
+    token: troll.token,
+    body: { content: "comentário ofensivo" },
+});
+const trollCommentId = trollComment.body?.comment?.comment_id;
+check(
+    "comentário traz o papel do autor",
+    trollComment.body?.comment?.author_role === "member",
+    JSON.stringify(trollComment.body).slice(0, 200),
+);
+const modComment = await call("DELETE", `/comments/${trollCommentId}`, { token: mod.token });
+const { rows: commentRow } = await db.query(
+    "SELECT deleted_by FROM comments WHERE comment_id = $1",
+    [trollCommentId],
+);
+check(
+    "moderador remove comentário de membro e deleted_by registra quem foi",
+    modComment.status === 204 && commentRow[0]?.deleted_by === mod.id,
+    `${modComment.status} ${JSON.stringify(commentRow)}`,
+);
+
+// --- Denúncias ---------------------------------------------------------------
+
+const report1 = await call("POST", "/reports", {
+    token: member.token,
+    body: { targetType: "post", targetId: trollPostId, reason: "Spam — propaganda" },
+});
+check("membro denuncia post", report1.status === 201, JSON.stringify(report1.body));
+const reportDup = await call("POST", "/reports", {
+    token: member.token,
+    body: { targetType: "post", targetId: trollPostId, reason: "de novo" },
+});
+check("denúncia duplicada pendente → 409", reportDup.status === 409, JSON.stringify(reportDup.body));
+check(
+    "não denuncia o próprio conteúdo → 400",
+    (await call("POST", "/reports", {
+        token: troll.token,
+        body: { targetType: "post", targetId: trollPostId, reason: "teste" },
+    })).status === 400,
+);
+check(
+    "denúncia de alvo inexistente → 404",
+    (await call("POST", "/reports", {
+        token: member.token,
+        body: { targetType: "comment", targetId: trollPostId, reason: "não existe" },
+    })).status === 404,
+);
+const report2 = await call("POST", "/reports", {
+    token: admin.token,
+    body: { targetType: "post", targetId: trollPostId, reason: "Assédio" },
+});
+const userReport = await call("POST", "/reports", {
+    token: member.token,
+    body: { targetType: "user", targetId: troll.id, reason: "Perfil falso" },
+});
+check("denúncia de usuário criada", userReport.status === 201, JSON.stringify(userReport.body));
+
+check(
+    "membro comum não vê a fila da comunidade → 403",
+    (await call("GET", `/communities/${modCid}/reports`, { token: member.token })).status === 403,
+);
+const queue = await call("GET", `/communities/${modCid}/reports`, { token: mod.token });
+check(
+    "fila da comunidade traz as denúncias abertas com o alvo resolvido",
+    queue.status === 200 &&
+        queue.body?.pagination?.total === 2 &&
+        queue.body.data.every((r) => r.post_title === "Post problemático" && r.author_id === troll.id) &&
+        !queue.body.data.some((r) => r.target_type === "user"),
+    JSON.stringify(queue.body).slice(0, 300),
+);
+
+const reviewing = await call("PATCH", `/reports/${report1.body?.report?.reportId}`, {
+    token: mod.token,
+    body: { status: "reviewing" },
+});
+check(
+    "marcar em análise",
+    reviewing.status === 200 && reviewing.body?.report?.status === "reviewing",
+    JSON.stringify(reviewing.body).slice(0, 200),
+);
+check(
+    "ação sem resolver → 400",
+    (await call("PATCH", `/reports/${report1.body?.report?.reportId}`, {
+        token: mod.token,
+        body: { status: "reviewing", action: "remove_content" },
+    })).status === 400,
+);
+check(
+    "membro comum não resolve denúncia → 403",
+    (await call("PATCH", `/reports/${report1.body?.report?.reportId}`, {
+        token: member.token,
+        body: { status: "dismissed" },
+    })).status === 403,
+);
+
+const resolved = await call("PATCH", `/reports/${report1.body?.report?.reportId}`, {
+    token: mod.token,
+    body: { status: "resolved", action: "ban_author", banDays: 7 },
+});
+check(
+    "resolver banindo o autor",
+    resolved.status === 200 &&
+        resolved.body?.report?.status === "resolved" &&
+        resolved.body.report.resolution === "ban_author",
+    JSON.stringify(resolved.body).slice(0, 200),
+);
+const queueAfter = await call("GET", `/communities/${modCid}/reports`, { token: mod.token });
+check(
+    "encerrar fecha as outras denúncias abertas do mesmo alvo",
+    queueAfter.body?.pagination?.total === 0,
+    JSON.stringify(queueAfter.body?.data?.map((r) => r.status)),
+);
+const closedQueue = await call("GET", `/communities/${modCid}/reports?status=resolved`, {
+    token: owner.token,
+});
+check(
+    "filtro por status mostra as resolvidas",
+    closedQueue.body?.pagination?.total === 2 &&
+        closedQueue.body.data.some((r) => r.report_id === report2.body?.report?.reportId),
+    JSON.stringify(closedQueue.body).slice(0, 200),
+);
+check(
+    "denúncia encerrada não é resolvida de novo → 409",
+    (await call("PATCH", `/reports/${report1.body?.report?.reportId}`, {
+        token: mod.token,
+        body: { status: "dismissed" },
+    })).status === 409,
+);
+
+// --- Banimento ---------------------------------------------------------------
+
+const trollCommunity = await call("GET", `/communities/${modCid}`, { token: troll.token });
+check(
+    "banido sai dos membros e a comunidade avisa do ban",
+    trollCommunity.body?.community?.my_role === null &&
+        trollCommunity.body.community.is_banned === true &&
+        Boolean(trollCommunity.body.community.my_ban_expires_at),
+    JSON.stringify(trollCommunity.body?.community).slice(0, 300),
+);
+check(
+    "banido não entra de novo → 403",
+    (await call("POST", `/communities/${modCid}/join`, { token: troll.token })).status === 403,
+);
+check(
+    "banido não posta → 403",
+    (await call("POST", "/posts", {
+        token: troll.token,
+        body: { communityId: modCid, title: "Voltei", content: "oi" },
+    })).status === 403,
+);
+check(
+    "banido não comenta → 403",
+    (await call("POST", `/posts/${ownerPostId}/comments`, {
+        token: troll.token,
+        body: { content: "voltei" },
+    })).status === 403,
+);
+// Mesmo que volte a constar como membro (corrida), o ban ainda barra a escrita.
+await db.query(
+    `INSERT INTO community_members (membership_id, user_id, community_id, role)
+     VALUES (gen_random_uuid(), $1, $2, 'member')`,
+    [troll.id, modCid],
+);
+check(
+    "ban vale mesmo com linha de membro → 403",
+    (await call("POST", "/posts", {
+        token: troll.token,
+        body: { communityId: modCid, title: "Voltei", content: "oi" },
+    })).status === 403,
+);
+await db.query("DELETE FROM community_members WHERE user_id = $1 AND community_id = $2", [
+    troll.id,
+    modCid,
+]);
+
+const bans = await call("GET", `/communities/${modCid}/bans`, { token: mod.token });
+check(
+    "lista de bans para a moderação",
+    bans.status === 200 && bans.body?.data?.[0]?.user_id === troll.id,
+    JSON.stringify(bans.body).slice(0, 200),
+);
+check(
+    "moderador não bane o dono → 403",
+    (await call("POST", `/communities/${modCid}/bans/${owner.id}`, { token: mod.token, body: {} })).status === 403,
+);
+check(
+    "membro comum não bane → 403",
+    (await call("POST", `/communities/${modCid}/bans/${mod.id}`, { token: member.token, body: {} })).status === 403,
+);
+check(
+    "desbanir",
+    (await call("DELETE", `/communities/${modCid}/bans/${troll.id}`, { token: mod.token })).status === 204,
+);
+check(
+    "desbanido pode entrar de novo",
+    (await call("POST", `/communities/${modCid}/join`, { token: troll.token })).status === 200,
+);
+
+const directBan = await call("POST", `/communities/${modCid}/bans/${troll.id}`, {
+    token: owner.token,
+    body: { reason: "reincidente" },
+});
+check(
+    "dono bane direto, permanente (sem prazo)",
+    directBan.status === 201 && directBan.body?.ban?.expires_at === null,
+    JSON.stringify(directBan.body),
+);
+
+// Remover conteúdo pela denúncia.
+const memberPost = await call("POST", "/posts", {
+    token: member.token,
+    body: { communityId: modCid, title: "Post fora do tema", content: "nada a ver" },
+});
+const memberPostId = memberPost.body?.post?.post_id;
+const report3 = await call("POST", "/reports", {
+    token: mod.token,
+    body: { targetType: "post", targetId: memberPostId, reason: "Fora do tema" },
+});
+const removeVia = await call("PATCH", `/reports/${report3.body?.report?.reportId}`, {
+    token: owner.token,
+    body: { status: "resolved", action: "remove_content" },
+});
+const { rows: removedRow } = await db.query("SELECT deleted_by FROM posts WHERE post_id = $1", [
+    memberPostId,
+]);
+check(
+    "resolver removendo o conteúdo apaga o post (deleted_by = quem resolveu)",
+    removeVia.status === 200 &&
+        removeVia.body?.report?.target_deleted === true &&
+        removedRow[0]?.deleted_by === owner.id,
+    `${removeVia.status} ${JSON.stringify(removeVia.body).slice(0, 150)}`,
+);
+
+// --- Admin -------------------------------------------------------------------
+
+check(
+    "não-admin recebe 403 na fila do admin",
+    (await call("GET", "/admin/reports", { token: owner.token })).status === 403,
+);
+const adminQueue = await call("GET", "/admin/reports", { token: admin.token });
+check(
+    "admin vê as denúncias de usuário",
+    adminQueue.status === 200 &&
+        adminQueue.body?.data?.some((r) => r.target_type === "user" && r.author_id === troll.id) &&
+        adminQueue.body.data.every((r) => r.target_type === "user"),
+    JSON.stringify(adminQueue.body).slice(0, 200),
+);
+check(
+    "moderador não resolve denúncia de usuário → 403",
+    (await call("PATCH", `/reports/${userReport.body?.report?.reportId}`, {
+        token: mod.token,
+        body: { status: "dismissed" },
+    })).status === 403,
+);
+const adminDismiss = await call("PATCH", `/reports/${userReport.body?.report?.reportId}`, {
+    token: admin.token,
+    body: { status: "dismissed" },
+});
+check(
+    "admin descarta denúncia de usuário",
+    adminDismiss.status === 200 && adminDismiss.body?.report?.status === "dismissed",
+    JSON.stringify(adminDismiss.body).slice(0, 200),
+);
+check(
+    "GET /me informa isAdmin",
+    (await call("GET", "/me", { token: admin.token })).body?.user?.isAdmin === true &&
+        (await call("GET", "/me", { token: owner.token })).body?.user?.isAdmin === false,
+);
+
+// --- Regras e transferência --------------------------------------------------
+
+const rules = await call("PATCH", `/communities/${modCid}`, {
+    token: owner.token,
+    body: { rules: "1. Respeito\n2. Sem spam" },
+});
+check(
+    "dono edita as regras",
+    rules.status === 200 && rules.body?.community?.rules === "1. Respeito\n2. Sem spam",
+    JSON.stringify(rules.body).slice(0, 200),
+);
+check(
+    "regras aparecem na comunidade",
+    (await call("GET", `/communities/${modCid}`)).body?.community?.rules === "1. Respeito\n2. Sem spam",
+);
+
+check(
+    "transferência sem o nome certo → 400",
+    (await call("POST", `/communities/${modCid}/transfer`, {
+        token: owner.token,
+        body: { userId: mod.id, confirmName: "errado" },
+    })).status === 400,
+);
+check(
+    "moderador não transfere → 403",
+    (await call("POST", `/communities/${modCid}/transfer`, {
+        token: mod.token,
+        body: { userId: mod.id, confirmName: `Moderada ${stamp}` },
+    })).status === 403,
+);
+const transfer = await call("POST", `/communities/${modCid}/transfer`, {
+    token: owner.token,
+    body: { userId: mod.id, confirmName: `Moderada ${stamp}` },
+});
+const afterTransfer = await call("GET", `/communities/${modCid}`, { token: owner.token });
+check(
+    "transferência: novo dono e o antigo vira moderador",
+    transfer.status === 200 &&
+        afterTransfer.body?.community?.owner_id === mod.id &&
+        afterTransfer.body.community.my_role === "moderator",
+    JSON.stringify(afterTransfer.body?.community).slice(0, 200),
+);
+check(
+    "antigo dono pode sair depois de transferir",
+    (await call("POST", `/communities/${modCid}/leave`, { token: owner.token })).status === 200,
 );
 
 // ---------------------------------------------------------------------------

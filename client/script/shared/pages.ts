@@ -20,6 +20,8 @@ export const pages = {
   newCommunity: `${BASE}html/community/new.html`,
   search: `${BASE}html/search.html`,
   post: `${BASE}html/post.html`,
+  moderation: `${BASE}html/community/moderation.html`,
+  adminReports: `${BASE}html/admin/reports.html`,
 } as const;
 
 export type SearchType = "all" | "communities" | "users" | "posts";
@@ -43,8 +45,18 @@ export function profileUrl(userId?: string): string {
     : pages.profile;
 }
 
-export function communityUrl(communityId: string): string {
-  return `${BASE}html/community.html?id=${encodeURIComponent(communityId)}`;
+/** Vistas da página da comunidade além das discussões (?view=). */
+export type CommunityView = "rules" | "members";
+
+export function communityUrl(communityId: string, view?: CommunityView): string {
+  const params = new URLSearchParams({ id: communityId });
+  if (view) params.set("view", view);
+  return `${BASE}html/community.html?${params}`;
+}
+
+/** Fila de denúncias da comunidade (dono e moderadores). */
+export function moderationUrl(communityId: string): string {
+  return `${pages.moderation}?id=${encodeURIComponent(communityId)}`;
 }
 
 /** A página de criação em modo edição. */

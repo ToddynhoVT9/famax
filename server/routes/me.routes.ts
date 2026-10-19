@@ -51,6 +51,7 @@ async function loadMe(userId: string) {
        u.username,
        u.is_adult,
        u.two_factor_enabled,
+       u.is_admin,
        u.created_at,
        up.display_name,
        up.avatar_url,
@@ -85,6 +86,8 @@ async function loadMe(userId: string) {
     isPrivate: row.is_private ?? true,
     isAdult: row.is_adult,
     twoFactorEnabled: row.two_factor_enabled,
+    // Admin do site: o header mostra o link da fila de denúncias de usuários.
+    isAdmin: row.is_admin === true,
     createdAt: row.created_at,
     socialLinks: await loadSocialLinks(userId),
   };

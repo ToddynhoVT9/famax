@@ -34,6 +34,8 @@ export interface SidebarLink {
     onClick?: (event: MouseEvent) => void;
     /** Mantém o destaque de página atual mesmo com query diferente. */
     current?: boolean;
+    /** Identifica o link para setCurrentPageLink (troca de vista sem recarregar). */
+    key?: string;
 }
 
 export interface LayoutOptions {
@@ -149,9 +151,16 @@ function renderUserArea(area: HTMLElement, me: Me): void {
     settings.href = pages.settings;
     const signOut = el("button", "user-dropdown-item", "Sair");
     signOut.type = "button";
-    for (const item of [profile, settings, signOut]) item.setAttribute("role", "menuitem");
+    const items: HTMLElement[] = [profile, settings];
+    if (me.isAdmin) {
+        const admin = el("a", "user-dropdown-item", "Denúncias de usuários");
+        admin.href = pages.adminReports;
+        items.push(admin);
+    }
+    items.push(signOut);
+    for (const item of items) item.setAttribute("role", "menuitem");
 
-    dropdown.append(profile, settings, signOut);
+    dropdown.append(...items);
     menu.append(button, dropdown);
     area.append(menu);
 
@@ -302,6 +311,7 @@ function renderSidebar(sidebar: HTMLElement, options: LayoutOptions): void {
             return disabled;
         }
         const anchor = sidebarLink(link.label, link.href);
+        if (link.key) anchor.dataset.pageLink = link.key;
         if (link.current) {
             anchor.classList.add("active");
             anchor.setAttribute("aria-current", "page");
@@ -333,6 +343,19 @@ function renderSidebar(sidebar: HTMLElement, options: LayoutOptions): void {
     sidebar.before(toggle);
 
     void refreshMyCommunities();
+}
+
+/**
+ * Muda o destaque entre os links da página (os que têm `key`). A comunidade
+ * usa ao trocar entre Discussões, Regras e Membros sem recarregar.
+ */
+export function setCurrentPageLink(key: string): void {
+    document.querySelectorAll<HTMLAnchorElement>("#app-sidebar [data-page-link]").forEach((link) => {
+        const current = link.dataset.pageLink === key;
+        link.classList.toggle("active", current);
+        if (current) link.setAttribute("aria-current", "page");
+        else link.removeAttribute("aria-current");
+    });
 }
 
 // ===========================================================================

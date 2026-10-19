@@ -5,6 +5,7 @@ import { randomUUID } from "node:crypto";
 import { pool } from "../db.js";
 import { optionalAuth, requireAuth } from "../middleware/auth.js";
 import { rateLimit } from "../lib/rate-limit.js";
+import { ACTIVE_BAN } from "../middleware/community-role.js";
 import {
   MAX_COVER_BYTES,
   deleteImageByUrl,
@@ -263,8 +264,8 @@ const communityIdParam = z.object({
   communityId: z.string().uuid("ID de comunidade inválido"),
 });
 
-// optionalAuth: o papel de quem vê (my_role) vem junto, e a página não
-// precisa de uma segunda chamada a /membership só para desenhar o botão.
+// optionalAuth: o papel de quem vê (my_role) — e se está banido — vem junto,
+// e a página não precisa de uma segunda chamada só para desenhar o botão.
 router.get("/communities/:communityId", optionalAuth, async (req, res, next) => {
   try {
     const { communityId } = communityIdParam.parse(req.params);
@@ -274,6 +275,7 @@ router.get("/communities/:communityId", optionalAuth, async (req, res, next) => 
          c.community_id,
          c.name,
          c.description,
+         c.rules,
          c.cover_image_url,
          c.created_at,
          c.owner_id,
@@ -282,7 +284,15 @@ router.get("/communities/:communityId", optionalAuth, async (req, res, next) => 
          (SELECT COUNT(*) FROM community_members cm
           WHERE cm.community_id = c.community_id)::int AS members_count,
          (SELECT cm.role FROM community_members cm
-          WHERE cm.community_id = c.community_id AND cm.user_id = $2) AS my_role
+          WHERE cm.community_id = c.community_id AND cm.user_id = $2) AS my_role,
+         (SELECT b.expires_at FROM community_bans b
+          WHERE b.community_id = c.community_id AND b.user_id = $2
+            AND ${ACTIVE_BAN("b")}) AS my_ban_expires_at,
+         EXISTS (
+           SELECT 1 FROM community_bans b
+           WHERE b.community_id = c.community_id AND b.user_id = $2
+             AND ${ACTIVE_BAN("b")}
+         ) AS is_banned
        FROM communities c
        LEFT JOIN categories cat ON cat.category_id = c.category_id
        WHERE c.community_id = $1 AND c.deleted_at IS NULL`,
@@ -352,6 +362,16 @@ router.post(
       );
       if (exists.length === 0) {
         return res.status(404).json({ error: "Comunidade não encontrada" });
+      }
+
+      // Banido não volta enquanto o ban valer (o ban já o tirou dos membros).
+      const { rows: banned } = await pool.query(
+        `SELECT 1 FROM community_bans b
+         WHERE b.community_id = $1 AND b.user_id = $2 AND ${ACTIVE_BAN("b")}`,
+        [communityId, req.userId],
+      );
+      if (banned.length > 0) {
+        return res.status(403).json({ error: "Você está banido desta comunidade" });
       }
 
       // Idempotente: entrar duas vezes devolve o mesmo resultado.
@@ -460,6 +480,8 @@ const editCommunitySchema = z
     categoryId: createCommunitySchema.shape.categoryId.optional(),
     // Vazio apaga a descrição.
     description: z.string().trim().max(500).optional(),
+    // Regras da comunidade (texto livre, quebras de linha preservadas). Vazio apaga.
+    rules: z.string().trim().max(5000, "As regras devem ter no máximo 5000 caracteres").optional(),
     // Multipart só tem texto: "true" remove a capa atual.
     removeCover: z.enum(["true", "false"]).optional(),
   })
@@ -488,6 +510,7 @@ router.patch(
       if (data.name !== undefined) set("name", data.name);
       if (data.categoryId !== undefined) set("category_id", data.categoryId);
       if (data.description !== undefined) set("description", data.description || null);
+      if (data.rules !== undefined) set("rules", data.rules || null);
 
       // Capa nova substitui; removeCover sem arquivo apaga. A antiga sai do
       // Storage só depois que o banco já aponta para a nova.
@@ -516,7 +539,7 @@ router.patch(
       await deleteImageByUrl(oldCover, config.SUPABASE_COVERS_BUCKET);
 
       const { rows } = await pool.query(
-        `SELECT c.community_id, c.name, c.description, c.cover_image_url,
+        `SELECT c.community_id, c.name, c.description, c.rules, c.cover_image_url,
                 c.category_id, cat.name AS category_name
          FROM communities c
          LEFT JOIN categories cat ON cat.category_id = c.category_id

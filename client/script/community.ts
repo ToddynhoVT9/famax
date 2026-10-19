@@ -3,31 +3,43 @@
  *
  * Topo (capa, descrição, participar/sair/editar), abas Conversas / Ajudar os
  * outros / Categorias com o estado na URL e posts paginados com "carregar
- * mais". O desenho dos posts, os comentários em árvore e as ações sobre eles
+ * mais". Os links Regras e Membros da sidebar trocam de vista sem recarregar
+ * (?view=rules|members); a vista de membros fica em community-members.ts. O desenho dos posts, os comentários em árvore e as ações sobre eles
  * ficam em shared/post-thread.ts (a página do post usa o mesmo módulo); o
  * modal de criar/editar, em shared/post-editor.ts.
  */
 import { api, getToken } from "./shared/api.js";
 import { goToLogin } from "./shared/auth-guard.js";
-import { initLayout, refreshMyCommunities } from "./shared/layout.js";
-import { communityEditUrl, communityUrl } from "./shared/pages.js";
+import { initLayout, refreshMyCommunities, setCurrentPageLink } from "./shared/layout.js";
+import {
+    communityEditUrl,
+    communityUrl,
+    moderationUrl,
+    type CommunityView,
+} from "./shared/pages.js";
 import { avatarColor, queryParam } from "./shared/dom.js";
 import { confirmDialog, toast } from "./shared/dialog.js";
 import { createPostThread, type Post } from "./shared/post-thread.js";
 import { openPostEditor, type PostCategory } from "./shared/post-editor.js";
+import { banUntil, isStaff } from "./shared/moderation.js";
+import { createMembersView } from "./community-members.js";
 
 interface Community {
     community_id: string;
     name: string;
     description: string | null;
+    rules: string | null;
     cover_image_url: string | null;
     owner_id: string;
     category_name: string | null;
     members_count: number;
     my_role: "owner" | "moderator" | "member" | null;
+    is_banned: boolean;
+    my_ban_expires_at: string | null;
 }
 
 type Tab = "all" | "unanswered" | "categories";
+type View = "discussions" | CommunityView;
 
 const POSTS_PER_PAGE = 10;
 
@@ -40,6 +52,7 @@ const communityId = queryParam("id");
 let community: Community | null = null;
 let categories: PostCategory[] = [];
 
+let view: View = "discussions";
 let tab: Tab = "all";
 let categoryFilter: string | null = null;
 let page = 0;
@@ -55,23 +68,27 @@ const loadMoreBtn = $<HTMLButtonElement>("tfLoadMore");
 const chipsEl = $("tfCategoryChips");
 const tabHint = $("tfTabHint");
 
+/** Link da sidebar que troca de vista sem recarregar (o href abre em nova aba). */
+const viewLink = (label: string, target: View) => ({
+    label,
+    key: target,
+    href: communityUrl(communityId!, target === "discussions" ? undefined : target),
+    onClick: (event: MouseEvent) => {
+        event.preventDefault();
+        // "Discussões" também volta para a aba Conversas.
+        if (target === "discussions" && view === "discussions") selectTab("all");
+        showView(target);
+        $("main-content")?.scrollIntoView({ behavior: "smooth" });
+    },
+});
+
 initLayout({
     pageLinks: communityId
         ? [
-              {
-                  label: "Discussões",
-                  href: communityUrl(communityId),
-                  current: true,
-                  // Volta para a aba Conversas sem recarregar a página.
-                  onClick: (event) => {
-                      event.preventDefault();
-                      selectTab("all");
-                      $("main-content")?.scrollIntoView({ behavior: "smooth" });
-                  },
-              },
+              viewLink("Discussões", "discussions"),
+              viewLink("Regras", "rules"),
+              viewLink("Membros", "members"),
               // Ainda sem página própria: desativados com "Em breve".
-              { label: "Regras" },
-              { label: "Membros" },
               { label: "Eventos" },
               { label: "Suporte" },
           ]
@@ -147,6 +164,7 @@ function renderHero(): void {
     }
 
     renderActions();
+    renderRules();
     $("communityHero")?.removeAttribute("aria-busy");
 }
 
@@ -163,6 +181,15 @@ function renderActions(): void {
         return b;
     };
 
+    // Dono e moderadores: atalho para a fila de denúncias.
+    if (isStaff(community.my_role)) {
+        const moderation = document.createElement("a");
+        moderation.className = "tf-btn-join tf-btn-secondary";
+        moderation.href = moderationUrl(community.community_id);
+        moderation.textContent = "Moderação";
+        actions.append(moderation);
+    }
+
     // Dono: editar (sair não existe para ele — ver leave no backend).
     if (community.my_role === "owner") {
         const badge = document.createElement("span");
@@ -172,7 +199,17 @@ function renderActions(): void {
         edit.className = "tf-btn-join";
         edit.href = communityEditUrl(community.community_id);
         edit.textContent = "Editar comunidade";
-        actions.append(badge, edit);
+        actions.prepend(badge);
+        actions.append(edit);
+        return;
+    }
+
+    // Banido: no lugar do "Participar", o aviso com o prazo.
+    if (community.is_banned) {
+        const banned = document.createElement("span");
+        banned.className = "tf-banned-badge";
+        banned.textContent = `Você está banido desta comunidade (${banUntil(community.my_ban_expires_at)})`;
+        actions.append(banned);
         return;
     }
 
@@ -282,8 +319,13 @@ function syncUrl(): void {
     const url = new URL(window.location.href);
     url.searchParams.delete("tab");
     url.searchParams.delete("categoryId");
-    if (tab !== "all") url.searchParams.set("tab", tab);
-    if (tab === "categories" && categoryFilter) url.searchParams.set("categoryId", categoryFilter);
+    url.searchParams.delete("view");
+    if (view !== "discussions") {
+        url.searchParams.set("view", view);
+    } else {
+        if (tab !== "all") url.searchParams.set("tab", tab);
+        if (tab === "categories" && categoryFilter) url.searchParams.set("categoryId", categoryFilter);
+    }
     history.replaceState(null, "", url);
 }
 
@@ -371,6 +413,55 @@ function updateIndicator(): void {
 
 window.addEventListener("load", () => setTimeout(updateIndicator, 50));
 window.addEventListener("resize", updateIndicator);
+
+// ===========================================================================
+// Vistas: Discussões, Regras, Membros
+// ===========================================================================
+
+const VIEW_IDS: Record<View, string> = {
+    discussions: "viewDiscussions",
+    rules: "viewRules",
+    members: "viewMembers",
+};
+
+const membersRoot = $("membersRoot");
+const membersView =
+    communityId && membersRoot
+        ? createMembersView(membersRoot, {
+              communityId,
+              viewerRole: () => community?.my_role ?? null,
+              communityName: () => community?.name ?? "",
+              onCommunityChanged: loadCommunity,
+          })
+        : null;
+
+function renderRules(): void {
+    const text = $("rulesText");
+    const edit = $<HTMLAnchorElement>("rulesEdit");
+    if (!text || !community) return;
+    // textContent + white-space: pre-wrap no CSS: quebras de linha sem HTML.
+    text.textContent = community.rules?.trim() || "Esta comunidade ainda não tem regras escritas.";
+    text.classList.toggle("is-empty", !community.rules?.trim());
+    if (edit) {
+        edit.hidden = community.my_role !== "owner";
+        edit.href = communityEditUrl(community.community_id);
+    }
+}
+
+function showView(next: View): void {
+    const changed = next !== view;
+    view = next;
+    for (const [key, id] of Object.entries(VIEW_IDS)) {
+        const section = $(id);
+        if (section) section.hidden = key !== view;
+    }
+    setCurrentPageLink(view);
+    syncUrl();
+    if (view === "members" && (changed || membersRoot?.childElementCount === 0)) {
+        void membersView?.reload();
+    }
+    if (view === "discussions") updateIndicator();
+}
 
 // ===========================================================================
 // Posts
@@ -478,6 +569,8 @@ $("btnCreatePost")?.addEventListener("click", async () => {
 
 function readUrlState(): void {
     const params = new URLSearchParams(window.location.search);
+    const urlView = params.get("view");
+    if (urlView === "rules" || urlView === "members") view = urlView;
     const urlCategory = params.get("categoryId");
     const urlTab = params.get("tab");
     if (urlCategory || urlTab === "categories") {
@@ -495,6 +588,7 @@ if (!communityId) {
 } else {
     readUrlState();
     renderTabs();
+    showView(view);
     void loadCommunity();
     void loadPosts(true);
 }

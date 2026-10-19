@@ -16,6 +16,7 @@ import { initLayout } from "../shared/layout.js";
 import { communityUrl, pages } from "../shared/pages.js";
 import { avatarColor, initials, queryParam, timeAgo, truncate } from "../shared/dom.js";
 import { SOCIAL_PLATFORM_LABELS, isSafeLink } from "../shared/social.js";
+import { openReportDialog } from "../shared/moderation.js";
 
 // Visitante pode ver o perfil público de alguém; o próprio perfil exige conta.
 const requestedId = queryParam("id");
@@ -171,6 +172,7 @@ function renderProfile(profile: PublicProfile): void {
         editBtn.href = pages.settings;
         editBtn.hidden = !profile.isOwner;
     }
+    setupReportMenu(profile);
 
     const canView = profile.stats !== undefined;
     if (!canView) {
@@ -376,3 +378,35 @@ async function init(): Promise<void> {
 }
 
 void init();
+
+// ===========================================================================
+// "⋯" com Denunciar (perfil de outra pessoa, com sessão)
+// ===========================================================================
+
+function setupReportMenu(profile: PublicProfile): void {
+    const wrapper = document.getElementById("profileMore");
+    const button = document.getElementById("profileMoreBtn");
+    const menu = document.getElementById("profileMoreMenu");
+    const report = document.getElementById("btnReportUser");
+    if (!wrapper || !button || !menu || !report) return;
+
+    wrapper.hidden = profile.isOwner || !getToken();
+    if (wrapper.hidden || wrapper.dataset.ready) return;
+    wrapper.dataset.ready = "true";
+
+    const setOpen = (open: boolean): void => {
+        menu.hidden = !open;
+        button.setAttribute("aria-expanded", String(open));
+    };
+    button.addEventListener("click", (event) => {
+        event.stopPropagation();
+        setOpen(menu.hidden);
+    });
+    document.addEventListener("click", (event) => {
+        if (!wrapper.contains(event.target as Node)) setOpen(false);
+    });
+    report.addEventListener("click", () => {
+        setOpen(false);
+        void openReportDialog("user", profile.userId);
+    });
+}

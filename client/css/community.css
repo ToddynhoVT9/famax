@@ -1039,3 +1039,168 @@ button.tf-tab:focus-visible {
 .tf-post-title-link:hover {
     text-decoration: underline;
 }
+
+/* ----- MODERAÇÃO: atalhos, ban e vistas Regras / Membros ----- */
+.tf-btn-secondary {
+    background-color: transparent;
+    color: #ffffff;
+    border: 1px solid #ffffff;
+    text-decoration: none;
+}
+
+.tf-btn-secondary:hover {
+    background-color: rgba(255, 255, 255, 0.1);
+}
+
+.tf-banned-badge {
+    margin-left: auto;
+    font-size: 0.9rem;
+    color: #ff9aa4;
+    border: 1px solid rgba(220, 53, 69, 0.5);
+    border-radius: 8px;
+    padding: 8px 14px;
+}
+
+.tf-view {
+    width: 100%;
+    max-width: 860px;
+}
+
+.tf-view-header {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 12px;
+    margin-bottom: 14px;
+}
+
+.tf-view-title {
+    font-size: 1.4rem;
+    font-weight: 800;
+}
+
+.tf-view-action {
+    color: #dddddd;
+    font-size: 0.95rem;
+}
+
+.tf-rules-text {
+    background-color: #ffffff;
+    color: #111111;
+    border-radius: 8px;
+    padding: 22px 24px;
+    line-height: 1.6;
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+}
+
+.tf-rules-text.is-empty {
+    color: #666666;
+}
+
+.tf-members-total {
+    color: #aaaaaa;
+    font-size: 0.9rem;
+    margin: 10px 0;
+}
+
+.tf-members-list {
+    list-style: none;
+    background-color: #ffffff;
+    border-radius: 8px;
+    overflow: hidden;
+}
+
+.tf-member {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    padding: 14px 18px;
+    color: #111111;
+    border-bottom: 1px solid #e6e6e6;
+}
+
+.tf-member:last-child {
+    border-bottom: none;
+}
+
+.tf-member-avatar {
+    width: 42px;
+    height: 42px;
+    border-radius: 50%;
+    flex-shrink: 0;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    color: #ffffff;
+    font-weight: 700;
+    text-decoration: none;
+    overflow: hidden;
+}
+
+.tf-member-avatar img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.tf-member-info {
+    flex: 1;
+    min-width: 0;
+}
+
+.tf-member-name {
+    font-weight: 700;
+    text-decoration: none;
+    overflow-wrap: anywhere;
+}
+
+.tf-member-name:hover {
+    text-decoration: underline;
+}
+
+.tf-member-meta {
+    display: block;
+    font-size: 0.85rem;
+    color: #666666;
+    margin-top: 2px;
+}
+
+.tf-member-actions {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    gap: 6px;
+}
+
+.tf-member-action {
+    background: none;
+    border: 1px solid #bbbbbb;
+    border-radius: 14px;
+    padding: 5px 12px;
+    font: inherit;
+    font-size: 0.85rem;
+    color: #333333;
+    cursor: pointer;
+}
+
+.tf-member-action:hover {
+    background-color: #f0f0f0;
+}
+
+.tf-member-action--danger {
+    border-color: #e3a3a0;
+    color: #c0392b;
+}
+
+@media (max-width: 600px) {
+    .tf-member {
+        flex-wrap: wrap;
+    }
+
+    .tf-member-actions {
+        width: 100%;
+        justify-content: flex-start;
+        padding-left: 56px;
+    }
+}

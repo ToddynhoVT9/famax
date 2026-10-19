@@ -112,6 +112,8 @@ export type Me = {
   isPrivate: boolean;
   isAdult: boolean;
   twoFactorEnabled: boolean;
+  /** Admin do site: vê a fila de denúncias de usuários. */
+  isAdmin: boolean;
   createdAt: string;
   socialLinks: SocialLink[];
 };

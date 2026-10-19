@@ -5,6 +5,7 @@ import { pool } from "../db.js";
 import { requireAuth } from "../middleware/auth.js";
 import { requirePostMembership } from "../middleware/membership.js";
 import { rateLimit } from "../lib/rate-limit.js";
+import { removeComment } from "../lib/moderation.js";
 
 const router = Router();
 
@@ -39,7 +40,10 @@ const COMMENT_SELECT = `
     u.user_id       AS author_id,
     u.username      AS author_username,
     up.display_name AS author_display_name,
-    up.avatar_url   AS author_avatar_url
+    up.avatar_url   AS author_avatar_url,
+    (SELECT r.role FROM community_members r
+     INNER JOIN posts rp ON rp.community_id = r.community_id
+     WHERE rp.post_id = c.post_id AND r.user_id = c.author_id) AS author_role
   FROM comments c
   INNER JOIN users u          ON u.user_id  = c.author_id
   LEFT  JOIN user_profiles up ON up.user_id = c.author_id
@@ -57,6 +61,7 @@ type CommentRow = {
   author_username: string;
   author_display_name: string | null;
   author_avatar_url: string | null;
+  author_role: string | null;
 };
 
 /**
@@ -78,6 +83,7 @@ function present(row: CommentRow, repliesCount = 0) {
     author_username: deleted ? null : row.author_username,
     author_display_name: deleted ? null : row.author_display_name,
     author_avatar_url: deleted ? null : row.author_avatar_url,
+    author_role: deleted ? null : row.author_role,
   };
 }
 
@@ -322,53 +328,28 @@ router.patch("/comments/:commentId", requireAuth, async (req, res, next) => {
 });
 
 // ===========================================================================
-// DELETE /api/comments/:commentId — soft delete, só o autor
+// DELETE /api/comments/:commentId — soft delete pelo autor ou pela moderação
 // ---------------------------------------------------------------------------
 // As respostas continuam; na listagem o comentário vira "[comentário
-// removido]" enquanto houver resposta pendurada nele.
+// removido]" enquanto houver resposta pendurada nele. Dono e moderadores da
+// comunidade também removem (lib/moderation.ts).
 // ===========================================================================
 
 router.delete("/comments/:commentId", requireAuth, async (req, res, next) => {
-  const client = await pool.connect();
   try {
     const { commentId } = commentIdParam.parse(req.params);
 
-    await client.query("BEGIN");
-
-    // O UPDATE condicional é a própria autorização: se o comentário não é do
-    // usuário (ou já foi apagado), nenhuma linha volta e nada é decrementado.
-    const { rows } = await client.query(
-      `UPDATE comments
-       SET deleted_at = NOW()
-       WHERE comment_id = $1 AND author_id = $2 AND deleted_at IS NULL
-       RETURNING post_id`,
-      [commentId, req.userId],
-    );
-
-    if (rows.length === 0) {
-      await client.query("ROLLBACK");
-      return res
-        .status(404)
-        .json({ error: "Comentário não encontrado ou não é seu" });
+    const result = await removeComment(commentId, { userId: req.userId! });
+    if (!result.ok) {
+      return res.status(result.status).json({ error: result.error });
     }
-
-    await client.query(
-      `UPDATE posts
-       SET comments_count = GREATEST(0, comments_count - 1)
-       WHERE post_id = $1`,
-      [rows[0].post_id],
-    );
-    await client.query("COMMIT");
 
     res.status(204).end();
   } catch (err) {
-    await client.query("ROLLBACK").catch(() => {});
     if (err instanceof z.ZodError) {
       return res.status(400).json({ error: "ID de comentário inválido" });
     }
     next(err);
-  } finally {
-    client.release();
   }
 });
 
