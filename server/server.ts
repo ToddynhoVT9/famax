@@ -168,6 +168,15 @@ async function initDatabase() {
     throw err;
   }
 
+  // Antes de liberar a API: o código deste deploy pode depender de colunas
+  // que só a migration nova cria. Falhar aqui deixa a API em 503 com o motivo
+  // no log, em vez de 500 em cada rota afetada. (O modo embedded já migra
+  // dentro do startEmbeddedDatabase.)
+  if (config.DB_MODE === "external" && config.MIGRATE_ON_BOOT) {
+    const { applyPendingMigrations } = await import("./migrate.js");
+    await applyPendingMigrations();
+  }
+
   dbState.ready = true;
 
   // Mantém o dbState honesto depois do boot: sem isto, um banco externo que

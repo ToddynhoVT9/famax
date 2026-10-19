@@ -38,6 +38,7 @@ node -e "console.log(require('crypto').randomBytes(48).toString('base64url'))"
 | `NODE_ENV` | não | `development` \| `production` |
 | `JWT_EXPIRES_IN` | não | Validade do token (padrão `7d`) |
 | `CORS_ORIGIN` | não | Origem liberada no CORS |
+| `MIGRATE_ON_BOOT` | não | `false` desliga a aplicação de migrations no boot (padrão: ligado) |
 | `TRUST_PROXY` | não | Proxies confiáveis à frente da API (`1`, `true`, `loopback`...). Padrão: nenhum |
 | `DATABASE_SSL` | não | `false` desliga o SSL (Postgres local) |
 | `SUPABASE_URL` | não | Project URL — necessária para upload de capa |
@@ -69,6 +70,12 @@ npm run migrate -- --status     # o que está pendente
 npm run migrate                 # aplica o pendente
 npm run migrate -- --baseline   # aplica o schema base antes (banco vazio)
 ```
+
+**O servidor aplica as migrations pendentes sozinho ao subir** (modo
+`external`), antes de liberar a API — o deploy não depende de alguém lembrar
+de rodar o comando. Se uma falhar, a API fica em 503 com o motivo no log. O
+baseline nunca é aplicado no boot; banco vazio continua sendo
+`npm run migrate -- --baseline`. Desligue com `MIGRATE_ON_BOOT=false`.
 
 O runner registra o que já rodou em `schema_migrations`, então rodar de novo é
 seguro. Migrations aplicadas cujo arquivo mudou depois aparecem com aviso.
@@ -102,7 +109,7 @@ banco de produção.
 ```bash
 npm ci
 npm run build        # vite build -> dist/public ; tsc -> dist/
-npm run migrate      # aplica migrations pendentes
+npm run migrate      # opcional: o boot já aplica as pendentes
 npm start            # node dist/server.js
 ```
 

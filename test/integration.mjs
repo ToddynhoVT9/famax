@@ -65,16 +65,11 @@ const baseSchema = await readFile(
 );
 await db.exec(baseSchema);
 
-console.log("Aplicando migrations (server/sql)...");
-// Lê o diretório em vez de listar nomes: migrations novas entram no teste
-// automaticamente, sem risco de esquecer alguma aqui.
+// As migrations de server/sql NÃO são aplicadas aqui: quem aplica é o próprio
+// servidor no boot (server/migrate.ts), como em produção. Assim o teste cobre
+// esse caminho, e migrations novas entram automaticamente.
 const sqlDir = path.join(root, "server", "sql");
 const migrations = (await readdir(sqlDir)).filter((f) => f.endsWith(".sql")).sort();
-for (const file of migrations) {
-    const sql = await readFile(path.join(sqlDir, file), "utf8");
-    await db.exec(sql);
-    console.log(`  aplicado: ${file}`);
-}
 
 process.env.DATABASE_URL = `postgresql://postgres:postgres@127.0.0.1:${DB_PORT}/postgres`;
 process.env.DATABASE_SSL = "false";
@@ -136,6 +131,16 @@ const bob = {
     displayName: "Bob Teste",
     termsAccepted: true,
 };
+
+console.log("\n[0] Migrations no boot");
+const { rows: registered } = await db.query(
+    "SELECT filename FROM schema_migrations ORDER BY filename",
+);
+check(
+    "servidor aplicou e registrou todas as migrations no boot",
+    JSON.stringify(registered.map((r) => r.filename)) === JSON.stringify(migrations),
+    registered.map((r) => r.filename).join(", "),
+);
 
 console.log("\n[0] Autenticação");
 const aliceReg = await call("POST", "/auth/register", { body: alice });

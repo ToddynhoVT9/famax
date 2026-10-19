@@ -90,6 +90,10 @@ export const config = {
 
   TRUST_PROXY: parseTrustProxy(process.env.TRUST_PROXY),
 
+  // Aplica as migrations pendentes no boot do modo external (ver migrate.ts).
+  // Ligado por padrão: deploy sem migration derruba as rotas que dependem dela.
+  MIGRATE_ON_BOOT: process.env.MIGRATE_ON_BOOT !== "false",
+
   // Storage das capas de comunidade. Opcional: sem estas vars o upload é
   // desativado e a comunidade é criada sem capa (ver lib/storage.ts).
   SUPABASE_URL: process.env.SUPABASE_URL ?? "",
