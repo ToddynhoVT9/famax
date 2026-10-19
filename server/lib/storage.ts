@@ -55,36 +55,54 @@ const EXTENSION: Record<string, string> = {
   webp: "webp",
 };
 
-/**
- * Sobe a capa para o bucket e devolve a URL pública.
- *
- * Usa a REST API do Storage direto por fetch — o @supabase/supabase-js
- * inteiro seria uma dependência grande para um único PUT de objeto.
- *
- * Retorna null quando o Storage não está configurado, para que a criação da
- * comunidade não fique bloqueada por uma feature opcional.
- */
-export async function uploadCommunityCover(
-  buffer: Buffer,
-  communityId: string,
-): Promise<string | null> {
-  if (!isStorageEnabled()) return null;
+export type ImageKind = "png" | "jpeg" | "webp";
 
-  if (buffer.byteLength > MAX_COVER_BYTES) {
-    throw new AppError(413, "A capa deve ter no máximo 2MB");
+/**
+ * Confere tamanho e tipo real. Separado do upload para as rotas validarem
+ * mesmo quando o Storage não está configurado — um arquivo que não é imagem
+ * recebe 400 sempre, e não às vezes 400, às vezes "upload desativado".
+ */
+export function validateImage(
+  buffer: Buffer,
+  options: { maxBytes: number; label: string },
+): ImageKind {
+  if (buffer.byteLength > options.maxBytes) {
+    const mb = Math.round(options.maxBytes / (1024 * 1024));
+    throw new AppError(413, `${options.label} deve ter no máximo ${mb}MB`);
   }
 
   const kind = sniffImageType(buffer);
   if (!kind) {
-    throw new AppError(400, "A capa deve ser uma imagem PNG, JPEG ou WebP");
+    throw new AppError(400, `${options.label} deve ser uma imagem PNG, JPEG ou WebP`);
   }
+  return kind;
+}
 
-  const base = config.SUPABASE_URL.replace(/\/+$/, "");
-  const bucket = config.SUPABASE_COVERS_BUCKET;
-  const objectPath = `${communityId}/${randomUUID()}.${EXTENSION[kind]}`;
+function storageBase(): string {
+  return config.SUPABASE_URL.replace(/\/+$/, "");
+}
+
+/**
+ * Sobe uma imagem para `bucket/folder/<uuid>.<ext>` e devolve a URL pública.
+ *
+ * Usa a REST API do Storage direto por fetch — o @supabase/supabase-js
+ * inteiro seria uma dependência grande para um único PUT de objeto.
+ *
+ * Retorna null quando o Storage não está configurado; cada rota decide se
+ * isso é aceitável (capa de comunidade: sim, é opcional) ou erro (avatar).
+ */
+export async function uploadImage(
+  buffer: Buffer,
+  options: { bucket: string; folder: string; maxBytes: number; label: string },
+): Promise<string | null> {
+  const kind = validateImage(buffer, options);
+  if (!isStorageEnabled()) return null;
+
+  const base = storageBase();
+  const objectPath = `${options.folder}/${randomUUID()}.${EXTENSION[kind]}`;
 
   const response = await fetch(
-    `${base}/storage/v1/object/${bucket}/${objectPath}`,
+    `${base}/storage/v1/object/${options.bucket}/${objectPath}`,
     {
       method: "POST",
       headers: {
@@ -98,9 +116,53 @@ export async function uploadCommunityCover(
 
   if (!response.ok) {
     const detail = await response.text().catch(() => "");
-    console.error("Falha no upload da capa:", response.status, detail);
-    throw new AppError(502, "Não foi possível enviar a imagem de capa");
+    console.error(`Falha no upload (${options.bucket}):`, response.status, detail);
+    throw new AppError(502, "Não foi possível enviar a imagem");
   }
 
-  return `${base}/storage/v1/object/public/${bucket}/${objectPath}`;
+  return `${base}/storage/v1/object/public/${options.bucket}/${objectPath}`;
+}
+
+/**
+ * Apaga o objeto por trás de uma URL pública gerada por uploadImage.
+ *
+ * Melhor esforço: chamado depois que o banco já aponta para a imagem nova (ou
+ * para nada). Um objeto órfão no Storage é inofensivo; falhar a troca de
+ * avatar por causa da limpeza seria pior. URLs de outro lugar são ignoradas.
+ */
+export async function deleteImageByUrl(url: string | null, bucket: string): Promise<void> {
+  if (!url || !isStorageEnabled()) return;
+
+  const prefix = `${storageBase()}/storage/v1/object/public/${bucket}/`;
+  if (!url.startsWith(prefix)) return;
+
+  const objectPath = url.slice(prefix.length);
+  try {
+    const response = await fetch(`${storageBase()}/storage/v1/object/${bucket}`, {
+      method: "DELETE",
+      headers: {
+        Authorization: `Bearer ${config.SUPABASE_SERVICE_KEY}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ prefixes: [objectPath] }),
+    });
+    if (!response.ok) {
+      console.warn(`Imagem antiga não removida (${bucket}):`, response.status);
+    }
+  } catch (err) {
+    console.warn(`Imagem antiga não removida (${bucket}):`, (err as Error).message);
+  }
+}
+
+/** Capa de comunidade: opcional, então Storage desligado = sem capa. */
+export function uploadCommunityCover(
+  buffer: Buffer,
+  communityId: string,
+): Promise<string | null> {
+  return uploadImage(buffer, {
+    bucket: config.SUPABASE_COVERS_BUCKET,
+    folder: communityId,
+    maxBytes: MAX_COVER_BYTES,
+    label: "A capa",
+  });
 }

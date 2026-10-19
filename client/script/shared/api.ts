@@ -113,7 +113,10 @@ export type Me = {
   isAdult: boolean;
   twoFactorEnabled: boolean;
   createdAt: string;
+  socialLinks: SocialLink[];
 };
+
+export type SocialLink = { platform: string; url: string };
 
 let meCache: Promise<Me> | null = null;
 
@@ -130,6 +133,14 @@ export function getMe(): Promise<Me> {
     });
   }
   return meCache;
+}
+
+/**
+ * Troca o /me em cache depois de uma edição (as rotas de edição devolvem o
+ * mesmo formato). Quem chamar getMe() depois já recebe o valor novo.
+ */
+export function setMeCache(me: Me): void {
+  meCache = Promise.resolve(me);
 }
 
 /**

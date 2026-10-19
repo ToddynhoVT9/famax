@@ -20,6 +20,13 @@ export const pages = {
   newCommunity: `${BASE}html/community/new.html`,
 } as const;
 
+/** Perfil de alguém; sem id, o próprio. */
+export function profileUrl(userId?: string): string {
+  return userId
+    ? `${pages.profile}?id=${encodeURIComponent(userId)}`
+    : pages.profile;
+}
+
 export function communityUrl(communityId: string): string {
   return `${BASE}html/community.html?id=${encodeURIComponent(communityId)}`;
 }

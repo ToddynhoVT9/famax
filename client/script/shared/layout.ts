@@ -169,6 +169,16 @@ function renderUserArea(area: HTMLElement, me: Me): void {
     });
 }
 
+let userAreaEl: HTMLElement | null = null;
+
+/**
+ * Redesenha nome e avatar do header. A tela de configurações chama depois de
+ * salvar, para a mudança aparecer sem recarregar a página.
+ */
+export function updateHeaderUser(me: Me): void {
+    if (userAreaEl) renderUserArea(userAreaEl, me);
+}
+
 function renderHeader(header: HTMLElement): void {
     header.innerHTML = HEADER_HTML;
 
@@ -177,6 +187,7 @@ function renderHeader(header: HTMLElement): void {
 
     const area = header.querySelector<HTMLElement>("#userArea");
     if (!area) return;
+    userAreaEl = area;
 
     // Sem token não há o que perguntar à API: visitante na hora.
     if (!getToken()) {

@@ -16,44 +16,63 @@
     <header id="app-header" class="header"></header>
     <aside id="app-sidebar" class="sidebar"></aside>
 
-    <!-- CONTEÚDO PRINCIPAL DO PERFIL -->
+    <!-- CONTEÚDO PRINCIPAL: preenchido por profile-settings.ts a partir de GET /api/me -->
     <main class="main-content" id="main-content">
-        <div class="perfil-container">
+        <div class="perfil-container" id="settingsContainer" aria-busy="true">
 
-            <!-- Banner -->
-            <div class="banner">
-                <!-- Botão Alterar Banner -->
-                <button class="btn-change-photo btn-change-banner">Alterar foto de baner</button>
-
-                <!-- Imagem de Perfil com sobreposição -->
-                <div class="profile-picture">
-                    <button class="btn-change-photo btn-change-profile">Alterar foto de perfil</button>
+            <!-- Banner e foto -->
+            <div class="banner" id="settingsBanner">
+                <div class="media-actions media-actions--banner">
+                    <button type="button" class="btn-media" id="btnBannerChange">Alterar banner</button>
+                    <button type="button" class="btn-media btn-media--danger" id="btnBannerRemove" hidden>Remover banner</button>
                 </div>
+                <input type="file" id="bannerInput" accept="image/png,image/jpeg,image/webp" hidden>
+
+                <div class="profile-picture" id="settingsAvatar"></div>
             </div>
+
+            <div class="media-actions media-actions--avatar">
+                <button type="button" class="btn-media" id="btnAvatarChange">Alterar foto</button>
+                <button type="button" class="btn-media btn-media--danger" id="btnAvatarRemove" hidden>Remover foto</button>
+                <input type="file" id="avatarInput" accept="image/png,image/jpeg,image/webp" hidden>
+            </div>
+            <p class="settings-hint">Foto: PNG, JPEG ou WebP, até 1MB. Banner: até 2MB.</p>
+            <p class="settings-status" id="mediaStatus" role="status" hidden></p>
 
             <!-- Grade de Informações -->
             <div class="perfil-info-grid">
 
                 <!-- Coluna Esquerda -->
                 <div class="col-esq">
-                    <div class="profile-line">
-                        <strong>Apelido:</strong> <span>usuario</span>
-                    </div>
-                    <div class="profile-line">
-                        <strong>Nome:</strong> <span id="userNameSpan">Nome do Usuário<span id="privatePadlockSettings" style="display:none; margin-left:8px;" title="Perfil Privado"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#ffffff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: sub;"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg></span></span>
-                    </div>
-                    <div class="profile-line">
-                        <strong id="btnSobre" style="cursor: pointer;"
-                            title="Clique para editar o seu Sobre">Sobre</strong>
-                    </div>
-                    <div class="profile-line">
-                        <strong>Adulto</strong>
-                        <div class="toggle-switch-ui">
-                            <div class="toggle-circle"></div>
+                    <form class="settings-form" id="identityForm" novalidate>
+                        <label class="settings-field">
+                            <span>Nome de exibição</span>
+                            <input type="text" class="settings-input" id="displayNameInput" maxlength="100" required>
+                        </label>
+                        <label class="settings-field">
+                            <span>Apelido <small>(opcional)</small></span>
+                            <input type="text" class="settings-input" id="nicknameInput" maxlength="50">
+                        </label>
+                        <div class="settings-form-actions">
+                            <button type="submit" class="btn-modal btn-modal--primary" id="btnIdentitySave">Salvar</button>
+                            <span class="settings-status" id="identityStatus" role="status" hidden></span>
                         </div>
+                    </form>
+
+                    <div class="profile-line">
+                        <button type="button" class="line-btn" id="btnSobre">Sobre</button>
+                        <span class="line-hint">nascimento, gênero e bio</span>
                     </div>
                     <div class="profile-line">
-                        <strong>Autenticação de dois fatores</strong>
+                        <span class="line-label" id="adultLabel">Conteúdo adulto</span>
+                        <button type="button" class="toggle-switch-ui" id="toggleAdult" role="switch"
+                            aria-checked="false" aria-labelledby="adultLabel" disabled>
+                            <span class="toggle-circle"></span>
+                        </button>
+                    </div>
+                    <div class="profile-line is-disabled">
+                        <span class="line-label">Autenticação de dois fatores</span>
+                        <span class="badge-soon">Em breve</span>
                     </div>
                 </div>
 
@@ -63,115 +82,148 @@
                 <!-- Coluna Direita -->
                 <div class="col-dir">
                     <div class="profile-line">
-                        <strong>E-mail:</strong> <span>email@exemplo.com</span>
+                        <span class="line-label">E-mail:</span>
+                        <span class="line-value" id="emailValue"></span>
                     </div>
                     <div class="profile-line">
-                        <strong id="btnChangePassword" style="cursor: pointer;"
-                            title="Clique para alterar a senha">Senha</strong>
+                        <span class="line-label">Usuário:</span>
+                        <span class="line-value" id="usernameValue"></span>
                     </div>
                     <div class="profile-line">
-                        <strong>Privar perfil</strong>
-                        <div class="toggle-switch-ui on" id="togglePrivate">
-                            <div class="toggle-circle"></div>
-                        </div>
+                        <button type="button" class="line-btn" id="btnChangePassword">Senha</button>
+                        <span class="line-hint">alterar</span>
                     </div>
                     <div class="profile-line">
-                        <strong>Outros perfis</strong>
+                        <span class="line-label" id="privateLabel">Perfil privado</span>
+                        <button type="button" class="toggle-switch-ui" id="togglePrivate" role="switch"
+                            aria-checked="false" aria-labelledby="privateLabel" disabled>
+                            <span class="toggle-circle"></span>
+                        </button>
+                    </div>
+                    <div class="profile-line is-disabled">
+                        <span class="line-label">Outros perfis</span>
+                        <span class="badge-soon">Em breve</span>
                     </div>
                     <div class="profile-line">
-                        <strong>Suas redes sociais</strong>
+                        <button type="button" class="line-btn" id="btnSocial">Suas redes sociais</button>
+                        <span class="line-hint" id="socialCount"></span>
                     </div>
                     <div class="profile-line">
-                        <strong id="btnLogoutAll" style="cursor: pointer;"
-                            title="Encerrar todas as sessões, inclusive esta">Sair de todos os dispositivos</strong>
+                        <button type="button" class="line-btn" id="btnLogoutAll"
+                            title="Encerrar todas as sessões, inclusive esta">Sair de todos os dispositivos</button>
                     </div>
                 </div>
 
             </div>
+            <p class="settings-status" id="settingsStatus" role="status" hidden></p>
         </div>
     </main>
 
     <!-- MODAL DE SENHA -->
     <div class="modal-overlay" id="senhaModalOverlay">
-        <div class="modal-box" id="senhaModalBox">
+        <div class="modal-box" role="dialog" aria-modal="true" aria-labelledby="senhaModalTitle">
             <!-- Passo 1: Senha atual -->
-            <div id="modalStep1">
-                <div class="modal-title">Senha</div>
-                <div class="modal-label">Qual a sua senha atual?</div>
-                <input type="password" class="modal-input" id="currentPasswordInput">
-                <div style="margin-top: 15px;">
-                    <label
-                        style="cursor: pointer; font-size: 1rem; display: flex; align-items: center; color: #e0e0e0;">
-                        <input type="checkbox" onclick="togglePasswordVis('currentPasswordInput')"
-                            style="margin-right: 8px; width: 16px; height: 16px; accent-color: #444;">
-                        Mostrar senha
-                    </label>
+            <form id="modalStep1" novalidate>
+                <div class="modal-title" id="senhaModalTitle">Senha</div>
+                <label class="modal-label" for="currentPasswordInput">Qual a sua senha atual?</label>
+                <input type="password" class="modal-input" id="currentPasswordInput" autocomplete="current-password">
+                <label class="show-password">
+                    <input type="checkbox" data-toggle-password="currentPasswordInput">
+                    Mostrar senha
+                </label>
+                <div class="modal-error" id="step1Error" role="alert" hidden></div>
+                <div class="modal-actions">
+                    <button type="button" class="btn-modal" data-close-modal>Cancelar</button>
+                    <button type="submit" class="btn-modal btn-modal--primary">Continuar</button>
                 </div>
-                <div id="step1Error"
-                    style="color: #ff6b6b; font-size: 0.95rem; margin-top: 15px; display: none; text-align: center;">
-                </div>
-            </div>
+            </form>
 
             <!-- Passo 2: Nova senha -->
-            <div id="modalStep2" style="display: none;">
+            <form id="modalStep2" novalidate hidden>
                 <div class="modal-title">Senha</div>
                 <div class="modal-two-cols">
                     <div>
-                        <div class="modal-label">Qual a sua nova senha?</div>
-                        <input type="password" class="modal-input" id="newPasswordInput">
+                        <label class="modal-label" for="newPasswordInput">Qual a sua nova senha?</label>
+                        <input type="password" class="modal-input" id="newPasswordInput" autocomplete="new-password">
                     </div>
                     <div>
-                        <div class="modal-label">Confirme a sua nova senha.</div>
-                        <input type="password" class="modal-input" id="confirmPasswordInput">
+                        <label class="modal-label" for="confirmPasswordInput">Confirme a sua nova senha.</label>
+                        <input type="password" class="modal-input" id="confirmPasswordInput" autocomplete="new-password">
                     </div>
                 </div>
-                <div style="margin-top: 15px;">
-                    <label
-                        style="cursor: pointer; font-size: 1rem; display: flex; align-items: center; color: #e0e0e0;">
-                        <input type="checkbox" onclick="togglePasswordVis('newPasswordInput', 'confirmPasswordInput')"
-                            style="margin-right: 8px; width: 16px; height: 16px; accent-color: #444;">
-                        Mostrar senhas
-                    </label>
+                <p class="modal-hint">Mínimo de 8 caracteres, com 3 números e 1 caractere especial. As outras sessões serão encerradas.</p>
+                <label class="show-password">
+                    <input type="checkbox" data-toggle-password="newPasswordInput confirmPasswordInput">
+                    Mostrar senhas
+                </label>
+                <div class="modal-error" id="step2Error" role="alert" hidden></div>
+                <div class="modal-actions">
+                    <button type="button" class="btn-modal" id="btnPasswordBack">Voltar</button>
+                    <button type="submit" class="btn-modal btn-modal--primary" id="btnPasswordSave">Alterar senha</button>
                 </div>
-                <div id="step2Error"
-                    style="color: #ff6b6b; font-size: 0.95rem; margin-top: 15px; display: none; text-align: center;">
-                </div>
-            </div>
+            </form>
 
-            <!-- Passo 3: Sucesso -->
-            <div id="modalStep3" style="display: none;">
-                <div class="modal-success">Alterado com sucesso!</div>
+            <!-- Passo 3: Sucesso (só depois da confirmação da API) -->
+            <div id="modalStep3" hidden>
+                <div class="modal-success" role="status">Senha alterada com sucesso!</div>
             </div>
         </div>
     </div>
 
     <!-- MODAL SOBRE -->
     <div class="modal-overlay" id="sobreModalOverlay">
-        <div class="modal-box" id="sobreModalBox" style="width: 700px;">
-            <div class="modal-title">Sobre</div>
+        <form class="modal-box modal-box--wide" id="sobreForm" role="dialog" aria-modal="true"
+            aria-labelledby="sobreModalTitle" novalidate>
+            <div class="modal-title" id="sobreModalTitle">Sobre</div>
 
             <div class="sobre-flex-row">
                 <div class="sobre-idade-section">
-                    <div class="modal-label">Idade</div>
-                    <input type="date" class="sobre-date-input" id="sobreIdade">
+                    <label class="modal-label" for="sobreBirthDate">Data de nascimento</label>
+                    <input type="date" class="sobre-date-input" id="sobreBirthDate">
                 </div>
 
                 <div class="sobre-genero-section">
-                    <div class="modal-label">Gênero</div>
-                    <div class="genero-options" id="generoOptionsContainer">
-                        <button class="btn-genero">Outro</button>
-                        <button class="btn-genero">Masculino</button>
-                        <button class="btn-genero">Feminino</button>
+                    <div class="modal-label" id="generoLabel">Gênero</div>
+                    <div class="genero-options" id="generoOptionsContainer" role="radiogroup" aria-labelledby="generoLabel">
+                        <button type="button" class="btn-genero" role="radio" aria-checked="false" data-gender="">Não informar</button>
+                        <button type="button" class="btn-genero" role="radio" aria-checked="false" data-gender="outro">Outro</button>
+                        <button type="button" class="btn-genero" role="radio" aria-checked="false" data-gender="masculino">Masculino</button>
+                        <button type="button" class="btn-genero" role="radio" aria-checked="false" data-gender="feminino">Feminino</button>
                     </div>
                 </div>
             </div>
 
             <div class="sobre-bio-section">
-                <div class="modal-label">Bio</div>
-                <textarea class="sobre-textarea"
-                    rows="8" placeholder="Escreva sobre você..."></textarea>
+                <label class="modal-label" for="sobreBio">Bio</label>
+                <textarea class="sobre-textarea" id="sobreBio" rows="8" maxlength="500"
+                    placeholder="Escreva sobre você..."></textarea>
+                <span class="char-counter" id="sobreBioCounter" aria-live="polite"></span>
             </div>
-        </div>
+
+            <div class="modal-error" id="sobreError" role="alert" hidden></div>
+            <div class="modal-actions">
+                <button type="button" class="btn-modal" data-close-modal>Cancelar</button>
+                <button type="submit" class="btn-modal btn-modal--primary" id="btnSobreSave">Salvar</button>
+            </div>
+        </form>
+    </div>
+
+    <!-- MODAL REDES SOCIAIS -->
+    <div class="modal-overlay" id="socialModalOverlay">
+        <form class="modal-box modal-box--wide" id="socialForm" role="dialog" aria-modal="true"
+            aria-labelledby="socialModalTitle" novalidate>
+            <div class="modal-title" id="socialModalTitle">Suas redes sociais</div>
+            <p class="modal-hint">Os links aparecem no seu perfil. Só endereços https://.</p>
+
+            <div class="social-rows" id="socialRows"></div>
+            <button type="button" class="btn-modal" id="btnSocialAdd">+ Adicionar</button>
+
+            <div class="modal-error" id="socialError" role="alert" hidden></div>
+            <div class="modal-actions">
+                <button type="button" class="btn-modal" data-close-modal>Cancelar</button>
+                <button type="submit" class="btn-modal btn-modal--primary" id="btnSocialSave">Salvar</button>
+            </div>
+        </form>
     </div>
 
     <script type="module" src="../../script/user-script/profile-settings.ts"></script>

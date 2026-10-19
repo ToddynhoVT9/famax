@@ -1002,6 +1002,340 @@ check(
     (await call("GET", "/me", { token: aliceToken })).status === 200,
 );
 
+// --- Perfil e configurações -------------------------------------------------
+
+console.log("\n[Perfil] Edição");
+resetRateLimits();
+
+const ivy = {
+    email: `ivy${stamp}@famax.test`,
+    username: `ivy${stamp}`,
+    password: "senha123!forte",
+    displayName: "Ivy Teste",
+    termsAccepted: true,
+};
+const ivyReg = await call("POST", "/auth/register", { body: ivy });
+const ivyId = ivyReg.body?.user?.userId;
+// Sessão "deste dispositivo": é a que a troca de senha mantém.
+const ivyToken = (
+    await call("POST", "/auth/login", {
+        body: { identifier: ivy.username, password: ivy.password },
+    })
+).body?.token;
+
+const profileOk = await call("PATCH", "/me/profile", {
+    token: ivyToken,
+    body: {
+        displayName: "Ivy Editada",
+        nickname: "ivyzinha",
+        bio: "Bio de teste",
+        birthDate: "2000-05-10",
+        gender: "feminino",
+    },
+});
+check(
+    "PATCH /me/profile salva e devolve o formato do /me",
+    profileOk.status === 200 &&
+        profileOk.body?.user?.displayName === "Ivy Editada" &&
+        profileOk.body.user.nickname === "ivyzinha" &&
+        profileOk.body.user.bio === "Bio de teste" &&
+        profileOk.body.user.birthDate === "2000-05-10" &&
+        profileOk.body.user.gender === "feminino" &&
+        Array.isArray(profileOk.body.user.socialLinks),
+    JSON.stringify(profileOk.body).slice(0, 200),
+);
+
+const clearNickname = await call("PATCH", "/me/profile", {
+    token: ivyToken,
+    body: { nickname: "" },
+});
+check(
+    "apelido vazio vira null e o resto não muda",
+    clearNickname.body?.user?.nickname === null &&
+        clearNickname.body?.user?.bio === "Bio de teste",
+    JSON.stringify(clearNickname.body?.user).slice(0, 160),
+);
+
+const invalidProfiles = [
+    ["data no futuro", { birthDate: "2999-01-01" }],
+    ["menor de 13 anos", { birthDate: `${new Date().getFullYear() - 5}-01-01` }],
+    ["data inexistente", { birthDate: "2001-02-31" }],
+    ["bio acima de 500", { bio: "x".repeat(501) }],
+    ["gênero fora da lista", { gender: "robô" }],
+    ["campo desconhecido", { email: "trocar@famax.test" }],
+    ["corpo vazio", {}],
+];
+for (const [label, body] of invalidProfiles) {
+    const res = await call("PATCH", "/me/profile", { token: ivyToken, body });
+    check(`PATCH /me/profile com ${label} → 400`, res.status === 400, `${res.status} ${JSON.stringify(res.body).slice(0, 120)}`);
+}
+
+// Conteúdo adulto depende da idade calculada pelo nascimento.
+const adultOn = await call("PATCH", "/me/settings", {
+    token: ivyToken,
+    body: { isAdult: true },
+});
+check("isAdult com 18+ → 200", adultOn.status === 200 && adultOn.body?.user?.isAdult === true, JSON.stringify(adultOn.body).slice(0, 160));
+
+const sixteen = `${new Date().getFullYear() - 16}-01-01`;
+const minorDate = await call("PATCH", "/me/profile", {
+    token: ivyToken,
+    body: { birthDate: sixteen },
+});
+check(
+    "nascimento que deixa de ter 18 anos desliga isAdult",
+    minorDate.status === 200 && minorDate.body?.user?.isAdult === false,
+    JSON.stringify(minorDate.body?.user).slice(0, 160),
+);
+const adultMinor = await call("PATCH", "/me/settings", {
+    token: ivyToken,
+    body: { isAdult: true },
+});
+check("isAdult com menos de 18 → 400", adultMinor.status === 400, JSON.stringify(adultMinor.body));
+await call("PATCH", "/me/profile", { token: ivyToken, body: { birthDate: "2000-05-10" } });
+
+const privateOn = await call("PATCH", "/me/settings", {
+    token: ivyToken,
+    body: { isPrivate: true },
+});
+check("PATCH /me/settings isPrivate", privateOn.body?.user?.isPrivate === true);
+
+// --- Redes sociais -----------------------------------------------------------
+
+const linksOk = await call("PUT", "/me/social-links", {
+    token: ivyToken,
+    body: {
+        links: [
+            { platform: "github", url: "https://github.com/ivy" },
+            { platform: "site", url: "https://ivy.example" },
+        ],
+    },
+});
+check(
+    "PUT /me/social-links substitui a lista",
+    linksOk.status === 200 && linksOk.body?.user?.socialLinks?.length === 2,
+    JSON.stringify(linksOk.body).slice(0, 200),
+);
+
+const invalidLinks = [
+    ["http sem TLS", [{ platform: "site", url: "http://ivy.example" }]],
+    ["javascript:", [{ platform: "site", url: "javascript:alert(1)" }]],
+    ["plataforma fora da lista", [{ platform: "orkut", url: "https://orkut.com/ivy" }]],
+    ["mais de 8", Array.from({ length: 9 }, (_, i) => ({ platform: "site", url: `https://ivy${i}.example` }))],
+];
+for (const [label, links] of invalidLinks) {
+    const res = await call("PUT", "/me/social-links", { token: ivyToken, body: { links } });
+    check(`social-links com ${label} → 400`, res.status === 400, `${res.status} ${JSON.stringify(res.body).slice(0, 120)}`);
+}
+
+// --- Upload de avatar/banner (sem Storage configurado no teste) -------------
+
+const avatarForm = (bytes, name = "a.png") => {
+    const form = new FormData();
+    form.append("avatar", new Blob([bytes]), name);
+    return form;
+};
+
+const avatarNotImage = await call("POST", "/me/avatar", {
+    token: ivyToken,
+    body: avatarForm(new TextEncoder().encode("isto não é uma imagem, só texto"), "falso.png"),
+    raw: true,
+});
+check(
+    "avatar que não é imagem → 400 (mesmo sem Storage)",
+    avatarNotImage.status === 400,
+    `${avatarNotImage.status} ${JSON.stringify(avatarNotImage.body)}`,
+);
+
+const avatarNoStorage = await call("POST", "/me/avatar", {
+    token: ivyToken,
+    body: avatarForm(pngBytes),
+    raw: true,
+});
+check(
+    "avatar válido sem Storage → 503 explicado",
+    avatarNoStorage.status === 503 && /configurado/.test(avatarNoStorage.body?.error ?? ""),
+    `${avatarNoStorage.status} ${JSON.stringify(avatarNoStorage.body)}`,
+);
+
+const avatarTooBig = await call("POST", "/me/avatar", {
+    token: ivyToken,
+    body: avatarForm(new Uint8Array(1024 * 1024 + 10)),
+    raw: true,
+});
+check(
+    "avatar acima de 1MB → 413",
+    avatarTooBig.status === 413 && /1MB/.test(avatarTooBig.body?.error ?? ""),
+    `${avatarTooBig.status} ${JSON.stringify(avatarTooBig.body)}`,
+);
+
+const avatarMissing = await call("POST", "/me/avatar", {
+    token: ivyToken,
+    body: new FormData(),
+    raw: true,
+});
+check("avatar sem arquivo → 400", avatarMissing.status === 400, String(avatarMissing.status));
+
+const avatarDelete = await call("DELETE", "/me/avatar", { token: ivyToken });
+check(
+    "DELETE /me/avatar → 200 com avatarUrl null",
+    avatarDelete.status === 200 && avatarDelete.body?.user?.avatarUrl === null,
+    String(avatarDelete.status),
+);
+
+// --- Privacidade do perfil público --------------------------------------------
+
+console.log("\n[Perfil] Público e privacidade");
+
+// A ivy entra na comunidade da alice, publica e comenta, para ter o que listar.
+await call("POST", `/communities/${communityId}/join`, { token: ivyToken });
+const ivyPost = await call("POST", "/posts", {
+    token: ivyToken,
+    body: { communityId, title: "Post da Ivy", content: "Conteúdo da Ivy" },
+});
+await call("POST", `/posts/${ivyPost.body?.post?.post_id}/comments`, {
+    token: ivyToken,
+    body: { content: "Comentário da Ivy" },
+});
+
+// Perfil privado (ligado acima) visto pelo bob: só o cartão.
+const privateForBob = await call("GET", `/users/${ivyId}`, { token: bobToken });
+check(
+    "perfil privado para terceiros: só nome, @, avatar e isPrivate",
+    privateForBob.status === 200 &&
+        privateForBob.body?.user?.isPrivate === true &&
+        privateForBob.body.user.username === ivy.username &&
+        !("bio" in privateForBob.body.user) &&
+        !("stats" in privateForBob.body.user) &&
+        !("socialLinks" in privateForBob.body.user),
+    JSON.stringify(privateForBob.body),
+);
+
+const privateForVisitor = await call("GET", `/users/${ivyId}`);
+check(
+    "perfil privado para visitante também esconde o conteúdo",
+    privateForVisitor.status === 200 && !("bio" in (privateForVisitor.body?.user ?? {})),
+);
+
+const privateForOwner = await call("GET", `/users/${ivyId}`, { token: ivyToken });
+check(
+    "dono vê o próprio perfil privado completo",
+    privateForOwner.body?.user?.isOwner === true &&
+        privateForOwner.body.user.bio === "Bio de teste" &&
+        privateForOwner.body.user.stats?.posts === 1,
+    JSON.stringify(privateForOwner.body).slice(0, 200),
+);
+
+const privatePostsForBob = await call("GET", `/users/${ivyId}/posts`, { token: bobToken });
+check("posts de perfil privado para terceiros → 403", privatePostsForBob.status === 403);
+const privateCommentsForBob = await call("GET", `/users/${ivyId}/comments`, { token: bobToken });
+check("respostas de perfil privado para terceiros → 403", privateCommentsForBob.status === 403);
+
+await call("PATCH", "/me/settings", { token: ivyToken, body: { isPrivate: false } });
+
+const publicForBob = await call("GET", `/users/${ivyId}`, { token: bobToken });
+check(
+    "perfil público: bio, contadores e redes sociais",
+    publicForBob.body?.user?.isPrivate === false &&
+        publicForBob.body.user.isOwner === false &&
+        publicForBob.body.user.bio === "Bio de teste" &&
+        publicForBob.body.user.stats?.posts === 1 &&
+        publicForBob.body.user.stats?.comments === 1 &&
+        publicForBob.body.user.stats?.communities === 1 &&
+        publicForBob.body.user.socialLinks?.length === 2,
+    JSON.stringify(publicForBob.body).slice(0, 240),
+);
+
+const ivyPosts = await call("GET", `/users/${ivyId}/posts`);
+check(
+    "GET /users/:id/posts traz o post com o nome da comunidade",
+    ivyPosts.status === 200 &&
+        ivyPosts.body?.data?.length === 1 &&
+        ivyPosts.body.data[0].title === "Post da Ivy" &&
+        ivyPosts.body.data[0].community_name === communityName &&
+        ivyPosts.body.pagination?.total === 1,
+    JSON.stringify(ivyPosts.body).slice(0, 200),
+);
+
+const ivyComments = await call("GET", `/users/${ivyId}/comments`);
+check(
+    "GET /users/:id/comments traz o post e a comunidade de cada resposta",
+    ivyComments.status === 200 &&
+        ivyComments.body?.data?.[0]?.content === "Comentário da Ivy" &&
+        ivyComments.body.data[0].post_title === "Post da Ivy" &&
+        ivyComments.body.data[0].community_name === communityName,
+    JSON.stringify(ivyComments.body).slice(0, 200),
+);
+
+const pagedPosts = await call("GET", `/users/${ivyId}/posts?page=2&limit=1`);
+check(
+    "listagem do perfil é paginada",
+    pagedPosts.body?.data?.length === 0 && pagedPosts.body?.pagination?.totalPages === 1,
+    JSON.stringify(pagedPosts.body?.pagination),
+);
+
+check(
+    "usuário inexistente → 404",
+    (await call("GET", "/users/00000000-0000-4000-8000-000000000000")).status === 404,
+);
+check("id inválido → 400", (await call("GET", "/users/nao-e-uuid")).status === 400);
+
+// --- Troca de senha ------------------------------------------------------------
+
+console.log("\n[Perfil] Troca de senha");
+
+const ivyOtherDevice = (
+    await call("POST", "/auth/login", {
+        body: { identifier: ivy.username, password: ivy.password },
+    })
+).body?.token;
+
+const wrongCurrent = await call("POST", "/me/password", {
+    token: ivyToken,
+    body: { currentPassword: "senha-errada", newPassword: "nova456!senha7" },
+});
+check(
+    "senha atual errada → 400 (não 401, para o front não deslogar)",
+    wrongCurrent.status === 400 && wrongCurrent.body?.error === "Senha atual incorreta",
+    `${wrongCurrent.status} ${JSON.stringify(wrongCurrent.body)}`,
+);
+
+const weakNew = await call("POST", "/me/password", {
+    token: ivyToken,
+    body: { currentPassword: ivy.password, newPassword: "fraca" },
+});
+check("nova senha fora das regras → 400", weakNew.status === 400, JSON.stringify(weakNew.body).slice(0, 120));
+
+const changed = await call("POST", "/me/password", {
+    token: ivyToken,
+    body: { currentPassword: ivy.password, newPassword: "nova456!senha7" },
+});
+check("troca de senha com a atual certa → 204", changed.status === 204, `${changed.status} ${JSON.stringify(changed.body)}`);
+check(
+    "sessão atual continua válida",
+    (await call("GET", "/me", { token: ivyToken })).status === 200,
+);
+check(
+    "outras sessões são revogadas",
+    (await call("GET", "/me", { token: ivyOtherDevice })).status === 401,
+);
+check(
+    "senha antiga não entra mais",
+    (
+        await call("POST", "/auth/login", {
+            body: { identifier: ivy.username, password: ivy.password },
+        })
+    ).status === 401,
+);
+check(
+    "senha nova entra",
+    (
+        await call("POST", "/auth/login", {
+            body: { identifier: ivy.username, password: "nova456!senha7" },
+        })
+    ).status === 200,
+);
+
 // ---------------------------------------------------------------------------
 
 console.log(`\n${"=".repeat(60)}`);

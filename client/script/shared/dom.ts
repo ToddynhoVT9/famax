@@ -88,6 +88,12 @@ export function shortTime(isoDate: string): string {
     });
 }
 
+/** Corta texto longo para resumos ("Lorem ipsum..."). */
+export function truncate(text: string, max: number): string {
+    const clean = text.trim();
+    return clean.length > max ? `${clean.slice(0, max - 1).trimEnd()}…` : clean;
+}
+
 /** Lê um parâmetro da query string da página atual. */
 export function queryParam(name: string): string | null {
     return new URLSearchParams(window.location.search).get(name);

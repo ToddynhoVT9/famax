@@ -99,4 +99,6 @@ export const config = {
   SUPABASE_URL: process.env.SUPABASE_URL ?? "",
   SUPABASE_SERVICE_KEY: process.env.SUPABASE_SERVICE_KEY ?? "",
   SUPABASE_COVERS_BUCKET: process.env.SUPABASE_COVERS_BUCKET ?? "community-covers",
+  // Avatar e banner dos usuários (migration 008).
+  SUPABASE_USER_MEDIA_BUCKET: process.env.SUPABASE_USER_MEDIA_BUCKET ?? "user-media",
 };

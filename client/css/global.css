@@ -21,3 +21,23 @@ body {
 a {
     color: inherit;
 }
+
+/* Texto só para leitor de tela (ex.: rótulo de um ícone). */
+.visually-hidden {
+    position: absolute !important;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+}
+
+/* O atributo hidden precisa vencer o display das classes (.btn-load-more,
+   .profile-tabs...): sem isto, um elemento com display próprio no CSS
+   continua visível mesmo com hidden, e o JS que esconde por hidden falha. */
+[hidden] {
+    display: none !important;
+}

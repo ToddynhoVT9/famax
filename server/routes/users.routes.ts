@@ -1,7 +1,8 @@
-import { Router } from "express";
+import { Router, type Request, type Response } from "express";
 import { z } from "zod";
 import { pool } from "../db.js";
-import { requireAuth } from "../middleware/auth.js";
+import { optionalAuth, requireAuth } from "../middleware/auth.js";
+import { loadSocialLinks, profileAccess } from "../lib/profile.js";
 
 const router = Router();
 
@@ -58,6 +59,243 @@ router.get("/users", requireAuth, async (req, res, next) => {
         .status(400)
         .json({ error: "Parâmetros inválidos", details: err.flatten() });
     }
+    next(err);
+  }
+});
+
+// ===========================================================================
+// GET /api/users/:userId — perfil público
+// ---------------------------------------------------------------------------
+// optionalAuth: visitante vê perfis públicos. Perfil privado visto por outra
+// pessoa devolve só o cartão de identificação (nome, @, avatar) e
+// isPrivate: true — o suficiente para a tela dizer "perfil privado" sem
+// vazar bio, contadores ou redes.
+// ===========================================================================
+
+const userIdParam = z.object({
+  userId: z.string().uuid("ID de usuário inválido"),
+});
+
+const pageQuery = z.object({
+  page: z.coerce.number().int().min(1).default(1),
+  limit: z.coerce.number().int().min(1).max(50).default(10),
+});
+
+function paramsError(res: Response, err: z.ZodError) {
+  return res
+    .status(400)
+    .json({ error: "Parâmetros inválidos", details: err.flatten() });
+}
+
+router.get("/users/:userId", optionalAuth, async (req, res, next) => {
+  try {
+    const { userId } = userIdParam.parse(req.params);
+
+    const access = await profileAccess(userId, req.userId);
+    if (!access) {
+      return res.status(404).json({ error: "Usuário não encontrado" });
+    }
+
+    // Os contadores só olham conteúdo visível: post/comentário apagado ou
+    // em comunidade apagada não conta.
+    const { rows } = await pool.query(
+      `SELECT
+         u.user_id,
+         u.username,
+         u.created_at,
+         up.display_name,
+         up.nickname,
+         up.avatar_url,
+         up.banner_url,
+         up.bio,
+         (SELECT COUNT(*)::int
+            FROM posts p
+            INNER JOIN communities c ON c.community_id = p.community_id
+           WHERE p.author_id = u.user_id
+             AND p.deleted_at IS NULL
+             AND c.deleted_at IS NULL) AS posts_count,
+         (SELECT COUNT(*)::int
+            FROM comments cm
+            INNER JOIN posts p       ON p.post_id = cm.post_id
+            INNER JOIN communities c ON c.community_id = p.community_id
+           WHERE cm.author_id = u.user_id
+             AND cm.deleted_at IS NULL
+             AND p.deleted_at IS NULL
+             AND c.deleted_at IS NULL) AS comments_count,
+         (SELECT COUNT(*)::int
+            FROM community_members m
+            INNER JOIN communities c ON c.community_id = m.community_id
+           WHERE m.user_id = u.user_id
+             AND c.deleted_at IS NULL) AS communities_count
+       FROM users u
+       LEFT JOIN user_profiles up ON up.user_id = u.user_id
+       WHERE u.user_id = $1`,
+      [userId],
+    );
+    const row = rows[0];
+
+    if (!access.canView) {
+      return res.json({
+        user: {
+          userId: row.user_id,
+          username: row.username,
+          displayName: row.display_name,
+          avatarUrl: row.avatar_url,
+          isPrivate: true,
+          isOwner: false,
+        },
+      });
+    }
+
+    res.json({
+      user: {
+        userId: row.user_id,
+        username: row.username,
+        displayName: row.display_name,
+        nickname: row.nickname,
+        avatarUrl: row.avatar_url,
+        bannerUrl: row.banner_url,
+        bio: row.bio,
+        createdAt: row.created_at,
+        isPrivate: access.isPrivate,
+        isOwner: access.isOwner,
+        stats: {
+          posts: row.posts_count,
+          comments: row.comments_count,
+          communities: row.communities_count,
+        },
+        socialLinks: await loadSocialLinks(userId),
+      },
+    });
+  } catch (err) {
+    if (err instanceof z.ZodError) return paramsError(res, err);
+    next(err);
+  }
+});
+
+/**
+ * Validação comum às listagens do perfil: usuário existe e quem pede pode ver.
+ * Perfil privado de outra pessoa é 403 (a existência já é pública pelo
+ * GET /users/:userId; o que se protege é o conteúdo).
+ */
+async function guardListing(
+  req: Request,
+  res: Response,
+): Promise<{ userId: string; page: number; limit: number } | null> {
+  const { userId } = userIdParam.parse(req.params);
+  const { page, limit } = pageQuery.parse(req.query);
+
+  const access = await profileAccess(userId, req.userId);
+  if (!access) {
+    res.status(404).json({ error: "Usuário não encontrado" });
+    return null;
+  }
+  if (!access.canView) {
+    res.status(403).json({ error: "Este perfil é privado" });
+    return null;
+  }
+  return { userId, page, limit };
+}
+
+// ===========================================================================
+// GET /api/users/:userId/posts — aba "Posts" do perfil
+// ===========================================================================
+
+router.get("/users/:userId/posts", optionalAuth, async (req, res, next) => {
+  try {
+    const guard = await guardListing(req, res);
+    if (!guard) return;
+    const { userId, page, limit } = guard;
+
+    const { rows } = await pool.query(
+      `SELECT
+         p.post_id,
+         p.title,
+         p.content,
+         p.likes_count,
+         p.comments_count,
+         p.created_at,
+         c.community_id,
+         c.name AS community_name
+       FROM posts p
+       INNER JOIN communities c ON c.community_id = p.community_id
+       WHERE p.author_id = $1
+         AND p.deleted_at IS NULL
+         AND c.deleted_at IS NULL
+       ORDER BY p.created_at DESC
+       LIMIT $2 OFFSET $3`,
+      [userId, limit, (page - 1) * limit],
+    );
+
+    const { rows: countRows } = await pool.query(
+      `SELECT COUNT(*)::int AS total
+       FROM posts p
+       INNER JOIN communities c ON c.community_id = p.community_id
+       WHERE p.author_id = $1 AND p.deleted_at IS NULL AND c.deleted_at IS NULL`,
+      [userId],
+    );
+    const total = countRows[0].total;
+
+    res.json({
+      data: rows,
+      pagination: { page, limit, total, totalPages: Math.ceil(total / limit) },
+    });
+  } catch (err) {
+    if (err instanceof z.ZodError) return paramsError(res, err);
+    next(err);
+  }
+});
+
+// ===========================================================================
+// GET /api/users/:userId/comments — aba "Respostas" do perfil
+// ===========================================================================
+
+router.get("/users/:userId/comments", optionalAuth, async (req, res, next) => {
+  try {
+    const guard = await guardListing(req, res);
+    if (!guard) return;
+    const { userId, page, limit } = guard;
+
+    const { rows } = await pool.query(
+      `SELECT
+         cm.comment_id,
+         cm.content,
+         cm.created_at,
+         p.post_id,
+         p.title AS post_title,
+         c.community_id,
+         c.name AS community_name
+       FROM comments cm
+       INNER JOIN posts p       ON p.post_id = cm.post_id
+       INNER JOIN communities c ON c.community_id = p.community_id
+       WHERE cm.author_id = $1
+         AND cm.deleted_at IS NULL
+         AND p.deleted_at IS NULL
+         AND c.deleted_at IS NULL
+       ORDER BY cm.created_at DESC
+       LIMIT $2 OFFSET $3`,
+      [userId, limit, (page - 1) * limit],
+    );
+
+    const { rows: countRows } = await pool.query(
+      `SELECT COUNT(*)::int AS total
+       FROM comments cm
+       INNER JOIN posts p       ON p.post_id = cm.post_id
+       INNER JOIN communities c ON c.community_id = p.community_id
+       WHERE cm.author_id = $1
+         AND cm.deleted_at IS NULL
+         AND p.deleted_at IS NULL
+         AND c.deleted_at IS NULL`,
+      [userId],
+    );
+    const total = countRows[0].total;
+
+    res.json({
+      data: rows,
+      pagination: { page, limit, total, totalPages: Math.ceil(total / limit) },
+    });
+  } catch (err) {
+    if (err instanceof z.ZodError) return paramsError(res, err);
     next(err);
   }
 });

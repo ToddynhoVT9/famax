@@ -4,6 +4,7 @@ import { z } from "zod";
 import { randomUUID } from "node:crypto";
 import { pool } from "../db.js";
 import { rateLimit } from "../lib/rate-limit.js";
+import { BCRYPT_ROUNDS, passwordSchema } from "../lib/password.js";
 import {
   createSession,
   revokeAllSessions,
@@ -68,17 +69,7 @@ const registerSchema = z.object({
     .min(3, "Username deve ter no mínimo 3 caracteres")
     .max(50)
     .regex(/^[a-zA-Z0-9_]+$/, "Username só pode conter letras, números e _"),
-  password: z
-    .string()
-    .min(8, "Senha deve ter no mínimo 8 caracteres")
-    .refine(
-      (pwd) => (pwd.match(/\d/g) ?? []).length >= 3,
-      "Senha precisa de pelo menos 3 números",
-    )
-    .refine(
-      (pwd) => /[^A-Za-z0-9]/.test(pwd),
-      "Senha precisa de pelo menos 1 caractere especial",
-    ),
+  password: passwordSchema,
   displayName: z.string().min(1, "Nome de exibição obrigatório"),
   termsAccepted: z.literal(true, {
     errorMap: () => ({ message: "Você precisa aceitar os termos" }),
@@ -100,7 +91,7 @@ router.post("/register", registerLimitByIp, async (req, res, next) => {
       return res.status(409).json({ error: "Email ou username já cadastrado" });
     }
 
-    const passwordHash = await bcrypt.hash(data.password, 12);
+    const passwordHash = await bcrypt.hash(data.password, BCRYPT_ROUNDS);
 
     const userId = randomUUID();
     const profileId = randomUUID();

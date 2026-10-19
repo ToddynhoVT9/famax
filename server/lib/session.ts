@@ -126,3 +126,20 @@ export async function revokeAllSessions(userId: string): Promise<void> {
     [userId],
   );
 }
+
+/**
+ * Encerra todas as sessões do usuário menos a atual. Usado na troca de senha:
+ * quem trocou continua logado aqui, e qualquer sessão aberta com a senha
+ * antiga (inclusive a de quem a descobriu) cai.
+ */
+export async function revokeOtherSessions(
+  userId: string,
+  keepSessionId: string,
+  db: Queryable = pool,
+): Promise<void> {
+  await db.query(
+    `UPDATE user_sessions SET revoked_at = NOW()
+     WHERE user_id = $1 AND session_id <> $2 AND revoked_at IS NULL`,
+    [userId, keepSessionId],
+  );
+}

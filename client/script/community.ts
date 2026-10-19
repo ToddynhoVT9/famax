@@ -12,6 +12,7 @@
  */
 import { api, getCurrentUserId, getToken } from "./shared/api.js";
 import { goToLogin } from "./shared/auth-guard.js";
+import { profileUrl } from "./shared/pages.js";
 import { initLayout, refreshMyCommunities } from "./shared/layout.js";
 import {
     avatarColor,
@@ -105,12 +106,12 @@ function renderPost(post: Post): string {
 
     return `
         <article class="tf-post" data-post-id="${escapeHtml(post.post_id)}">
-            <div class="tf-post-avatar-container" data-author-name="${escapeHtml(name)}">
+            <div class="tf-post-avatar-container" data-author-id="${escapeHtml(post.author_id)}">
                 <div class="tf-avatar ${avatarColor(post.author_id)}">${escapeHtml(initials(name))}</div>
             </div>
             <div class="tf-post-body">
                 <div class="tf-post-meta">
-                    <strong>${escapeHtml(name)}</strong> • Perguntado em ${escapeHtml(category)}
+                    <strong data-author-id="${escapeHtml(post.author_id)}">${escapeHtml(name)}</strong> • Perguntado em ${escapeHtml(category)}
                 </div>
                 <h3 class="tf-post-title">${escapeHtml(post.title)}</h3>
                 <div class="tf-post-snippet">${escapeHtml(post.content)}</div>
@@ -435,16 +436,10 @@ if (postsList) {
             return;
         }
 
-        const authorRef =
-            target.closest<HTMLElement>(".tf-post-avatar-container") ??
-            (target.closest(".tf-post-meta") ? target.closest<HTMLElement>("strong") : null);
-
-        if (authorRef) {
-            const post = authorRef.closest<HTMLElement>(".tf-post");
-            const name =
-                post?.querySelector<HTMLElement>(".tf-post-meta strong")?.textContent ??
-                "Usuário";
-            window.location.href = `user-pages/profile-view.html?view=other&name=${encodeURIComponent(name)}`;
+        // Pelo id, não pelo nome: nomes de exibição se repetem e mudam.
+        const authorId = target.closest<HTMLElement>("[data-author-id]")?.dataset.authorId;
+        if (authorId) {
+            window.location.href = profileUrl(authorId);
         }
     });
 
