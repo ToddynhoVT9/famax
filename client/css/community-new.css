@@ -6,10 +6,14 @@ body.community-new-page {
     background-color: #222222;
     color: #ffffff;
     min-height: 100vh;
+}
+
+/* O cartão fica centralizado no espaço abaixo do header compartilhado. */
+.community-new-main {
+    min-height: calc(100vh - 80px);
     display: flex;
     align-items: center;
     justify-content: center;
-    padding: 24px;
 }
 
 .page-card {

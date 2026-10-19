@@ -103,13 +103,7 @@
     font-size: 1.1rem;
 }
 
-/* Avatar colors */
-.bg-blue { background-color: #0073e6; }
-.bg-pink { background-color: #e65c9c; }
-.bg-gray { background-color: #c4c4c4; }
-.bg-orange { background-color: #f69c5e; }
-.bg-lightb { background-color: #72bde8; }
-.bg-teal { background-color: #55c5ac; }
+/* Cores de avatar (.bg-*): em layout.css, compartilhadas com o header. */
 
 .tf-post-body {
     display: flex;

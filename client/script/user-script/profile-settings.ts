@@ -1,23 +1,18 @@
 /**
  * FAMAX — Profile Settings (Editar Perfil) Script
  */
-import { logout, logoutAll } from "../shared/api.js";
+import { logoutAll } from "../shared/api.js";
 import { requireLogin } from "../shared/auth-guard.js";
-import { initSidebar } from "../shared/sidebar.js";
-import { initHeaderDropdowns } from "../shared/header-dropdowns.js";
+import { initLayout } from "../shared/layout.js";
 import { initToggleSwitches } from "../shared/toggle-switch.js";
 
 requireLogin();
-initSidebar();
+initLayout();
 
-// Ponto de saída provisório: o prompt 03 leva o "Sair" para o menu do header.
-document.getElementById("btnLogout")?.addEventListener("click", () => {
-    void logout();
-});
+// "Sair" fica no menu do header; encerrar TODAS as sessões é configuração.
 document.getElementById("btnLogoutAll")?.addEventListener("click", () => {
     void logoutAll();
 });
-initHeaderDropdowns();
 
 // Toggle switches com callback para privar perfil
 initToggleSwitches((element, isOn) => {

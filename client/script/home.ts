@@ -5,13 +5,11 @@
  * Antes a home tinha um card fixo apontando para community.html sem ?id=, o
  * que agora levaria a uma página sem comunidade selecionada.
  */
-import { api, getToken } from "./shared/api.js";
-import { initSidebar } from "./shared/sidebar.js";
-import { initHeaderDropdowns } from "./shared/header-dropdowns.js";
+import { api } from "./shared/api.js";
+import { initLayout } from "./shared/layout.js";
 import { escapeHtml } from "./shared/dom.js";
 
-initSidebar();
-initHeaderDropdowns();
+initLayout();
 
 interface CommunityCard {
     community_id: string;
@@ -23,7 +21,6 @@ interface CommunityCard {
 }
 
 const mainContent = document.getElementById("main-content");
-const myCommunitiesEl = document.getElementById("myCommunities");
 
 function renderCard(community: CommunityCard): string {
     const href = `community.html?id=${encodeURIComponent(community.community_id)}`;
@@ -100,28 +97,6 @@ async function loadFeed(): Promise<void> {
     }
 }
 
-async function loadMyCommunities(): Promise<void> {
-    if (!myCommunitiesEl || !getToken()) return;
-
-    try {
-        const { data } = await api<{
-            data: Array<{ community_id: string; name: string }>;
-        }>("/me/communities");
-
-        myCommunitiesEl.innerHTML = "";
-        for (const community of data) {
-            const link = document.createElement("a");
-            link.className = "sidebar-link";
-            link.href = `community.html?id=${encodeURIComponent(community.community_id)}`;
-            link.textContent = community.name;
-            myCommunitiesEl.appendChild(link);
-        }
-    } catch {
-        // Sidebar é acessório; a home continua utilizável sem ela.
-    }
-}
-
 void loadFeed();
-void loadMyCommunities();
 
 export {};

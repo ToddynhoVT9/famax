@@ -15,7 +15,14 @@ export const pages = {
   login: `${BASE}html/user-pages/login.html`,
   register: `${BASE}html/user-pages/register.html`,
   recoverPassword: `${BASE}html/user-pages/recover-password.html`,
+  profile: `${BASE}html/user-pages/profile-view.html`,
+  settings: `${BASE}html/user-pages/profile-settings.html`,
+  newCommunity: `${BASE}html/community/new.html`,
 } as const;
+
+export function communityUrl(communityId: string): string {
+  return `${BASE}html/community.html?id=${encodeURIComponent(communityId)}`;
+}
 
 // Páginas de quem ainda não entrou. Um 401 nelas não redireciona (seria
 // mandar para o login quem já está nele) e elas não servem como ?next=.

@@ -11,8 +11,10 @@
  */
 import { api } from "./shared/api.js";
 import { requireLogin } from "./shared/auth-guard.js";
+import { initLayout } from "./shared/layout.js";
 
 requireLogin();
+initLayout();
 
 const MAX_COVER_BYTES = 2 * 1024 * 1024;
 const ALLOWED_TYPES = ["image/png", "image/jpeg", "image/webp"];

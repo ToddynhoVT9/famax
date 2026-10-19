@@ -12,8 +12,7 @@
  */
 import { api, getCurrentUserId, getToken } from "./shared/api.js";
 import { goToLogin } from "./shared/auth-guard.js";
-import { initSidebar } from "./shared/sidebar.js";
-import { initHeaderDropdowns } from "./shared/header-dropdowns.js";
+import { initLayout, refreshMyCommunities } from "./shared/layout.js";
 import {
     avatarColor,
     escapeHtml,
@@ -22,8 +21,12 @@ import {
     timeAgo,
 } from "./shared/dom.js";
 
-initSidebar();
-initHeaderDropdowns();
+// Os links da comunidade ainda não têm página própria (prompt 06).
+initLayout({
+    pageLinks: ["Discussões", "Regras", "Membros", "Eventos", "Suporte"].map(
+        (label) => ({ label, href: "#" }),
+    ),
+});
 
 // ===========================================================================
 // Tipos
@@ -78,7 +81,6 @@ const feedStatus = document.getElementById("tfFeedStatus");
 const communityNameEl = document.getElementById("communityName");
 const communityMetaEl = document.getElementById("communityMeta");
 const joinBtn = document.getElementById("btnJoinCommunity");
-const myCommunitiesEl = document.getElementById("myCommunities");
 
 /** Posts cujos comentários já foram buscados — evita refetch a cada toggle. */
 const loadedComments = new Set<string>();
@@ -241,27 +243,6 @@ async function loadMembership(): Promise<void> {
     } catch {
         // Falha aqui só significa não saber o estado; o botão fica escondido e
         // o backend continua rejeitando escrita de não-membro.
-    }
-}
-
-async function loadMyCommunities(): Promise<void> {
-    if (!myCommunitiesEl || !getToken()) return;
-
-    try {
-        const { data } = await api<{
-            data: Array<{ community_id: string; name: string }>;
-        }>("/me/communities");
-
-        myCommunitiesEl.innerHTML = "";
-        for (const community of data) {
-            const link = document.createElement("a");
-            link.className = "sidebar-link";
-            link.href = `community.html?id=${encodeURIComponent(community.community_id)}`;
-            link.textContent = community.name;
-            myCommunitiesEl.appendChild(link);
-        }
-    } catch {
-        // Sidebar é acessório; falha silenciosa não impede usar a página.
     }
 }
 
@@ -494,7 +475,7 @@ if (joinBtn instanceof HTMLButtonElement) {
         try {
             await api(`/communities/${communityId}/join`, { method: "POST" });
             joinBtn.hidden = true;
-            void loadMyCommunities();
+            void refreshMyCommunities();
         } catch (err) {
             window.alert(
                 err instanceof Error ? err.message : "Não foi possível participar.",
@@ -690,7 +671,6 @@ if (!communityId) {
     void loadCommunity();
     void loadPosts();
     void loadMembership();
-    void loadMyCommunities();
 }
 
 export {};

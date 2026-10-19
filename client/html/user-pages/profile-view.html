@@ -10,71 +10,9 @@
 </head>
 <body>
 
-    <!-- Cabeçalho -->
-    <header class="header">
-        <a href="../home.html" class="logo-container">
-            <span class="logo-text">FAMAX</span>
-            <span class="logo-subtext">Logo</span>
-        </a>
-
-        <div class="search-container">
-            <input type="text" id="searchInput" class="search-input" placeholder="Pesquisar comunidade">
-            <div class="search-suggestions" id="searchSuggestions">
-                <div class="suggestion-item">Opção 1</div>
-                <div class="suggestion-item">Opção 2</div>
-                <div class="suggestion-item">Opção 3</div>
-                <div class="suggestion-item">Opção 4</div>
-                <div class="suggestion-item">Opção 5</div>
-            </div>
-        </div>
-
-        <div class="header-actions">
-            <div class="filtros-container">
-                <button class="btn-filtros" id="btnFiltros">Filtros</button>
-                <div class="filtros-dropdown" id="filtrosDropdown">
-                    <label class="filtro-item">
-                        <input type="radio" name="filtroOpcao" value="categorias" checked>
-                        <span class="custom-radio"></span>Categorias
-                    </label>
-                    <label class="filtro-item">
-                        <input type="radio" name="filtroOpcao" value="comunidades">
-                        <span class="custom-radio"></span>Comunidades
-                    </label>
-                    <label class="filtro-item">
-                        <input type="radio" name="filtroOpcao" value="usuarios">
-                        <span class="custom-radio"></span>Usuários
-                    </label>
-                    <label class="filtro-item">
-                        <input type="radio" name="filtroOpcao" value="posts">
-                        <span class="custom-radio"></span>Posts
-                    </label>
-                </div>
-            </div>
-
-            <a href="profile-view.html" class="user-profile">usuário</a>
-        </div>
-    </header>
-
-    <!-- Botão Hambúrguer para Sidebar -->
-    <button class="sidebar-toggle" id="sidebarToggle">
-        <span></span><span></span><span></span>
-    </button>
-
-    <!-- Menu Lateral -->
-    <aside class="sidebar" id="sidebar">
-        <div class="sidebar-header">
-            <a href="../home.html" class="sidebar-link">Página Inicial</a>
-        </div>
-        <a href="#" class="sidebar-link">Comunidade que participo 1</a>
-        <a href="#" class="sidebar-link">Comunidade que participo 2</a>
-        <a href="#" class="sidebar-link">Comunidade que participo 3</a>
-        <a href="#" class="sidebar-link">Comunidade que participo 4</a>
-        <a href="#" class="sidebar-link">Comunidade que participo 5</a>
-        <a href="#" class="sidebar-link">Comunidade que participo 6</a>
-        <a href="#" class="sidebar-link">Comunidade que participo 7</a>
-        <a href="#" class="sidebar-link">Comunidade que participo 8</a>
-        <a href="#" class="sidebar-link">Comunidade que participo 9</a>
-    </aside>
+    <!-- Header e sidebar: montados por script/shared/layout.ts -->
+    <header id="app-header" class="header"></header>
+    <aside id="app-sidebar" class="sidebar"></aside>
 
     <!-- CONTEÚDO PRINCIPAL DO PERFIL PÚBLICO -->
     <main class="main-content" id="main-content">

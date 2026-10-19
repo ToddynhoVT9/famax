@@ -2,12 +2,10 @@
  * FAMAX — Profile View (Perfil Público) Script
  */
 import { requireLogin } from "../shared/auth-guard.js";
-import { initSidebar } from "../shared/sidebar.js";
-import { initHeaderDropdowns } from "../shared/header-dropdowns.js";
+import { initLayout } from "../shared/layout.js";
 
 requireLogin();
-initSidebar();
-initHeaderDropdowns();
+initLayout();
 
 // --- Verificação de perfil público vs. terceiros ---
 document.addEventListener("DOMContentLoaded", () => {

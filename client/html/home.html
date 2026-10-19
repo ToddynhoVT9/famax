@@ -10,76 +10,9 @@
 </head>
 <body>
 
-    <!-- Cabeçalho -->
-    <header class="header">
-        <a href="#" class="logo-container">
-            <span class="logo-text">FAMAX</span>
-            <span class="logo-subtext">Logo</span>
-        </a>
-        
-        <div class="search-container">
-            <!-- Barra de pesquisa -->
-            <input type="text" id="searchInput" class="search-input" placeholder="Pesquisar comunidade">
-            
-            <!-- Sugestões de pesquisa -->
-            <div class="search-suggestions" id="searchSuggestions">
-                <div class="suggestion-item">Carregando sugestões...</div>
-            </div>
-        </div>
-        
-        <div class="header-actions">
-            <!-- Container do botão filtros -->
-            <div class="filtros-container">
-                <button class="btn-filtros" id="btnFiltros">Filtros</button>
-                <div class="filtros-dropdown" id="filtrosDropdown">
-                    <label class="filtro-item">
-                        <input type="radio" name="filtroOpcao" value="categorias" checked>
-                        <span class="custom-radio"></span>
-                        Categorias
-                    </label>
-                    <label class="filtro-item">
-                        <input type="radio" name="filtroOpcao" value="comunidades">
-                        <span class="custom-radio"></span>
-                        Comunidades
-                    </label>
-                    <label class="filtro-item">
-                        <input type="radio" name="filtroOpcao" value="usuarios">
-                        <span class="custom-radio"></span>
-                        Usuários
-                    </label>
-                    <label class="filtro-item">
-                        <input type="radio" name="filtroOpcao" value="posts">
-                        <span class="custom-radio"></span>
-                        Posts
-                    </label>
-                </div>
-            </div>
-            
-            <a href="user-pages/profile-view.html" class="user-profile">usuário</a>
-        </div>
-    </header>
-
-    <!--Botão do menu lateral -->
-    <button class="sidebar-toggle" id="sidebarToggle">
-        <span></span>
-        <span></span>
-        <span></span>
-    </button>
-
-    <!-- Menu Lateral -->
-    <aside class="sidebar" id="sidebar">
-        <!-- Título principal com linha embaixo -->
-        <div class="sidebar-header">
-            <a href="home.html" class="sidebar-link">Página Inicial</a>
-        </div>
-
-        <div class="sidebar-header" style="margin-top:20px; border-bottom:1px solid #aaa;">
-            <a href="community/new.html" class="sidebar-link" style="font-size: 1rem; color: #ccc;">+ Criar comunidade</a>
-        </div>
-
-        <!-- Preenchido por home.ts a partir de GET /api/me/communities -->
-        <div id="myCommunities"></div>
-    </aside>
+    <!-- Header e sidebar: montados por script/shared/layout.ts -->
+    <header id="app-header" class="header"></header>
+    <aside id="app-sidebar" class="sidebar"></aside>
 
     <!-- Conteúdo Principal do Feed (renderizado por home.ts) -->
     <main class="main-content" id="main-content">
