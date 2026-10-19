@@ -39,6 +39,10 @@ node -e "console.log(require('crypto').randomBytes(48).toString('base64url'))"
 | `JWT_EXPIRES_IN` | não | Validade do token (padrão `7d`) |
 | `CORS_ORIGIN` | não | Origem liberada no CORS |
 | `MIGRATE_ON_BOOT` | não | `false` desliga a aplicação de migrations no boot (padrão: ligado) |
+| `MAIL_PROVIDER` | não | `console` (padrão: só log), `resend` ou `smtp` |
+| `MAIL_FROM` | com resend/smtp | Remetente dos e-mails |
+| `RESEND_API_KEY` | com resend | Chave da API do Resend |
+| `SMTP_URL` | com smtp | `smtps://usuario:senha@host:465` |
 | `TRUST_PROXY` | não | Proxies confiáveis à frente da API (`1`, `true`, `loopback`...). Padrão: nenhum |
 | `DATABASE_SSL` | não | `false` desliga o SSL (Postgres local) |
 | `SUPABASE_URL` | não | Project URL — necessária para upload de capa |
@@ -56,6 +60,14 @@ reverso (o caso da hospedagem), defina `TRUST_PROXY` — normalmente `1`, o núm
 de proxies à frente. Sem isso todos os usuários aparecem com o IP do proxy e
 dividem o mesmo limite. Rodando sem proxy, deixe vazio: confiar no
 `X-Forwarded-For` deixaria qualquer cliente forjar o próprio IP.
+
+### E-mail
+
+A recuperação de senha envia um código de 6 dígitos por e-mail. Com
+`MAIL_PROVIDER=console` (o padrão) o e-mail só aparece no log do servidor —
+bom para desenvolver, mas **em produção ninguém recebe o código**: configure
+`resend` ou `smtp`. Um provedor sem as variáveis que exige impede o servidor de
+subir, para o erro aparecer no deploy e não quando alguém esquecer a senha.
 
 Sem `SUPABASE_URL`/`SUPABASE_SERVICE_KEY` o upload de capa é desativado: a
 comunidade é criada sem imagem e o resto do fluxo continua funcionando.

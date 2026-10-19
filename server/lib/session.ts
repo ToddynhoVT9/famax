@@ -119,8 +119,11 @@ export async function revokeSession(sessionId: string): Promise<void> {
   );
 }
 
-export async function revokeAllSessions(userId: string): Promise<void> {
-  await pool.query(
+export async function revokeAllSessions(
+  userId: string,
+  db: Queryable = pool,
+): Promise<void> {
+  await db.query(
     `UPDATE user_sessions SET revoked_at = NOW()
      WHERE user_id = $1 AND revoked_at IS NULL`,
     [userId],

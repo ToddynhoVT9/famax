@@ -1336,6 +1336,181 @@ check(
     ).status === 200,
 );
 
+// --- Recuperação de senha -------------------------------------------------------
+
+console.log("\n[Auth] Recuperação de senha");
+resetRateLimits();
+
+// MAIL_PROVIDER=console (padrão): o hook entrega os e-mails sem ler o log.
+const { onMailSent } = await import("../server/lib/mailer.js");
+const outbox = [];
+onMailSent((mail) => outbox.push(mail));
+
+// O envio é em segundo plano (para o tempo de resposta não revelar contas),
+// então o e-mail pode chegar logo depois da resposta.
+async function nextMailTo(address, after) {
+    for (let i = 0; i < 100; i++) {
+        const mail = outbox.slice(after).find((m) => m.to === address);
+        if (mail) return mail;
+        await new Promise((r) => setTimeout(r, 20));
+    }
+    return null;
+}
+const codeOf = (mail) => mail?.text.match(/\b(\d{6})\b/)?.[1] ?? null;
+
+const kate = {
+    email: `kate${stamp}@famax.test`,
+    username: `kate${stamp}`,
+    password: "senha123!forte",
+    displayName: "Kate Teste",
+    termsAccepted: true,
+};
+await call("POST", "/auth/register", { body: kate });
+const kateOldToken = (
+    await call("POST", "/auth/login", {
+        body: { identifier: kate.username, password: kate.password },
+    })
+).body?.token;
+
+const ghostEmail = `ninguem${stamp}@famax.test`;
+let mark = outbox.length;
+const forgotGhost = await call("POST", "/auth/forgot-password", { body: { email: ghostEmail } });
+const forgotKate = await call("POST", "/auth/forgot-password", {
+    // Maiúsculas de propósito: o e-mail é comparado sem diferenciar caixa.
+    body: { email: kate.email.toUpperCase() },
+});
+check(
+    "forgot-password responde igual com e sem conta",
+    forgotGhost.status === 200 &&
+        forgotKate.status === 200 &&
+        forgotGhost.body?.message === forgotKate.body?.message,
+    `${JSON.stringify(forgotGhost.body)} vs ${JSON.stringify(forgotKate.body)}`,
+);
+
+const firstMail = await nextMailTo(kate.email, mark);
+const firstCode = codeOf(firstMail);
+check("e-mail com código de 6 dígitos é enviado", Boolean(firstCode), firstMail?.subject);
+check(
+    "e-mail inexistente não gera envio",
+    !outbox.slice(mark).some((m) => m.to === ghostEmail),
+);
+
+const { rows: storedRecovery } = await db.query(
+    `SELECT r.recovery_code, r.code_hash
+     FROM password_recovery r JOIN users u ON u.user_id = r.user_id
+     WHERE u.email = $1 AND r.is_used = FALSE`,
+    [kate.email],
+);
+check(
+    "código não fica gravado em claro (só o hash)",
+    storedRecovery.length === 1 &&
+        storedRecovery[0].recovery_code === null &&
+        storedRecovery[0].code_hash?.length === 64 &&
+        !storedRecovery[0].code_hash.includes(firstCode),
+    JSON.stringify(storedRecovery),
+);
+
+// Um código que certamente não é o certo.
+const wrongCode = firstCode === "000000" ? "111111" : "000000";
+const verifyGhost = await call("POST", "/auth/verify-reset-code", {
+    body: { email: ghostEmail, code: wrongCode },
+});
+const verifyWrong = await call("POST", "/auth/verify-reset-code", {
+    body: { email: kate.email, code: wrongCode },
+});
+check(
+    "código errado e e-mail sem conta dão o mesmo erro",
+    verifyWrong.status === 400 && verifyWrong.body?.error === verifyGhost.body?.error,
+    `${JSON.stringify(verifyWrong.body)} vs ${JSON.stringify(verifyGhost.body)}`,
+);
+for (let i = 0; i < 4; i++) {
+    await call("POST", "/auth/verify-reset-code", { body: { email: kate.email, code: wrongCode } });
+}
+const verifyAfterBlock = await call("POST", "/auth/verify-reset-code", {
+    body: { email: kate.email, code: firstCode },
+});
+check(
+    "depois de 5 erros nem o código certo vale",
+    verifyAfterBlock.status === 400,
+    JSON.stringify(verifyAfterBlock.body),
+);
+
+// Código expirado.
+mark = outbox.length;
+await call("POST", "/auth/forgot-password", { body: { email: kate.email } });
+const secondCode = codeOf(await nextMailTo(kate.email, mark));
+await db.query(
+    `UPDATE password_recovery SET expires_at = NOW() - INTERVAL '1 minute'
+     WHERE email = $1 AND is_used = FALSE`,
+    [kate.email],
+);
+const verifyExpired = await call("POST", "/auth/verify-reset-code", {
+    body: { email: kate.email, code: secondCode },
+});
+check("código expirado → 400", verifyExpired.status === 400, JSON.stringify(verifyExpired.body));
+
+// Fluxo completo.
+mark = outbox.length;
+await call("POST", "/auth/forgot-password", { body: { email: kate.email } });
+const thirdCode = codeOf(await nextMailTo(kate.email, mark));
+const verifyOk = await call("POST", "/auth/verify-reset-code", {
+    body: { email: kate.email, code: thirdCode },
+});
+const resetToken = verifyOk.body?.resetToken;
+check("código certo devolve resetToken", verifyOk.status === 200 && Boolean(resetToken), JSON.stringify(verifyOk.body));
+
+check(
+    "resetToken não serve como sessão",
+    (await call("GET", "/me", { token: resetToken })).status === 401,
+);
+const resetWithLoginToken = await call("POST", "/auth/reset-password", {
+    body: { resetToken: kateOldToken, newPassword: "outra789!senha0" },
+});
+check("token de login não serve como resetToken", resetWithLoginToken.status === 400);
+
+const resetWeak = await call("POST", "/auth/reset-password", {
+    body: { resetToken, newPassword: "fraca" },
+});
+check("nova senha fora das regras → 400", resetWeak.status === 400, JSON.stringify(resetWeak.body));
+
+mark = outbox.length;
+const resetOk = await call("POST", "/auth/reset-password", {
+    body: { resetToken, newPassword: "outra789!senha0" },
+});
+check("reset-password troca a senha", resetOk.status === 200, JSON.stringify(resetOk.body));
+check(
+    "sessões antigas são revogadas após o reset",
+    (await call("GET", "/me", { token: kateOldToken })).status === 401,
+);
+check(
+    "senha nova entra e a antiga não",
+    (
+        await call("POST", "/auth/login", {
+            body: { identifier: kate.username, password: "outra789!senha0" },
+        })
+    ).status === 200 &&
+        (
+            await call("POST", "/auth/login", {
+                body: { identifier: kate.username, password: kate.password },
+            })
+        ).status === 401,
+);
+const changedMail = await nextMailTo(kate.email, mark);
+check(
+    "e-mail avisando da troca é enviado",
+    /alterada/.test(changedMail?.subject ?? ""),
+    changedMail?.subject,
+);
+
+const resetAgain = await call("POST", "/auth/reset-password", {
+    body: { resetToken, newPassword: "mais012!senha3" },
+});
+check("resetToken não serve duas vezes", resetAgain.status === 400, JSON.stringify(resetAgain.body));
+
+// 3 pedidos já feitos para este e-mail nesta janela: o 4º é barrado.
+const forgotLimited = await call("POST", "/auth/forgot-password", { body: { email: kate.email } });
+check("forgot-password limitado por e-mail → 429", forgotLimited.status === 429, String(forgotLimited.status));
+
 // ---------------------------------------------------------------------------
 
 console.log(`\n${"=".repeat(60)}`);

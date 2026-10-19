@@ -66,6 +66,37 @@ if (DB_MODE === "embedded" && process.env.NODE_ENV === "production") {
   );
 }
 
+/**
+ * Provedor de e-mail (ver lib/mailer.ts). `console` só imprime no log: é o
+ * padrão para dev e testes, e em produção significa que ninguém recebe o
+ * código de recuperação — por isso o aviso.
+ */
+const MAIL_PROVIDER = (process.env.MAIL_PROVIDER ?? "console") as
+  | "console"
+  | "resend"
+  | "smtp";
+
+if (!["console", "resend", "smtp"].includes(MAIL_PROVIDER)) {
+  throw new Error(
+    `MAIL_PROVIDER inválido: "${MAIL_PROVIDER}". Use "console", "resend" ou "smtp".`,
+  );
+}
+if (MAIL_PROVIDER === "resend" && !process.env.RESEND_API_KEY) {
+  throw new Error("MAIL_PROVIDER=resend exige RESEND_API_KEY.");
+}
+if (MAIL_PROVIDER === "smtp" && !process.env.SMTP_URL) {
+  throw new Error("MAIL_PROVIDER=smtp exige SMTP_URL.");
+}
+if (MAIL_PROVIDER !== "console" && !process.env.MAIL_FROM) {
+  throw new Error(`MAIL_PROVIDER=${MAIL_PROVIDER} exige MAIL_FROM.`);
+}
+if (MAIL_PROVIDER === "console" && process.env.NODE_ENV === "production") {
+  console.warn(
+    "⚠️  MAIL_PROVIDER=console em produção: e-mails (como o código de\n" +
+      "   recuperação de senha) só vão para o log, ninguém os recebe.",
+  );
+}
+
 export const config = {
   PORT: Number(process.env.PORT ?? 3000),
   NODE_ENV: (process.env.NODE_ENV ?? "development") as
@@ -99,6 +130,11 @@ export const config = {
   SUPABASE_URL: process.env.SUPABASE_URL ?? "",
   SUPABASE_SERVICE_KEY: process.env.SUPABASE_SERVICE_KEY ?? "",
   SUPABASE_COVERS_BUCKET: process.env.SUPABASE_COVERS_BUCKET ?? "community-covers",
+  MAIL_PROVIDER,
+  MAIL_FROM: process.env.MAIL_FROM ?? "FAMAX <nao-responda@localhost>",
+  RESEND_API_KEY: process.env.RESEND_API_KEY ?? "",
+  SMTP_URL: process.env.SMTP_URL ?? "",
+
   // Avatar e banner dos usuários (migration 008).
   SUPABASE_USER_MEDIA_BUCKET: process.env.SUPABASE_USER_MEDIA_BUCKET ?? "user-media",
 };

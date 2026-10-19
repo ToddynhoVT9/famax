@@ -15,6 +15,18 @@
     width: 320px;
 }
 
+/* Aviso vindo de outra tela (ex.: senha redefinida). */
+.login-notice {
+    width: 100%;
+    margin-bottom: 15px;
+    padding: 10px 12px;
+    border-radius: 6px;
+    background-color: rgba(127, 211, 138, 0.15);
+    color: #a8e6b1;
+    font-size: 0.9rem;
+    text-align: center;
+}
+
 .forgot-password {
     color: #ffffff;
     font-size: 0.9rem;

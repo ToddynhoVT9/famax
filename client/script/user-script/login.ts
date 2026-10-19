@@ -3,6 +3,13 @@ import { afterLoginUrl, redirectIfLoggedIn } from "../shared/auth-guard.js";
 
 redirectIfLoggedIn();
 
+// A recuperação de senha termina aqui com ?reset=ok.
+const notice = document.getElementById("login-notice");
+if (notice && new URLSearchParams(window.location.search).get("reset") === "ok") {
+  notice.textContent = "Senha alterada. Entre com a nova senha.";
+  notice.hidden = false;
+}
+
 const usernameInput = document.getElementById("username");
 const passwordInput = document.getElementById("password");
 const loginButton = document.getElementById("loginButton");
