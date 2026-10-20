@@ -13,7 +13,7 @@
 .banner {
     width: 100%;
     height: 220px;
-    background-color: #ffffff;
+    background-color: var(--color-paper);
     position: relative;
     display: flex;
     align-items: center;
@@ -26,14 +26,14 @@
     position: absolute;
     width: 200px;
     height: 200px;
-    background-color: #828282;
+    background-color: var(--color-chrome);
     border-radius: 50%;
     bottom: -70px;
     left: 0;
     display: flex;
     align-items: center;
     justify-content: center;
-    color: #111111;
+    color: var(--color-ink);
     font-size: 1rem;
     font-weight: 500;
     box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
@@ -51,7 +51,7 @@
 
 .divider-vertical {
     width: 2px;
-    background-color: #888888;
+    background-color: var(--color-border-strong);
     height: 100%;
     min-height: 250px;
 }
@@ -72,7 +72,7 @@
 .toggle-switch-ui {
     width: 54px;
     height: 28px;
-    background-color: #444444;
+    background-color: var(--color-surface-4);
     border-radius: 15px;
     position: relative;
     cursor: pointer;
@@ -81,13 +81,13 @@
 }
 
 .toggle-switch-ui.on {
-    background-color: #ffffff;
+    background-color: var(--color-success);
 }
 
 .toggle-circle {
     width: 24px;
     height: 24px;
-    background-color: #1a1a1a;
+    background-color: var(--color-text-faint);
     border-radius: 50%;
     position: absolute;
     top: 2px;
@@ -97,7 +97,7 @@
 
 .toggle-switch-ui.on .toggle-circle {
     left: 28px;
-    background-color: #7a7a7a;
+    background-color: var(--color-on-accent);
 }
 
 /* ----- MODAL SENHA ----- */
@@ -119,12 +119,12 @@
 }
 
 .modal-box {
-    background-color: #555555;
+    background-color: var(--color-surface-5);
     width: 650px;
     padding: 30px 40px;
     border-radius: 8px;
     box-shadow: 0 4px 15px rgba(0, 0, 0, 0.5);
-    color: #ffffff;
+    color: var(--color-text);
     position: relative;
 }
 
@@ -143,20 +143,19 @@
 
 .modal-input {
     width: 100%;
-    background-color: #7b7b7b;
+    background-color: var(--color-control);
     border: none;
     border-radius: 6px;
     padding: 12px 14px;
-    color: #ffffff;
+    color: var(--color-text);
     font-size: 1.2rem;
-    outline: none;
     box-sizing: border-box;
     margin-top: 10px;
 }
 
 .modal-input:focus {
-    background-color: #888888;
-    outline: 2px solid #ffffff;
+    background-color: var(--color-control-hover);
+    outline: 2px solid var(--color-text);
 }
 
 .modal-two-cols {
@@ -174,7 +173,7 @@
 
 .modal-success {
     font-size: 1.4rem;
-    color: #4CAF50;
+    color: var(--color-success-on-dark);
     font-weight: 600;
     text-align: center;
     padding: 40px 0;
@@ -200,13 +199,12 @@
 }
 
 .sobre-date-input {
-    background-color: #888888;
+    background-color: var(--color-control-hover);
     border: none;
-    color: #ffffff;
+    color: var(--color-text);
     font-size: 1.1rem;
     padding: 10px 15px;
     border-radius: 8px;
-    outline: none;
     cursor: pointer;
     font-family: inherit;
 }
@@ -223,20 +221,20 @@
 }
 
 .btn-genero {
-    background-color: #888888;
-    color: #ffffff;
+    background-color: var(--color-chrome-hover);
+    color: var(--color-on-chrome);
     border: none;
     padding: 10px 16px;
     border-radius: 8px;
     font-size: 1rem;
     cursor: pointer;
-    outline: none;
     transition: background-color 0.2s;
 }
 
 .btn-genero:hover,
 .btn-genero.selected {
-    background-color: #aaaaaa;
+    background-color: var(--color-paper);
+    color: var(--color-ink);
 }
 
 .sobre-bio-section {
@@ -245,13 +243,12 @@
 }
 
 .sobre-textarea {
-    background-color: #888888;
+    background-color: var(--color-control-hover);
     border: none;
-    color: #ffffff;
+    color: var(--color-text);
     font-size: 0.95rem;
     padding: 15px;
     border-radius: 8px;
-    outline: none;
     resize: vertical;
     line-height: 1.5;
     font-family: inherit;
@@ -284,7 +281,7 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    color: #ffffff;
+    color: var(--color-on-accent);
     font-size: 3.5rem;
     font-weight: 800;
 }
@@ -307,7 +304,7 @@
 
 .btn-media {
     background-color: rgba(0, 0, 0, 0.65);
-    color: #ffffff;
+    color: var(--color-on-chrome);
     border: 1px solid rgba(255, 255, 255, 0.4);
     border-radius: 16px;
     padding: 6px 14px;
@@ -321,7 +318,7 @@
 }
 
 .btn-media--danger {
-    border-color: #ff8a8a;
+    border-color: var(--color-danger-on-dark);
 }
 
 .btn-media:disabled {
@@ -332,17 +329,17 @@
 .settings-hint {
     margin-top: 8px;
     font-size: 0.85rem;
-    color: #aaaaaa;
+    color: var(--color-text-faint);
 }
 
 .settings-status {
     margin-top: 8px;
     font-size: 0.95rem;
-    color: #ff8a8a;
+    color: var(--color-danger-on-dark);
 }
 
 .settings-status.is-ok {
-    color: #7fd38a;
+    color: var(--color-success-on-dark);
 }
 
 .settings-status[hidden],
@@ -373,21 +370,21 @@
 
 .settings-field small {
     font-weight: 400;
-    color: #aaaaaa;
+    color: var(--color-text-faint);
 }
 
 .settings-input {
-    background-color: #3a3a3a;
-    border: 1px solid #555555;
+    background-color: var(--color-surface-3);
+    border: 1px solid var(--color-border-strong);
     border-radius: 6px;
     padding: 10px 12px;
-    color: #ffffff;
+    color: var(--color-text);
     font: inherit;
     font-size: 1rem;
 }
 
 .settings-input:focus {
-    outline: 2px solid #ffffff;
+    outline: 2px solid var(--color-text);
     outline-offset: 1px;
 }
 
@@ -406,7 +403,7 @@
     background: none;
     border: none;
     padding: 0;
-    color: #ffffff;
+    color: var(--color-text);
     font: inherit;
     font-weight: 700;
     text-decoration: underline;
@@ -425,7 +422,7 @@
 
 .line-hint {
     font-size: 0.95rem;
-    color: #aaaaaa;
+    color: var(--color-text-faint);
 }
 
 .profile-line.is-disabled {
@@ -436,8 +433,8 @@
     font-size: 0.8rem;
     padding: 3px 10px;
     border-radius: 10px;
-    border: 1px solid #aaaaaa;
-    color: #cccccc;
+    border: 1px solid var(--color-paper-border-strong);
+    color: var(--color-text-muted);
 }
 
 /* Os toggles agora são <button role="switch">. */
@@ -452,7 +449,7 @@ button.toggle-switch-ui:disabled {
 }
 
 button.toggle-switch-ui:focus-visible {
-    outline: 2px solid #ffffff;
+    outline: 2px solid var(--color-text);
     outline-offset: 2px;
 }
 
@@ -474,11 +471,11 @@ button.toggle-switch-ui:focus-visible {
 .modal-hint {
     margin-top: 12px;
     font-size: 0.95rem;
-    color: #e0e0e0;
+    color: var(--color-text-soft);
 }
 
 .modal-error {
-    color: #ff6b6b;
+    color: var(--color-danger-on-dark);
     font-size: 0.95rem;
     margin-top: 15px;
     text-align: center;
@@ -492,8 +489,8 @@ button.toggle-switch-ui:focus-visible {
 }
 
 .btn-modal {
-    background-color: #777777;
-    color: #ffffff;
+    background-color: var(--color-chrome);
+    color: var(--color-on-chrome);
     border: none;
     border-radius: 6px;
     padding: 10px 18px;
@@ -503,17 +500,17 @@ button.toggle-switch-ui:focus-visible {
 }
 
 .btn-modal:hover {
-    background-color: #888888;
+    background-color: var(--color-chrome-hover);
 }
 
 .btn-modal--primary {
-    background-color: #ffffff;
-    color: #222222;
+    background-color: var(--color-paper);
+    color: var(--color-ink);
     font-weight: 600;
 }
 
 .btn-modal--primary:hover {
-    background-color: #e6e6e6;
+    background-color: var(--color-paper-3);
 }
 
 .btn-modal:disabled {
@@ -527,21 +524,14 @@ button.toggle-switch-ui:focus-visible {
     gap: 8px;
     margin-top: 15px;
     font-size: 1rem;
-    color: #e0e0e0;
+    color: var(--color-text-soft);
     cursor: pointer;
 }
 
 .show-password input {
     width: 16px;
     height: 16px;
-    accent-color: #444;
-}
-
-.char-counter {
-    align-self: flex-end;
-    margin-top: 6px;
-    font-size: 0.85rem;
-    color: #e0e0e0;
+    accent-color: var(--color-ink-soft);
 }
 
 /* ----- Editor de redes sociais ----- */
@@ -610,7 +600,7 @@ button.toggle-switch-ui:focus-visible {
     font-size: 1rem;
     font-weight: 700;
     margin: 18px 0 4px;
-    color: #ffffff;
+    color: var(--color-text);
 }
 
 
@@ -620,14 +610,14 @@ button.toggle-switch-ui:focus-visible {
 .security-section {
     margin-top: 32px;
     padding-top: 20px;
-    border-top: 1px solid #444444;
+    border-top: 1px solid var(--color-border);
 }
 
 .security-title {
     font-size: 1.3rem;
     font-weight: 800;
     margin: 0 0 16px;
-    color: #ffffff;
+    color: var(--color-text);
 }
 
 .security-cards {
@@ -637,11 +627,11 @@ button.toggle-switch-ui:focus-visible {
 }
 
 .security-card {
-    background-color: #2b2b2b;
-    border: 1px solid #444444;
+    background-color: var(--color-surface);
+    border: 1px solid var(--color-border);
     border-radius: 10px;
     padding: 18px;
-    color: #ffffff;
+    color: var(--color-text);
     display: flex;
     flex-direction: column;
     gap: 10px;
@@ -656,7 +646,7 @@ button.toggle-switch-ui:focus-visible {
 
 .security-card-text {
     margin: 0;
-    color: #bbbbbb;
+    color: var(--color-text-muted);
     font-size: 0.9rem;
     line-height: 1.5;
 }
@@ -677,7 +667,7 @@ button.toggle-switch-ui:focus-visible {
 }
 
 .security-line--warn {
-    color: #ffd27a;
+    color: var(--color-warning-on-dark);
     font-size: 0.9rem;
 }
 
@@ -694,13 +684,13 @@ button.toggle-switch-ui:focus-visible {
 }
 
 .security-badge--ok {
-    background-color: #1e6b34;
-    color: #ffffff;
+    background-color: var(--color-success-strong);
+    color: var(--color-on-accent);
 }
 
 .security-badge--warn {
-    background-color: #7a5a00;
-    color: #ffffff;
+    background-color: var(--color-warning-strong);
+    color: var(--color-on-accent);
 }
 
 .security-actions {
@@ -714,17 +704,17 @@ button.toggle-switch-ui:focus-visible {
 }
 
 .btn-modal--danger {
-    background-color: #b3261e;
+    background-color: var(--color-danger-strong);
 }
 
 .btn-modal--danger:hover {
-    background-color: #8c1d17;
+    background-color: var(--color-danger-deep);
 }
 
 .twofa-qr {
     width: 180px;
     height: 180px;
-    background-color: #ffffff;
+    background-color: var(--color-paper);
     border-radius: 8px;
     padding: 6px;
     align-self: flex-start;
@@ -737,7 +727,7 @@ button.toggle-switch-ui:focus-visible {
 
 .twofa-secret {
     overflow-wrap: anywhere;
-    background-color: #1f1f1f;
+    background-color: var(--color-bg-deep);
     padding: 2px 6px;
     border-radius: 4px;
 }
@@ -754,7 +744,7 @@ button.toggle-switch-ui:focus-visible {
     gap: 4px 16px;
     margin: 0;
     padding: 12px 12px 12px 34px;
-    background-color: #1f1f1f;
+    background-color: var(--color-bg-deep);
     border-radius: 8px;
 }
 
@@ -779,7 +769,7 @@ a.btn-modal {
     justify-content: space-between;
     gap: 10px;
     padding: 10px 12px;
-    background-color: #1f1f1f;
+    background-color: var(--color-bg-deep);
     border-radius: 8px;
 }
 
@@ -791,7 +781,7 @@ a.btn-modal {
 }
 
 .security-list-meta {
-    color: #aaaaaa;
+    color: var(--color-text-faint);
     font-size: 0.82rem;
 }
 
@@ -800,12 +790,12 @@ a.btn-modal {
 }
 
 .security-danger-zone {
-    border: 1px solid #b3261e;
+    border: 1px solid var(--color-danger-strong);
     border-radius: 8px;
     padding: 12px;
 }
 
 .security-list-info a {
-    color: #ffffff;
+    color: var(--color-text);
     font-weight: 700;
 }

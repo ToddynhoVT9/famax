@@ -342,6 +342,10 @@ export function createNotificationBell(): HTMLElement {
     const badge = el("span", "notif-badge");
     badge.hidden = true;
     button.append(icon, badge);
+    // Notificação nova chegando (tempo real) é anunciada sem tirar o foco.
+    const live = el("span", "visually-hidden");
+    live.setAttribute("aria-live", "polite");
+    let lastCount = 0;
 
     const panel = el("div", "notif-panel");
     panel.hidden = true;
@@ -356,13 +360,15 @@ export function createNotificationBell(): HTMLElement {
     const footer = el("a", "notif-panel-footer", "Ver todas");
     footer.href = pages.notifications;
     panel.append(head, list, footer);
-    wrapper.append(button, panel);
+    wrapper.append(button, live, panel);
 
     onUnreadChange((count) => {
         badge.hidden = count === 0;
         badge.textContent = count > 99 ? "99+" : String(count);
         button.setAttribute("aria-label", count > 0 ? `Notificações: ${count} não lidas` : "Notificações");
         markAll.disabled = count === 0;
+        if (count > lastCount) live.textContent = `${count} ${count === 1 ? "notificação não lida" : "notificações não lidas"}`;
+        lastCount = count;
     });
 
     let loadSeq = 0;

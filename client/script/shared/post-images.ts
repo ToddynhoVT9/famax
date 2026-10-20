@@ -73,6 +73,7 @@ export function openLightbox(images: PostImage[], start = 0): void {
         index = (i + images.length) % images.length;
         img.src = images[index].url;
         counter.textContent = `${index + 1} de ${images.length}`;
+        img.alt = `Imagem ${index + 1} de ${images.length}`;
     };
 
     const dismiss = (): void => {

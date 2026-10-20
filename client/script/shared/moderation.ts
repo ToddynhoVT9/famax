@@ -11,6 +11,7 @@
 import { api } from "./api.js";
 import { escapeHtml } from "./dom.js";
 import { toast } from "./dialog.js";
+import { trapFocus } from "./focus-trap.js";
 
 export type CommunityRole = "owner" | "moderator" | "member";
 
@@ -63,7 +64,6 @@ interface FormDialogOptions {
 /** Resolve true se enviou, false se cancelou. Mesmo comportamento do confirmDialog. */
 function formDialog(options: FormDialogOptions): Promise<boolean> {
     return new Promise((resolve) => {
-        const previousFocus = document.activeElement as HTMLElement | null;
 
         const overlay = el("div", "dialog-overlay");
         const form = el("form", "dialog-box");
@@ -98,24 +98,17 @@ function formDialog(options: FormDialogOptions): Promise<boolean> {
         overlay.append(form);
         document.body.append(overlay);
 
+        let releaseFocus = (): void => {};
         const close = (result: boolean): void => {
-            document.removeEventListener("keydown", onKey);
             overlay.remove();
-            previousFocus?.focus();
+            releaseFocus();
             resolve(result);
-        };
-        const onKey = (event: KeyboardEvent): void => {
-            if (event.key === "Escape") {
-                event.stopPropagation();
-                close(false);
-            }
         };
 
         cancel.addEventListener("click", () => close(false));
         overlay.addEventListener("click", (event) => {
             if (event.target === overlay) close(false);
         });
-        document.addEventListener("keydown", onKey);
 
         form.addEventListener("submit", async (event) => {
             event.preventDefault();
@@ -137,7 +130,10 @@ function formDialog(options: FormDialogOptions): Promise<boolean> {
             }
         });
 
-        form.querySelector<HTMLElement>("input, textarea, select")?.focus();
+        releaseFocus = trapFocus(form, {
+            onEscape: () => close(false),
+            initialFocus: form.querySelector<HTMLElement>("input, textarea, select"),
+        });
     });
 }
 

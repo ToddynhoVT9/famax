@@ -12,7 +12,7 @@
 }
 
 .form-group {
-    width: 320px;
+    width: min(320px, 100%);
 }
 
 /* Aviso vindo de outra tela (ex.: senha redefinida). */
@@ -22,13 +22,13 @@
     padding: 10px 12px;
     border-radius: 6px;
     background-color: rgba(127, 211, 138, 0.15);
-    color: #a8e6b1;
+    color: var(--color-success-on-dark);
     font-size: 0.9rem;
     text-align: center;
 }
 
 .forgot-password {
-    color: #ffffff;
+    color: var(--color-text);
     font-size: 0.9rem;
     text-decoration: none;
     text-align: center;
@@ -44,8 +44,8 @@
     padding: 14px;
     border: none;
     border-radius: 6px;
-    background-color: #7b7b7b;
-    color: #ffffff;
+    background-color: var(--color-chrome);
+    color: var(--color-on-chrome);
     font-size: 0.95rem;
     cursor: pointer;
     transition: background-color 0.2s ease, transform 0.1s ease;
@@ -59,7 +59,7 @@
 }
 
 .btn-login:hover {
-    background-color: #888888;
+    background-color: var(--color-chrome-hover);
 }
 
 /* ----- Passos do login (verificação em duas etapas) ----- */
@@ -79,19 +79,19 @@
 .login-step-hint {
     margin: 0 0 10px;
     text-align: center;
-    color: #dddddd;
+    color: var(--color-text-soft);
 }
 
 .login-step-hint {
     font-size: 0.85rem;
-    color: #aaaaaa;
+    color: var(--color-text-faint);
 }
 
 .login-link-btn {
     margin-top: 10px;
     background: none;
     border: none;
-    color: #dddddd;
+    color: var(--color-text-soft);
     text-decoration: underline;
     cursor: pointer;
     font: inherit;

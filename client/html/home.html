@@ -3,6 +3,10 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+    <!-- Tema escolhido à mão (shared/theme.ts), aplicado antes da primeira pintura:
+         sem isto a página piscaria no tema errado até o módulo carregar. -->
+    <script>try{var t=localStorage.getItem("famax_theme");if(t==="light"||t==="dark")document.documentElement.dataset.theme=t}catch(e){}</script>
     <title>FAMAX - Home</title>
     <link rel="stylesheet" href="../css/global.css">
     <link rel="stylesheet" href="../css/layout.css">
@@ -18,6 +22,7 @@
 
     <!-- Conteúdo Principal do Feed (renderizado por home.ts) -->
     <main class="main-content" id="main-content">
+        <h1 class="visually-hidden">Página inicial</h1>
         <!-- Abas: Comunidades / Seguindo (só com sessão). ?tab=following na URL. -->
         <div class="home-tabs" id="homeTabs" role="tablist" aria-label="O que ver" hidden>
             <button type="button" class="home-tab active" role="tab" id="homeTabCommunities"

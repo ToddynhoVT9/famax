@@ -10,6 +10,7 @@
 import { api } from "./shared/api.js";
 import { profileUrl } from "./shared/pages.js";
 import { avatarColor, initials } from "./shared/dom.js";
+import { bindTabKeys } from "./shared/tabs.js";
 
 type Period = "week" | "all";
 
@@ -114,6 +115,7 @@ export function createLeaderboard(widget: HTMLElement, communityId: string): { r
             void load();
         });
     }
+    bindTabKeys(widget.querySelector<HTMLElement>('[role="tablist"]'));
 
     void load();
     return { reload: load };

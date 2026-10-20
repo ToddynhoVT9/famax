@@ -9,9 +9,16 @@
  * salvo — POST /posts/:id/images precisa do post existindo, e assim um
  * cancelamento não deixa imagem órfã no Storage. Na edição, as imagens
  * marcadas para remover também só saem ao salvar.
+ *
+ * Post novo guarda rascunho (título, conteúdo, categoria, +18) no
+ * localStorage, um por comunidade: fechar sem querer, recarregar ou cair a
+ * conexão não perde o texto. Sai ao publicar ou em "Descartar rascunho".
+ * Fechar com texto digitado pede confirmação.
  */
 import { api, getMe } from "./api.js";
-import { toast } from "./dialog.js";
+import { confirmDialog, toast } from "./dialog.js";
+import { attachCharCounter } from "./char-counter.js";
+import { trapFocus } from "./focus-trap.js";
 import type { Post } from "./post-thread.js";
 import { MAX_POST_IMAGES, type PostImage } from "./post-images.js";
 
@@ -30,6 +37,43 @@ export interface PostEditorOptions {
     post?: Post;
 }
 
+interface PostDraft {
+    title: string;
+    content: string;
+    categoryId: string;
+    nsfw: boolean;
+}
+
+const draftKey = (communityId: string): string => `famax_post_draft:${communityId}`;
+
+function readDraft(communityId: string): PostDraft | null {
+    try {
+        const raw = localStorage.getItem(draftKey(communityId));
+        if (!raw) return null;
+        const draft = JSON.parse(raw) as Partial<PostDraft>;
+        return {
+            title: typeof draft.title === "string" ? draft.title : "",
+            content: typeof draft.content === "string" ? draft.content : "",
+            categoryId: typeof draft.categoryId === "string" ? draft.categoryId : "",
+            nsfw: draft.nsfw === true,
+        };
+    } catch {
+        return null;
+    }
+}
+
+function writeDraft(communityId: string, draft: PostDraft | null): void {
+    try {
+        if (!draft || (!draft.title.trim() && !draft.content.trim())) {
+            localStorage.removeItem(draftKey(communityId));
+        } else {
+            localStorage.setItem(draftKey(communityId), JSON.stringify(draft));
+        }
+    } catch {
+        // Sem armazenamento (modo privado, cota): segue sem rascunho.
+    }
+}
+
 function el<K extends keyof HTMLElementTagNameMap>(tag: K, className = "", text?: string) {
     const node = document.createElement(tag);
     if (className) node.className = className;
@@ -45,8 +89,6 @@ export function openPostEditor(options: PostEditorOptions): Promise<Post | null>
     const { post } = options;
 
     return new Promise((resolve) => {
-        const previousFocus = document.activeElement as HTMLElement | null;
-
         const overlay = el("div", "modal-overlay show");
         const form = el("form", "modal-box");
         form.noValidate = true;
@@ -193,8 +235,43 @@ export function openPostEditor(options: PostEditorOptions): Promise<Post | null>
         submit.type = "submit";
         actions.append(cancel, submit);
 
+        // ----- Rascunho (só post novo) -----
+        const draftBar = el("div", "modal-draft");
+        draftBar.hidden = true;
+        draftBar.setAttribute("role", "status");
+        const discardDraft = el("button", "modal-draft-discard", "Descartar rascunho");
+        discardDraft.type = "button";
+        draftBar.append(el("span", "", "Rascunho restaurado."), discardDraft);
+
+        const draft = post ? null : readDraft(options.communityId);
+        if (draft) {
+            titleInput.value = draft.title;
+            contentInput.value = draft.content;
+            if (options.categories.some((c) => c.community_category_id === draft.categoryId)) {
+                categorySelect.value = draft.categoryId;
+            }
+            nsfwInput.checked = draft.nsfw;
+            draftBar.hidden = false;
+        }
+        const initial = { title: titleInput.value, content: contentInput.value };
+
+        const saveDraft = (): void => {
+            if (post) return;
+            writeDraft(options.communityId, {
+                title: titleInput.value,
+                content: contentInput.value,
+                categoryId: categorySelect.value,
+                nsfw: nsfwInput.checked,
+            });
+        };
+        titleInput.addEventListener("input", saveDraft);
+        contentInput.addEventListener("input", saveDraft);
+        categorySelect.addEventListener("change", saveDraft);
+        nsfwInput.addEventListener("change", saveDraft);
+
         form.append(
             header,
+            draftBar,
             error,
             titleLabel,
             titleInput,
@@ -212,31 +289,67 @@ export function openPostEditor(options: PostEditorOptions): Promise<Post | null>
         );
         overlay.append(form);
         document.body.append(overlay);
-        window.setTimeout(() => titleInput.focus(), 30);
+
+        const updateTitleCounter = attachCharCounter(titleInput);
+        const updateContentCounter = attachCharCounter(contentInput);
+        discardDraft.addEventListener("click", () => {
+            writeDraft(options.communityId, null);
+            titleInput.value = "";
+            contentInput.value = "";
+            categorySelect.value = "";
+            nsfwInput.checked = false;
+            initial.title = "";
+            initial.content = "";
+            updateTitleCounter();
+            updateContentCounter();
+            draftBar.hidden = true;
+            titleInput.focus();
+        });
 
         const showError = (message: string | null): void => {
             error.textContent = message ?? "";
             error.classList.toggle("show", message !== null);
         };
 
+        let releaseFocus: () => void = () => {};
+
         const finish = (result: Post | null): void => {
             for (const entry of added) URL.revokeObjectURL(entry.preview);
-            document.removeEventListener("keydown", onKey);
             overlay.remove();
-            previousFocus?.focus();
+            releaseFocus();
             resolve(result);
         };
 
-        const onKey = (event: KeyboardEvent): void => {
-            if (event.key === "Escape") finish(null);
+        /** Fechar sem salvar: com texto novo digitado, pergunta antes. */
+        let asking = false;
+        const requestClose = async (): Promise<void> => {
+            if (asking) return;
+            const typed =
+                titleInput.value !== initial.title || contentInput.value !== initial.content || added.length > 0;
+            if (typed) {
+                asking = true;
+                const ok = await confirmDialog({
+                    title: post ? "Descartar alterações?" : "Fechar sem publicar?",
+                    message: post
+                        ? "As alterações nesta discussão ainda não foram salvas e serão perdidas."
+                        : "O texto fica guardado como rascunho nesta comunidade (as imagens escolhidas, não).",
+                    confirmLabel: post ? "Descartar" : "Fechar",
+                    cancelLabel: "Continuar escrevendo",
+                    danger: Boolean(post),
+                });
+                asking = false;
+                if (!ok) return;
+            }
+            finish(null);
         };
 
-        close.addEventListener("click", () => finish(null));
-        cancel.addEventListener("click", () => finish(null));
+        releaseFocus = trapFocus(form, { onEscape: () => void requestClose(), initialFocus: titleInput });
+
+        close.addEventListener("click", () => void requestClose());
+        cancel.addEventListener("click", () => void requestClose());
         overlay.addEventListener("click", (event) => {
-            if (event.target === overlay) finish(null);
+            if (event.target === overlay) void requestClose();
         });
-        document.addEventListener("keydown", onKey);
 
         /**
          * Depois do post salvo: tira as imagens marcadas e envia as novas.
@@ -302,6 +415,7 @@ export function openPostEditor(options: PostEditorOptions): Promise<Post | null>
                               isNsfw: !nsfwLabel.hidden && nsfwInput.checked,
                           }),
                       });
+                if (!post) writeDraft(options.communityId, null);
                 finish(await syncImages(result.post));
             } catch (err) {
                 showError(err instanceof Error ? err.message : "Não foi possível salvar.");

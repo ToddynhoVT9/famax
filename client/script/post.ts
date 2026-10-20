@@ -36,6 +36,8 @@ function showStatus(message: string, isError = false): void {
 /** Título da aba e meta description refletem o post. */
 function applyMeta(post: Post): void {
     document.title = `${post.title} · ${post.community_name} · FAMAX`;
+    const heading = document.getElementById("postPageTitle");
+    if (heading) heading.textContent = post.title;
     $("metaDescription")?.setAttribute("content", truncate(markdownToText(post.content), 160));
 
     const community = $<HTMLAnchorElement>("breadcrumbCommunity");

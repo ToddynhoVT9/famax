@@ -122,20 +122,5 @@ export function confirmDialog(options: ConfirmOptions): Promise<boolean> {
     });
 }
 
-let toastHost: HTMLElement | null = null;
-
-/**
- * Aviso curto no canto da tela, que some sozinho. Para erros de ações que não
- * têm um lugar natural na tela para mostrar a mensagem.
- */
-export function toast(message: string, kind: "info" | "error" = "info"): void {
-    if (!toastHost) {
-        toastHost = el("div", "toast-host");
-        toastHost.setAttribute("aria-live", "polite");
-        document.body.append(toastHost);
-    }
-    const item = el("div", `toast toast--${kind}`, message);
-    item.setAttribute("role", kind === "error" ? "alert" : "status");
-    toastHost.append(item);
-    window.setTimeout(() => item.remove(), 4500);
-}
+// O aviso curto mora em toast.ts; reexportado para quem já importa daqui.
+export { toast, type ToastKind } from "./toast.js";

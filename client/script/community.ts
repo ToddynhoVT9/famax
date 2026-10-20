@@ -23,6 +23,7 @@ import { avatarColor, queryParam } from "./shared/dom.js";
 import { confirmDialog, toast } from "./shared/dialog.js";
 import { createPostThread, type Post } from "./shared/post-thread.js";
 import { openPostEditor, type PostCategory } from "./shared/post-editor.js";
+import { emptyState, skeleton } from "./shared/skeleton.js";
 import { banUntil, isStaff } from "./shared/moderation.js";
 import { createMembersView } from "./community-members.js";
 import { createLeaderboard } from "./community-leaderboard.js";
@@ -110,7 +111,7 @@ const thread = postsList
     ? createPostThread(postsList, {
           onEditPost: (post) => void editPost(post),
           onPostDeleted: () => {
-              if (thread?.posts.size === 0) showFeedStatus(emptyMessage());
+              if (thread?.posts.size === 0) showEmptyFeed();
           },
       })
     : null;
@@ -555,6 +556,16 @@ function emptyMessage(): string {
     return "Nenhuma discussão ainda. Seja o primeiro a publicar!";
 }
 
+/** Lista vazia com o atalho para publicar (menos na aba "Ajudar os outros"). */
+function showEmptyFeed(): void {
+    if (!postsList) return;
+    const action =
+        tab === "unanswered"
+            ? undefined
+            : { label: "Criar discussão", onClick: () => $("btnCreatePost")?.click() };
+    postsList.replaceChildren(emptyState(emptyMessage(), undefined, action));
+}
+
 async function loadPosts(reset: boolean): Promise<void> {
     if (!communityId || !postsList || !loadMoreBtn || !thread) return;
 
@@ -563,7 +574,7 @@ async function loadPosts(reset: boolean): Promise<void> {
         page = 0;
         totalPages = 0;
         thread.clear();
-        showFeedStatus("Carregando discussões...");
+        postsList.replaceChildren(skeleton("post", 3, "Carregando discussões..."));
         loadMoreBtn.hidden = true;
     }
     loadMoreBtn.disabled = true;
@@ -584,7 +595,7 @@ async function loadPosts(reset: boolean): Promise<void> {
         if (reset) postsList.innerHTML = "";
         thread.add(result.data);
 
-        if (thread.posts.size === 0) showFeedStatus(emptyMessage());
+        if (thread.posts.size === 0) showEmptyFeed();
         loadMoreBtn.hidden = page >= totalPages;
     } catch (err) {
         if (seq !== feedSeq) return;

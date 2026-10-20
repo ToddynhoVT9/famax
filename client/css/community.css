@@ -6,14 +6,14 @@
 .tf-tabs {
     display: flex;
     gap: 20px;
-    border-bottom: 2px solid #444;
+    border-bottom: 2px solid var(--color-border);
     margin-bottom: 30px;
     padding: 0 10px;
     position: relative;
 }
 
 .tf-tab {
-    color: #aaaaaa;
+    color: var(--color-text-faint);
     text-decoration: none;
     font-size: 1.1rem;
     font-weight: 500;
@@ -23,11 +23,11 @@
 }
 
 .tf-tab:hover {
-    color: #ffffff;
+    color: var(--color-text);
 }
 
 .tf-tab.active {
-    color: #ffffff;
+    color: var(--color-text);
 }
 
 .tf-tab-indicator {
@@ -35,7 +35,7 @@
     bottom: -2px;
     left: 0;
     height: 2px;
-    background-color: #ffffff;
+    background-color: var(--color-paper);
     transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1), width 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
@@ -52,29 +52,29 @@
     display: flex;
     justify-content: flex-end;
     padding-bottom: 15px;
-    border-bottom: 1px solid #444;
+    border-bottom: 1px solid var(--color-border);
     margin-bottom: 0;
 }
 
 .tf-posts-list {
     display: flex;
     flex-direction: column;
-    background-color: #ffffff;
+    background-color: var(--color-paper);
     border-radius: 8px;
-    border: 1px solid #444;
+    border: 1px solid var(--color-border);
     overflow: hidden;
 }
 
 .tf-post {
     display: flex;
     padding: 25px 20px;
-    color: #000000;
-    border-bottom: 1px solid #e0e0e0;
+    color: var(--color-ink);
+    border-bottom: 1px solid var(--color-paper-border);
     transition: background-color 0.2s;
 }
 
 .tf-post:hover {
-    background-color: #f9f9f9;
+    background-color: var(--color-paper-2);
 }
 
 .tf-post:last-child {
@@ -98,7 +98,7 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    color: #ffffff;
+    color: var(--color-on-accent);
     font-weight: bold;
     font-size: 1.1rem;
 }
@@ -113,12 +113,12 @@
 
 .tf-post-meta {
     font-size: 0.9rem;
-    color: #666666;
+    color: var(--color-ink-faint);
     margin-bottom: 8px;
 }
 
 .tf-post-meta strong {
-    color: #222222;
+    color: var(--color-ink);
     cursor: pointer;
 }
 
@@ -129,7 +129,7 @@
 .tf-post-title {
     font-size: 1.3rem;
     font-weight: 700;
-    color: #111111;
+    color: var(--color-ink);
     margin-bottom: 12px;
     display: flex;
     align-items: center;
@@ -138,7 +138,7 @@
 
 .tf-post-snippet {
     font-size: 0.95rem;
-    color: #555555;
+    color: var(--color-ink-muted);
     line-height: 1.5;
     margin-bottom: 15px;
     display: -webkit-box;
@@ -153,7 +153,7 @@
     align-items: center;
     gap: 20px;
     font-size: 0.9rem;
-    color: #666666;
+    color: var(--color-ink-faint);
 }
 
 /* .tf-stat é <button> (like e toggle de comentários são ações, não rótulos),
@@ -174,14 +174,14 @@
 
 .tf-stat:hover,
 .tf-stat.active {
-    color: #111111;
+    color: var(--color-ink);
     background: rgba(0, 0, 0, 0.03);
-    border-color: #e0e0e0;
+    border-color: var(--color-paper-border);
 }
 
 .tf-stat:focus-visible {
-    outline: none;
-    box-shadow: 0 0 0 3px rgba(51, 102, 204, 0.18);
+    outline: 3px solid var(--color-focus);
+    outline-offset: 2px;
 }
 
 .tf-stat:disabled {
@@ -200,8 +200,8 @@
     width: 24px;
     height: 24px;
     border-radius: 50%;
-    background-color: #333;
-    color: #fff;
+    background-color: var(--color-dark-3);
+    color: var(--color-on-accent);
     display: flex;
     align-items: center;
     justify-content: center;
@@ -212,7 +212,7 @@
 /* ----- COMENTÁRIOS ----- */
 .tf-post-comments {
     margin-top: 18px;
-    border-top: 1px solid #e8e8e8;
+    border-top: 1px solid var(--color-paper-border);
     padding-top: 16px;
 }
 
@@ -223,11 +223,11 @@
 }
 
 .tf-comment-item {
-    background: #f8f8f8;
-    border: 1px solid #e6e6e6;
+    background: var(--color-paper-2);
+    border: 1px solid var(--color-paper-border);
     border-radius: 12px;
     padding: 12px 14px;
-    color: #222;
+    color: var(--color-ink);
     font-size: 0.92rem;
     line-height: 1.4;
     position: relative;
@@ -238,7 +238,7 @@
     display: inline-block;
     font-size: 0.9rem;
     margin-bottom: 6px;
-    color: #111;
+    color: var(--color-ink);
 }
 
 .tf-comment-item p {
@@ -251,7 +251,7 @@
     display: block;
     margin-top: 6px;
     font-size: 0.78rem;
-    color: #888;
+    color: var(--color-ink-faint);
 }
 
 .tf-comment-delete {
@@ -260,7 +260,7 @@
     right: 12px;
     border: none;
     background: transparent;
-    color: #999;
+    color: var(--color-ink-faint);
     cursor: pointer;
     font-size: 0.85rem;
     padding: 2px 6px;
@@ -268,14 +268,14 @@
 }
 
 .tf-comment-delete:hover {
-    color: #c0392b;
+    color: var(--color-danger);
     background: rgba(192, 57, 43, 0.08);
 }
 
 /* Estado de carregamento/vazio da lista de comentários. */
 .tf-comment-status {
     font-size: 0.88rem;
-    color: #777;
+    color: var(--color-ink-faint);
     padding: 4px 2px;
 }
 
@@ -288,25 +288,24 @@
 .tf-comment-input {
     flex: 1;
     min-width: 0;
-    border: 1px solid #ddd;
+    border: 1px solid var(--color-paper-border);
     border-radius: 999px;
     padding: 12px 16px;
     font-size: 0.95rem;
-    color: #111;
-    background: #fff;
-    outline: none;
+    color: var(--color-ink);
+    background: var(--color-paper);
     font-family: inherit;
 }
 
 .tf-comment-input:focus {
-    border-color: #999;
+    border-color: var(--color-paper-border-strong);
 }
 
 .tf-comment-form button {
     border: none;
     border-radius: 999px;
-    background: #222222;
-    color: #ffffff;
+    background: var(--color-dark-2);
+    color: var(--color-on-accent);
     padding: 12px 18px;
     cursor: pointer;
     font-weight: 600;
@@ -314,7 +313,7 @@
 }
 
 .tf-comment-form button:hover {
-    background: #111111;
+    background: var(--color-dark-1);
 }
 
 .tf-comment-form button:disabled {
@@ -327,13 +326,13 @@
 .tf-feed-status {
     padding: 40px 24px;
     text-align: center;
-    color: #666666;
+    color: var(--color-ink-faint);
     font-size: 0.98rem;
-    background: #ffffff;
+    background: var(--color-paper);
 }
 
 .tf-feed-status.error {
-    color: #c0392b;
+    color: var(--color-danger);
 }
 
 /* ----- WIDGETS (coluna direita) ----- */
@@ -344,11 +343,11 @@
 }
 
 .tf-widget {
-    background-color: #ffffff;
-    color: #000000;
+    background-color: var(--color-paper);
+    color: var(--color-ink);
     border-radius: 8px;
     padding: 30px 20px;
-    border: 1px solid #e0e0e0;
+    border: 1px solid var(--color-paper-border);
 }
 
 .tf-greeting-widget {
@@ -359,12 +358,12 @@
     font-size: 1.3rem;
     font-weight: 700;
     margin-bottom: 20px;
-    color: #111;
+    color: var(--color-ink);
 }
 
 .tf-btn-dark {
-    background-color: #222222;
-    color: #ffffff;
+    background-color: var(--color-dark-2);
+    color: var(--color-on-accent);
     border: none;
     padding: 12px 20px;
     font-size: 1rem;
@@ -381,14 +380,14 @@
 }
 
 .tf-btn-dark:hover {
-    background-color: #111111;
+    background-color: var(--color-dark-1);
 }
 
 .tf-widget-title {
     font-size: 1.1rem;
     font-weight: 700;
     margin-bottom: 20px;
-    color: #111;
+    color: var(--color-ink);
 }
 
 /* ----- MODAL CRIAÇÃO DE POST ----- */
@@ -410,13 +409,13 @@
 }
 
 .modal-box {
-    background-color: #333333;
+    background-color: var(--color-surface-2);
     width: 700px;
     max-width: 90%;
     padding: 30px 40px;
     border-radius: 8px;
     box-shadow: 0 4px 15px rgba(0, 0, 0, 0.5);
-    color: #ffffff;
+    color: var(--color-text);
     position: relative;
 }
 
@@ -435,31 +434,29 @@
 
 .modal-input {
     width: 100%;
-    background-color: #555555;
-    border: 1px solid #444;
+    background-color: var(--color-surface-5);
+    border: 1px solid var(--color-border);
     border-radius: 6px;
     padding: 12px 14px;
-    color: #ffffff;
+    color: var(--color-text);
     font-size: 1rem;
-    outline: none;
     box-sizing: border-box;
     font-family: inherit;
 }
 
 .modal-input:focus {
-    background-color: #666666;
-    border-color: #888;
+    background-color: var(--color-surface-6);
+    border-color: var(--color-border-strong);
 }
 
 .modal-textarea {
     width: 100%;
-    background-color: #555555;
-    border: 1px solid #444;
-    color: #ffffff;
+    background-color: var(--color-surface-5);
+    border: 1px solid var(--color-border);
+    color: var(--color-text);
     font-size: 1rem;
     padding: 15px;
     border-radius: 6px;
-    outline: none;
     resize: vertical;
     line-height: 1.5;
     font-family: inherit;
@@ -468,8 +465,8 @@
 }
 
 .modal-textarea:focus {
-    background-color: #666666;
-    border-color: #888;
+    background-color: var(--color-surface-6);
+    border-color: var(--color-border-strong);
 }
 
 /* ----- RESPONSIVIDADE ----- */
@@ -501,12 +498,12 @@
 .tf-community-name {
     font-size: 1.9rem;
     font-weight: 800;
-    color: #ffffff;
+    color: var(--color-text);
     margin: 0;
 }
 
 .tf-community-meta {
-    color: #aaaaaa;
+    color: var(--color-text-faint);
     font-size: 0.95rem;
     margin: 0;
 }
@@ -515,8 +512,8 @@
     margin-left: auto;
     border: none;
     border-radius: 8px;
-    background-color: #ffffff;
-    color: #222222;
+    background-color: var(--color-paper);
+    color: var(--color-ink);
     font-weight: 700;
     font-size: 0.95rem;
     padding: 10px 22px;
@@ -525,7 +522,7 @@
 }
 
 .tf-btn-join:hover {
-    background-color: #f0f0f0;
+    background-color: var(--color-paper-2);
 }
 
 .tf-btn-join:disabled {
@@ -538,7 +535,7 @@
     display: none;
     background: rgba(220, 53, 69, 0.15);
     border: 1px solid rgba(220, 53, 69, 0.5);
-    color: #ff9aa4;
+    color: var(--color-danger-on-dark);
     border-radius: 8px;
     padding: 10px 14px;
     font-size: 0.9rem;
@@ -596,7 +593,7 @@
 
 .tf-community-description {
     margin: 10px 0 0;
-    color: #dddddd;
+    color: var(--color-text-soft);
     line-height: 1.5;
     white-space: pre-line;
     max-width: 760px;
@@ -615,8 +612,8 @@
 
 .tf-btn-joined {
     background-color: transparent;
-    color: #ffffff;
-    border: 1px solid #ffffff;
+    color: var(--color-text);
+    border: 1px solid var(--color-text);
 }
 
 .tf-btn-joined:hover {
@@ -625,7 +622,7 @@
 
 .tf-owner-badge {
     font-size: 0.85rem;
-    color: #cccccc;
+    color: var(--color-text-muted);
 }
 
 /* ----- Menus (post e participação) ----- */
@@ -639,7 +636,7 @@
     right: 0;
     top: calc(100% + 6px);
     min-width: 170px;
-    background-color: #ffffff;
+    background-color: var(--color-paper);
     border-radius: 6px;
     box-shadow: 0 4px 14px rgba(0, 0, 0, 0.25);
     padding: 6px 0;
@@ -655,17 +652,17 @@
     padding: 9px 14px;
     font: inherit;
     font-size: 0.95rem;
-    color: #222222;
+    color: var(--color-ink);
     cursor: pointer;
 }
 
 .tf-menu-item:hover,
 .tf-menu-item:focus-visible {
-    background-color: #f0f0f0;
+    background-color: var(--color-paper-2);
 }
 
 .tf-menu-item--danger {
-    color: #c0392b;
+    color: var(--color-danger);
 }
 
 .tf-post-menu-btn {
@@ -675,13 +672,13 @@
     line-height: 1;
     padding: 2px 8px;
     border-radius: 6px;
-    color: #666666;
+    color: var(--color-ink-faint);
     cursor: pointer;
 }
 
 .tf-post-menu-btn:hover,
 .tf-post-menu-btn[aria-expanded="true"] {
-    background-color: #eeeeee;
+    background-color: var(--color-paper-2);
 }
 
 /* ----- Abas como botões ----- */
@@ -693,13 +690,13 @@ button.tf-tab {
 }
 
 button.tf-tab:focus-visible {
-    outline: 2px solid #ffffff;
+    outline: 2px solid var(--color-text);
     outline-offset: 4px;
     border-radius: 4px;
 }
 
 .tf-tab-hint {
-    color: #cccccc;
+    color: var(--color-text-muted);
     margin: -12px 0 16px;
     font-size: 0.95rem;
 }
@@ -713,8 +710,8 @@ button.tf-tab:focus-visible {
 
 .tf-chip {
     background: none;
-    border: 1px solid #777777;
-    color: #dddddd;
+    border: 1px solid var(--color-border-strong);
+    color: var(--color-text-soft);
     border-radius: 16px;
     padding: 6px 14px;
     font: inherit;
@@ -723,14 +720,14 @@ button.tf-tab:focus-visible {
 }
 
 .tf-chip:hover {
-    border-color: #ffffff;
-    color: #ffffff;
+    border-color: var(--color-text);
+    color: var(--color-text);
 }
 
 .tf-chip[aria-pressed="true"] {
-    background-color: #ffffff;
-    border-color: #ffffff;
-    color: #222222;
+    background-color: var(--color-paper);
+    border-color: var(--color-text);
+    color: var(--color-ink);
     font-weight: 600;
 }
 
@@ -760,12 +757,12 @@ button.tf-tab:focus-visible {
 }
 
 .tf-edited {
-    color: #888888;
+    color: var(--color-ink-faint);
     font-style: italic;
 }
 
 .tf-post-snippet {
-    color: #333333;
+    color: var(--color-ink-soft);
     white-space: pre-line;
     overflow-wrap: anywhere;
     -webkit-line-clamp: 4;
@@ -786,7 +783,7 @@ button.tf-tab:focus-visible {
     border: none;
     padding: 0;
     margin-bottom: 12px;
-    color: #0073e6;
+    color: var(--color-primary);
     font: inherit;
     font-size: 0.9rem;
     cursor: pointer;
@@ -802,9 +799,9 @@ button.tf-tab:focus-visible {
     margin: 18px auto 0;
     padding: 10px 26px;
     border-radius: 20px;
-    border: 1px solid #ffffff;
+    border: 1px solid var(--color-text);
     background: none;
-    color: #ffffff;
+    color: var(--color-text);
     font: inherit;
     cursor: pointer;
 }
@@ -819,8 +816,8 @@ button.tf-tab:focus-visible {
 .tf-comments-more {
     margin: 12px 0 0;
     padding: 6px 14px;
-    border-color: #bbbbbb;
-    color: #333333;
+    border-color: var(--color-paper-border-strong);
+    color: var(--color-ink-soft);
     font-size: 0.9rem;
 }
 
@@ -855,27 +852,27 @@ button.tf-tab:focus-visible {
     padding: 0;
     font: inherit;
     font-size: 0.8rem;
-    color: #555555;
+    color: var(--color-ink-muted);
     cursor: pointer;
 }
 
 .tf-comment-action:hover {
-    color: #111111;
+    color: var(--color-ink);
     text-decoration: underline;
 }
 
 .tf-comment-action--danger {
-    color: #c0392b;
+    color: var(--color-danger);
 }
 
 .tf-comment-removed {
     margin: 0;
-    color: #888888;
+    color: var(--color-ink-faint);
     font-style: italic;
 }
 
 .tf-comment-item.is-deleted {
-    background: #f1f1f1;
+    background: var(--color-paper-2);
 }
 
 /* Respostas recuadas até o 3º nível; daí em diante ficam alinhadas, para a
@@ -886,7 +883,7 @@ button.tf-tab:focus-visible {
     gap: 10px;
     margin: 10px 0 0 18px;
     padding-left: 12px;
-    border-left: 2px solid #e0e0e0;
+    border-left: 2px solid var(--color-paper-border);
 }
 
 .tf-comment-replies:empty {
@@ -916,7 +913,7 @@ button.tf-tab:focus-visible {
 
 .tf-edit-input {
     width: 100%;
-    border: 1px solid #cccccc;
+    border: 1px solid var(--color-paper-border-strong);
     border-radius: 8px;
     padding: 8px 10px;
     font: inherit;
@@ -936,8 +933,8 @@ button.tf-tab:focus-visible {
     border: none;
     border-radius: 6px;
     padding: 6px 14px;
-    background-color: #222222;
-    color: #ffffff;
+    background-color: var(--color-dark-2);
+    color: var(--color-on-accent);
     font: inherit;
     font-size: 0.85rem;
     cursor: pointer;
@@ -945,13 +942,13 @@ button.tf-tab:focus-visible {
 
 .tf-inline-error {
     margin-top: 8px;
-    color: #c0392b;
+    color: var(--color-danger);
     font-size: 0.85rem;
 }
 
 /* ----- Widget "Em breve" ----- */
 .tf-widget-soon {
-    color: #555555;
+    color: var(--color-ink-muted);
     font-size: 0.95rem;
     line-height: 1.5;
 }
@@ -967,14 +964,14 @@ button.tf-tab:focus-visible {
 .modal-close {
     background: none;
     border: none;
-    color: #aaaaaa;
+    color: var(--color-text-faint);
     font-size: 1.8rem;
     cursor: pointer;
     transition: color 0.2s;
 }
 
 .modal-close:hover {
-    color: #ffffff;
+    color: var(--color-text);
 }
 
 .modal-label--spaced {
@@ -1000,15 +997,15 @@ button.tf-tab:focus-visible {
     font: inherit;
     font-size: 1rem;
     cursor: pointer;
-    color: #ffffff;
+    color: var(--color-on-accent);
 }
 
 .modal-btn-secondary {
-    background-color: #555555;
+    background-color: var(--color-surface-5);
 }
 
 .modal-btn-primary {
-    background-color: #0073e6;
+    background-color: var(--color-primary);
     font-weight: 600;
 }
 
@@ -1044,8 +1041,8 @@ button.tf-tab:focus-visible {
 /* ----- MODERAÇÃO: atalhos, ban e vistas Regras / Membros ----- */
 .tf-btn-secondary {
     background-color: transparent;
-    color: #ffffff;
-    border: 1px solid #ffffff;
+    color: var(--color-text);
+    border: 1px solid var(--color-text);
     text-decoration: none;
 }
 
@@ -1056,7 +1053,7 @@ button.tf-tab:focus-visible {
 .tf-banned-badge {
     margin-left: auto;
     font-size: 0.9rem;
-    color: #ff9aa4;
+    color: var(--color-danger-on-dark);
     border: 1px solid rgba(220, 53, 69, 0.5);
     border-radius: 8px;
     padding: 8px 14px;
@@ -1081,13 +1078,13 @@ button.tf-tab:focus-visible {
 }
 
 .tf-view-action {
-    color: #dddddd;
+    color: var(--color-text-soft);
     font-size: 0.95rem;
 }
 
 .tf-rules-text {
-    background-color: #ffffff;
-    color: #111111;
+    background-color: var(--color-paper);
+    color: var(--color-ink);
     border-radius: 8px;
     padding: 22px 24px;
     line-height: 1.6;
@@ -1096,18 +1093,18 @@ button.tf-tab:focus-visible {
 }
 
 .tf-rules-text.is-empty {
-    color: #666666;
+    color: var(--color-ink-faint);
 }
 
 .tf-members-total {
-    color: #aaaaaa;
+    color: var(--color-text-faint);
     font-size: 0.9rem;
     margin: 10px 0;
 }
 
 .tf-members-list {
     list-style: none;
-    background-color: #ffffff;
+    background-color: var(--color-paper);
     border-radius: 8px;
     overflow: hidden;
 }
@@ -1117,8 +1114,8 @@ button.tf-tab:focus-visible {
     align-items: center;
     gap: 14px;
     padding: 14px 18px;
-    color: #111111;
-    border-bottom: 1px solid #e6e6e6;
+    color: var(--color-ink);
+    border-bottom: 1px solid var(--color-paper-border);
 }
 
 .tf-member:last-child {
@@ -1133,7 +1130,7 @@ button.tf-tab:focus-visible {
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    color: #ffffff;
+    color: var(--color-on-accent);
     font-weight: 700;
     text-decoration: none;
     overflow: hidden;
@@ -1163,7 +1160,7 @@ button.tf-tab:focus-visible {
 .tf-member-meta {
     display: block;
     font-size: 0.85rem;
-    color: #666666;
+    color: var(--color-ink-faint);
     margin-top: 2px;
 }
 
@@ -1176,22 +1173,22 @@ button.tf-tab:focus-visible {
 
 .tf-member-action {
     background: none;
-    border: 1px solid #bbbbbb;
+    border: 1px solid var(--color-paper-border-strong);
     border-radius: 14px;
     padding: 5px 12px;
     font: inherit;
     font-size: 0.85rem;
-    color: #333333;
+    color: var(--color-ink-soft);
     cursor: pointer;
 }
 
 .tf-member-action:hover {
-    background-color: #f0f0f0;
+    background-color: var(--color-paper-2);
 }
 
 .tf-member-action--danger {
-    border-color: #e3a3a0;
-    color: #c0392b;
+    border-color: var(--color-danger-border);
+    color: var(--color-danger);
 }
 
 @media (max-width: 600px) {
@@ -1208,8 +1205,8 @@ button.tf-tab:focus-visible {
 
 /* Comentário aberto por link de notificação (#comment-<id>). */
 .tf-comment-item.is-highlighted {
-    background-color: #fff6d6;
-    border-color: #e8c96a;
+    background-color: var(--color-highlight-surface);
+    border-color: var(--color-highlight-border);
 }
 
 /* ----- Widget "Maiores criadores" (community-leaderboard.ts) ----- */
@@ -1222,18 +1219,18 @@ button.tf-tab:focus-visible {
 .tf-lb-tab {
     flex: 1;
     padding: 6px 8px;
-    border: 1px solid #d0d0d0;
+    border: 1px solid var(--color-paper-border-strong);
     border-radius: 999px;
-    background: #ffffff;
-    color: #333333;
+    background: var(--color-paper);
+    color: var(--color-ink-soft);
     font-size: 0.85rem;
     cursor: pointer;
 }
 
 .tf-lb-tab.active {
-    background: #222222;
-    border-color: #222222;
-    color: #ffffff;
+    background: var(--color-dark-2);
+    border-color: var(--color-dark-2);
+    color: var(--color-on-accent);
 }
 
 .tf-lb-list {
@@ -1256,12 +1253,12 @@ button.tf-tab:focus-visible {
     flex-shrink: 0;
     text-align: center;
     font-weight: 700;
-    color: #777777;
+    color: var(--color-ink-faint);
 }
 
-.tf-lb-rank--1 { color: #b8860b; }
-.tf-lb-rank--2 { color: #7a7a7a; }
-.tf-lb-rank--3 { color: #a0522d; }
+.tf-lb-rank--1 { color: var(--color-gold); }
+.tf-lb-rank--2 { color: var(--color-ink-faint); }
+.tf-lb-rank--3 { color: var(--color-bronze); }
 
 .tf-lb-user {
     display: flex;
@@ -1269,7 +1266,7 @@ button.tf-tab:focus-visible {
     gap: 10px;
     min-width: 0;
     flex: 1;
-    color: #111111;
+    color: var(--color-ink);
     text-decoration: none;
 }
 
@@ -1286,7 +1283,7 @@ button.tf-tab:focus-visible {
     display: flex;
     align-items: center;
     justify-content: center;
-    color: #ffffff;
+    color: var(--color-on-accent);
     font-size: 0.75rem;
     font-weight: 700;
 }
@@ -1307,23 +1304,23 @@ button.tf-tab:focus-visible {
 .tf-lb-points {
     flex-shrink: 0;
     font-size: 0.85rem;
-    color: #555555;
+    color: var(--color-ink-muted);
 }
 
 .tf-lb-status {
-    color: #555555;
+    color: var(--color-ink-muted);
     font-size: 0.9rem;
     line-height: 1.5;
 }
 
 .tf-lb-status.error {
-    color: #c0392b;
+    color: var(--color-danger);
 }
 
 .tf-lb-note {
     margin-top: 16px;
     font-size: 0.75rem;
-    color: #888888;
+    color: var(--color-ink-faint);
 }
 
 /* ----- Ordenação do feed ----- */
@@ -1346,16 +1343,16 @@ button.tf-tab:focus-visible {
     align-items: center;
     gap: 8px;
     margin-left: auto;
-    color: #cccccc;
+    color: var(--color-text-muted);
     font-size: 0.9rem;
 }
 
 .tf-sort select {
     padding: 6px 10px;
     border-radius: 6px;
-    border: 1px solid #555555;
-    background-color: #2b2b2b;
-    color: #ffffff;
+    border: 1px solid var(--color-border-strong);
+    background-color: var(--color-surface);
+    color: var(--color-text);
     font: inherit;
     cursor: pointer;
 }
@@ -1378,19 +1375,19 @@ button.tf-tab:focus-visible {
 }
 
 .tf-badge--pinned {
-    background-color: #fff3cd;
-    color: #7a5a00;
+    background-color: var(--color-warning-surface);
+    color: var(--color-warning-strong);
 }
 
 .tf-badge--resolved {
-    background-color: #d4edda;
-    color: #1e6b34;
+    background-color: var(--color-success-surface);
+    color: var(--color-success-strong);
 }
 
 .tf-comment-item.is-accepted > .tf-comment-main {
-    border-left: 3px solid #2e9d4f;
+    border-left: 3px solid var(--color-success);
     padding-left: 10px;
-    background-color: #f2fbf4;
+    background-color: var(--color-paper-2);
     border-radius: 4px;
 }
 
@@ -1399,8 +1396,8 @@ button.tf-tab:focus-visible {
     margin-left: 8px;
     padding: 1px 7px;
     border-radius: 999px;
-    background-color: #2e9d4f;
-    color: #ffffff;
+    background-color: var(--color-success);
+    color: var(--color-on-accent);
     font-size: 0.72rem;
     font-weight: 700;
     vertical-align: middle;
@@ -1429,8 +1426,8 @@ button.tf-tab:focus-visible {
     display: flex;
     gap: 2px;
     padding: 4px 6px;
-    background-color: #ffffff;
-    border: 1px solid #e0e0e0;
+    background-color: var(--color-paper);
+    border: 1px solid var(--color-paper-border);
     border-radius: 999px;
     box-shadow: 0 4px 14px rgba(0, 0, 0, 0.18);
 }
@@ -1454,11 +1451,11 @@ button.tf-tab:focus-visible {
 .tf-reaction-option:hover,
 .tf-reaction-option:focus-visible {
     transform: scale(1.25);
-    background-color: #f1f1f1;
+    background-color: var(--color-paper-2);
 }
 
 .tf-reaction-option.is-mine {
-    background-color: #e8f0fe;
+    background-color: var(--color-info-surface);
 }
 
 .tf-reaction-summary {
@@ -1474,7 +1471,7 @@ button.tf-tab:focus-visible {
 }
 
 .tf-stat-save.active {
-    color: #b8860b;
+    color: var(--color-gold);
     font-weight: 600;
 }
 
@@ -1501,14 +1498,14 @@ button.tf-tab:focus-visible {
 .md blockquote {
     margin: 0 0 0.6em;
     padding: 2px 0 2px 12px;
-    border-left: 3px solid #cccccc;
-    color: #555555;
+    border-left: 3px solid var(--color-paper-border-strong);
+    color: var(--color-ink-muted);
 }
 
 .md code {
     font-family: Consolas, "Courier New", monospace;
     font-size: 0.9em;
-    background-color: #f1f1f1;
+    background-color: var(--color-paper-2);
     padding: 1px 5px;
     border-radius: 4px;
 }
@@ -1516,7 +1513,7 @@ button.tf-tab:focus-visible {
 .md pre {
     margin: 0 0 0.6em;
     padding: 10px 12px;
-    background-color: #f4f4f4;
+    background-color: var(--color-paper-2);
     border-radius: 6px;
     overflow-x: auto;
 }
@@ -1527,7 +1524,7 @@ button.tf-tab:focus-visible {
 }
 
 .md a {
-    color: #1a5fb4;
+    color: var(--color-link);
     text-decoration: underline;
 }
 
@@ -1547,12 +1544,12 @@ button.tf-tab:focus-visible {
 
 .md th,
 .md td {
-    border: 1px solid #dddddd;
+    border: 1px solid var(--color-paper-border);
     padding: 4px 8px;
 }
 
 .md-spoiler {
-    background-color: #333333;
+    background-color: var(--color-dark-3);
     color: transparent;
     border-radius: 3px;
     padding: 0 3px;
@@ -1565,7 +1562,7 @@ button.tf-tab:focus-visible {
 }
 
 .md-spoiler.is-revealed {
-    background-color: #e8e8e8;
+    background-color: var(--color-paper-3);
     color: inherit;
     cursor: auto;
     user-select: auto;
@@ -1606,7 +1603,7 @@ button.tf-tab:focus-visible {
 .tf-post-image {
     padding: 0;
     border: none;
-    background-color: #eeeeee;
+    background-color: var(--color-paper-2);
     cursor: zoom-in;
     aspect-ratio: 4 / 3;
     overflow: hidden;
@@ -1644,7 +1641,7 @@ button.tf-tab:focus-visible {
     position: absolute;
     border: none;
     background-color: rgba(255, 255, 255, 0.12);
-    color: #ffffff;
+    color: var(--color-on-accent);
     width: 48px;
     height: 48px;
     border-radius: 50%;
@@ -1667,7 +1664,7 @@ button.tf-tab:focus-visible {
     bottom: 16px;
     left: 50%;
     transform: translateX(-50%);
-    color: #dddddd;
+    color: var(--color-on-accent);
     margin: 0;
 }
 
@@ -1675,7 +1672,7 @@ button.tf-tab:focus-visible {
 .modal-hint {
     margin: 6px 0 0;
     font-size: 0.8rem;
-    color: #bbbbbb;
+    color: var(--color-text-muted);
 }
 
 .modal-images {
@@ -1691,7 +1688,7 @@ button.tf-tab:focus-visible {
     height: 84px;
     border-radius: 6px;
     overflow: hidden;
-    background-color: #222222;
+    background-color: var(--color-dark-2);
 }
 
 .modal-image img {
@@ -1709,7 +1706,7 @@ button.tf-tab:focus-visible {
     border: none;
     border-radius: 50%;
     background-color: rgba(0, 0, 0, 0.7);
-    color: #ffffff;
+    color: var(--color-on-accent);
     font-size: 0.95rem;
     line-height: 1;
     cursor: pointer;
@@ -1743,14 +1740,14 @@ button.tf-tab:focus-visible {
 /* Mesmas abas do ranking, mas sobre o fundo escuro da página. */
 .tf-events-tabs .tf-lb-tab {
     background-color: transparent;
-    border-color: #555555;
-    color: #dddddd;
+    border-color: var(--color-border-strong);
+    color: var(--color-text-soft);
 }
 
 .tf-events-tabs .tf-lb-tab.active {
-    background-color: #ffffff;
-    border-color: #ffffff;
-    color: #222222;
+    background-color: var(--color-paper);
+    border-color: var(--color-text);
+    color: var(--color-ink);
 }
 
 .tf-events-list {
@@ -1763,10 +1760,10 @@ button.tf-tab:focus-visible {
     display: flex;
     gap: 16px;
     padding: 18px;
-    background-color: #ffffff;
-    color: #111111;
+    background-color: var(--color-paper);
+    color: var(--color-ink);
     border-radius: 8px;
-    border: 1px solid #e0e0e0;
+    border: 1px solid var(--color-paper-border);
 }
 
 .tf-event.is-past {
@@ -1778,8 +1775,8 @@ button.tf-tab:focus-visible {
     width: 58px;
     height: 62px;
     border-radius: 8px;
-    background-color: #222222;
-    color: #ffffff;
+    background-color: var(--color-dark-2);
+    color: var(--color-on-accent);
     display: flex;
     flex-direction: column;
     align-items: center;
@@ -1811,7 +1808,7 @@ button.tf-tab:focus-visible {
 
 .tf-event-when {
     margin: 0 0 4px;
-    color: #444444;
+    color: var(--color-ink-soft);
     font-size: 0.9rem;
 }
 
@@ -1822,19 +1819,19 @@ button.tf-tab:focus-visible {
 .tf-event-location {
     margin: 0 0 6px;
     font-size: 0.9rem;
-    color: #444444;
+    color: var(--color-ink-soft);
     overflow-wrap: anywhere;
 }
 
 .tf-event-location a {
-    color: #1a5fb4;
+    color: var(--color-link);
 }
 
 .tf-event-description {
     margin: 6px 0 0;
     white-space: pre-wrap;
     overflow-wrap: anywhere;
-    color: #333333;
+    color: var(--color-ink-soft);
     font-size: 0.95rem;
 }
 
@@ -1847,7 +1844,7 @@ button.tf-tab:focus-visible {
 }
 
 .tf-event-count {
-    color: #666666;
+    color: var(--color-ink-faint);
     font-size: 0.85rem;
     margin-right: auto;
 }
@@ -1855,17 +1852,17 @@ button.tf-tab:focus-visible {
 .tf-event-going {
     padding: 6px 16px;
     border-radius: 999px;
-    border: 1px solid #222222;
-    background-color: #ffffff;
-    color: #222222;
+    border: 1px solid var(--color-border);
+    background-color: var(--color-paper);
+    color: var(--color-ink);
     font-weight: 600;
     cursor: pointer;
 }
 
 .tf-event-going.is-going {
-    background-color: #2e9d4f;
-    border-color: #2e9d4f;
-    color: #ffffff;
+    background-color: var(--color-success);
+    border-color: var(--color-success);
+    color: var(--color-on-accent);
 }
 
 .tf-widget-head {
@@ -1877,7 +1874,7 @@ button.tf-tab:focus-visible {
 
 .tf-upcoming-all {
     font-size: 0.85rem;
-    color: #555555;
+    color: var(--color-ink-muted);
     cursor: pointer;
 }
 
@@ -1891,7 +1888,7 @@ button.tf-tab:focus-visible {
     display: flex;
     align-items: center;
     gap: 10px;
-    color: #111111;
+    color: var(--color-ink);
     text-decoration: none;
 }
 
@@ -1922,7 +1919,7 @@ button.tf-tab:focus-visible {
 
 .tf-upcoming-when {
     font-size: 0.8rem;
-    color: #666666;
+    color: var(--color-ink-faint);
 }
 
 .tf-upcoming-when::first-letter {
@@ -1953,7 +1950,7 @@ button.tf-tab:focus-visible {
 /* ----- Conteúdo de usuário bloqueado ----- */
 .tf-blocked-notice {
     margin: 0;
-    color: #777777;
+    color: var(--color-ink-faint);
     font-size: 0.9rem;
     font-style: italic;
 }
@@ -1962,7 +1959,7 @@ button.tf-tab:focus-visible {
     border: none;
     background: none;
     padding: 0;
-    color: #1a5fb4;
+    color: var(--color-link);
     font: inherit;
     font-style: normal;
     text-decoration: underline;
@@ -1983,7 +1980,7 @@ button.tf-tab:focus-visible {
     gap: 8px;
     margin: 12px 0 4px;
     font-size: 0.9rem;
-    color: #dddddd;
+    color: var(--color-text-soft);
     cursor: pointer;
 }
 
@@ -1992,32 +1989,58 @@ button.tf-tab:focus-visible {
 }
 
 .tf-badge--nsfw {
-    background-color: #b3261e;
-    color: #ffffff;
+    background-color: var(--color-danger-strong);
+    color: var(--color-on-accent);
 }
 
 .tf-nsfw-notice {
     margin: 4px 0 12px;
     padding: 12px 14px;
     border-radius: 8px;
-    background-color: #f4f4f4;
-    color: #555555;
+    background-color: var(--color-paper-2);
+    color: var(--color-ink-muted);
     font-size: 0.9rem;
 }
 
 .tf-nsfw-notice a {
-    color: #1a5fb4;
+    color: var(--color-link);
 }
 
 .tf-nsfw-banner {
     margin: 0 0 18px;
     padding: 14px 16px;
     border-radius: 8px;
-    background-color: #3a1a1a;
-    border: 1px solid #b3261e;
-    color: #ffdede;
+    background-color: var(--color-danger-surface);
+    border: 1px solid var(--color-danger-strong);
+    color: var(--color-danger-on-dark-soft);
 }
 
 .tf-nsfw-banner a {
-    color: #ffffff;
+    color: var(--color-text);
+}
+
+/* ----- Rascunho restaurado no modal de post ----- */
+.modal-draft {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-3);
+    margin-bottom: var(--space-3);
+    padding: var(--space-2) var(--space-3);
+    border-radius: var(--radius-md);
+    background-color: var(--color-warning-surface);
+    color: var(--color-warning-ink);
+    font-size: 0.9rem;
+}
+
+.modal-draft-discard {
+    min-height: 44px;
+    padding: 0 var(--space-2);
+    border: none;
+    background: none;
+    color: inherit;
+    font: inherit;
+    font-weight: 700;
+    text-decoration: underline;
+    cursor: pointer;
 }

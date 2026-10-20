@@ -10,14 +10,14 @@
 .mod-breadcrumb {
     display: flex;
     gap: 8px;
-    color: #aaaaaa;
+    color: var(--color-text-faint);
     font-size: 0.92rem;
     margin-bottom: 10px;
     overflow-wrap: anywhere;
 }
 
 .mod-breadcrumb a {
-    color: #dddddd;
+    color: var(--color-text-soft);
 }
 
 .mod-title {
@@ -29,7 +29,7 @@
 
 .mod-intro,
 .mod-status {
-    color: #aaaaaa;
+    color: var(--color-text-faint);
     margin-bottom: 18px;
     line-height: 1.5;
 }
@@ -46,7 +46,7 @@
 
 /* ----- Fila (shared/report-queue.ts) ----- */
 .report-summary {
-    color: #aaaaaa;
+    color: var(--color-text-faint);
     font-size: 0.9rem;
     margin: 10px 0;
 }
@@ -58,8 +58,8 @@
 }
 
 .report-card {
-    background-color: #ffffff;
-    color: #111111;
+    background-color: var(--color-paper);
+    color: var(--color-ink);
     border-radius: 8px;
     padding: 16px 18px;
 }
@@ -81,40 +81,40 @@
     font-weight: 700;
     border-radius: 10px;
     padding: 2px 8px;
-    background-color: #eeeeee;
-    color: #444444;
+    background-color: var(--color-paper-2);
+    color: var(--color-ink-soft);
 }
 
 .report-status--pending {
-    background-color: #fdecc8;
-    color: #7a5200;
+    background-color: var(--color-warning-surface);
+    color: var(--color-warning-ink);
 }
 
 .report-status--reviewing {
-    background-color: #dbe8fb;
-    color: #1d4f91;
+    background-color: var(--color-info-surface);
+    color: var(--color-link);
 }
 
 .report-status--resolved {
-    background-color: #d8f0e3;
-    color: #1e6b45;
+    background-color: var(--color-success-surface);
+    color: var(--color-success-strong);
 }
 
 .report-meta {
     font-size: 0.85rem;
-    color: #666666;
+    color: var(--color-ink-faint);
 }
 
 .report-reason {
-    border-left: 3px solid #d9534f;
+    border-left: 3px solid var(--color-danger);
     padding: 4px 0 4px 12px;
     margin: 0 0 12px;
-    color: #222222;
+    color: var(--color-ink);
     overflow-wrap: anywhere;
 }
 
 .report-target {
-    background-color: #f6f6f6;
+    background-color: var(--color-paper-2);
     border-radius: 6px;
     padding: 10px 12px;
     font-size: 0.93rem;
@@ -127,14 +127,14 @@
 
 .report-target-content {
     margin-top: 6px;
-    color: #333333;
+    color: var(--color-ink-soft);
     line-height: 1.45;
     overflow-wrap: anywhere;
 }
 
 .report-target-author {
     margin-top: 6px;
-    color: #555555;
+    color: var(--color-ink-muted);
     font-size: 0.85rem;
 }
 
@@ -143,7 +143,7 @@
     margin-top: 6px;
     font-size: 0.8rem;
     font-weight: 700;
-    color: #c0392b;
+    color: var(--color-danger);
 }
 
 .report-actions {
@@ -156,17 +156,17 @@
 
 .report-btn {
     background: none;
-    border: 1px solid #bbbbbb;
+    border: 1px solid var(--color-paper-border-strong);
     border-radius: 14px;
     padding: 6px 14px;
     font: inherit;
     font-size: 0.88rem;
-    color: #333333;
+    color: var(--color-ink-soft);
     cursor: pointer;
 }
 
 .report-btn:hover {
-    background-color: #f0f0f0;
+    background-color: var(--color-paper-2);
 }
 
 .report-btn:disabled {
@@ -175,35 +175,35 @@
 }
 
 .report-btn--primary {
-    background-color: #222222;
-    border-color: #222222;
-    color: #ffffff;
+    background-color: var(--color-dark-2);
+    border-color: var(--color-dark-2);
+    color: var(--color-on-accent);
 }
 
 .report-btn--primary:hover {
-    background-color: #444444;
+    background-color: var(--color-dark-4);
 }
 
 .report-btn--danger {
-    border-color: #e3a3a0;
-    color: #c0392b;
+    border-color: var(--color-danger-border);
+    color: var(--color-danger);
 }
 
 .report-hint {
     font-size: 0.82rem;
-    color: #777777;
+    color: var(--color-ink-faint);
 }
 
 .report-closed {
     margin-top: 12px;
     font-size: 0.85rem;
-    color: #666666;
+    color: var(--color-ink-faint);
 }
 
 /* ----- Banidos ----- */
 .mod-bans {
     list-style: none;
-    background-color: #ffffff;
+    background-color: var(--color-paper);
     border-radius: 8px;
     overflow: hidden;
 }
@@ -213,8 +213,8 @@
     align-items: center;
     gap: 12px;
     padding: 12px 18px;
-    color: #111111;
-    border-bottom: 1px solid #e6e6e6;
+    color: var(--color-ink);
+    border-bottom: 1px solid var(--color-paper-border);
 }
 
 .mod-ban:last-child {
@@ -237,6 +237,6 @@
 .mod-ban-meta,
 .mod-ban-reason {
     font-size: 0.85rem;
-    color: #666666;
+    color: var(--color-ink-faint);
     overflow-wrap: anywhere;
 }

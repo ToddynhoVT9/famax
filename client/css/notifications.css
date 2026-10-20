@@ -25,10 +25,10 @@
 .notif-page-btn,
 .notif-page-more {
     background: none;
-    border: 1px solid #ffffff;
+    border: 1px solid var(--color-text);
     border-radius: 20px;
     padding: 8px 16px;
-    color: #ffffff;
+    color: var(--color-text);
     font: inherit;
     font-size: 0.92rem;
     cursor: pointer;
@@ -41,17 +41,17 @@
 }
 
 .notif-page-hint {
-    color: #aaaaaa;
+    color: var(--color-text-faint);
     font-size: 0.9rem;
     margin-bottom: 18px;
 }
 
 .notif-page-hint a {
-    color: #dddddd;
+    color: var(--color-text-soft);
 }
 
 .notif-page-list {
-    background-color: #ffffff;
+    background-color: var(--color-paper);
     border-radius: 8px;
     overflow: hidden;
 }

@@ -37,13 +37,13 @@ if (
 ) {
   const showError = (message: string): void => {
     errorElement.innerText = message;
-    errorElement.style.display = "block";
+    errorElement.hidden = false;
   };
 
   const realizarLogin = async (): Promise<void> => {
     const identifier = usernameInput.value.trim();
     const password = passwordInput.value;
-    errorElement.style.display = "none";
+    errorElement.hidden = true;
 
     if (!identifier || !password) {
       showError("Preencha email/usuário e senha.");
@@ -95,7 +95,7 @@ if (
           { method: "POST", body: JSON.stringify({ identifier, password }) },
         );
         button.remove();
-        errorElement.style.display = "none";
+        errorElement.hidden = true;
         if (result.mfaRequired && result.mfaToken) {
           mfaToken = result.mfaToken;
           if (passwordStep) passwordStep.hidden = true;
@@ -116,7 +116,7 @@ if (
 
   const verificarCodigo = async (): Promise<void> => {
     const code = codeInput?.value.trim() ?? "";
-    errorElement.style.display = "none";
+    errorElement.hidden = true;
     if (!mfaToken || !code) {
       showError("Digite o código.");
       return;
@@ -162,7 +162,7 @@ if (
     mfaToken = null;
     if (codeStep) codeStep.hidden = true;
     if (passwordStep) passwordStep.hidden = false;
-    errorElement.style.display = "none";
+    errorElement.hidden = true;
     passwordInput.value = "";
     passwordInput.focus();
   });

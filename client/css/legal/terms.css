@@ -10,7 +10,7 @@ body {
 .container {
     max-width: 800px;
     margin: 0 auto;
-    background-color: #333333;
+    background-color: var(--color-surface-2);
     padding: 40px;
     border-radius: 8px;
     box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
@@ -19,7 +19,7 @@ body {
 h1 {
     font-size: 2.5rem;
     margin-bottom: 20px;
-    color: #fff;
+    color: var(--color-text);
     text-align: center;
 }
 
@@ -27,14 +27,14 @@ h2 {
     font-size: 1.3rem;
     margin-top: 30px;
     margin-bottom: 12px;
-    color: #e0e0e0;
-    border-bottom: 1px solid #555;
+    color: var(--color-text-soft);
+    border-bottom: 1px solid var(--color-border-strong);
     padding-bottom: 5px;
 }
 
 p, li {
     font-size: 1.05rem;
-    color: #cccccc;
+    color: var(--color-text-muted);
     margin-bottom: 15px;
 }
 
@@ -46,9 +46,9 @@ ul {
 .btn-voltar {
     display: inline-block;
     margin-bottom: 20px;
-    color: #ffffff;
+    color: var(--color-on-chrome);
     text-decoration: none;
-    background-color: #555555;
+    background-color: var(--color-chrome);
     padding: 10px 20px;
     border-radius: 6px;
     transition: background 0.2s;
@@ -56,5 +56,11 @@ ul {
 }
 
 .btn-voltar:hover {
-    background-color: #666666;
+    background-color: var(--color-chrome-hover);
+}
+
+.terms-updated {
+    text-align: center;
+    margin-bottom: 40px;
+    color: var(--color-text-muted);
 }

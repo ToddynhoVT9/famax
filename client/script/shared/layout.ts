@@ -18,6 +18,7 @@
  * innerHTML (ver dom.ts).
  */
 import { api, getMe, getToken, logout, type Me } from "./api.js";
+import { THEME_LABELS, getThemePref, setThemePref, type ThemePref } from "./theme.js";
 import { communityUrl, loginUrlReturningHere, pages } from "./pages.js";
 import { avatarColor, initials } from "./dom.js";
 import { initHeaderDropdowns } from "./header-dropdowns.js";
@@ -54,10 +55,19 @@ export interface LayoutOptions {
 // Markup fixo (sem dado de usuário): pode ir por innerHTML. Os ids são os que
 // o header-dropdowns.ts procura.
 const HEADER_HTML = `
-    <a class="logo-container" data-nav="home">
+    <a class="logo-container" data-nav="home" aria-label="FAMAX — página inicial">
+        <img class="logo-mark" src="/favicon.svg" alt="" width="40" height="40">
         <span class="logo-text">FAMAX</span>
-        <span class="logo-subtext">Logo</span>
     </a>
+
+    <!-- Só em tela pequena: a busca fica recolhida atrás deste botão. -->
+    <button type="button" class="search-toggle" id="searchToggle" aria-label="Abrir pesquisa"
+            aria-expanded="false" aria-controls="searchForm">
+        <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true" focusable="false">
+            <circle cx="10.5" cy="10.5" r="6.5" fill="none" stroke="currentColor" stroke-width="2.4"/>
+            <line x1="15.5" y1="15.5" x2="21" y2="21" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/>
+        </svg>
+    </button>
 
     <form class="search-container" id="searchForm" role="search">
         <input type="search" id="searchInput" class="search-input" placeholder="Pesquisar"
@@ -163,10 +173,35 @@ function renderUserArea(area: HTMLElement, me: Me): void {
         admin.href = pages.adminReports;
         items.push(admin);
     }
-    items.push(signOut);
     for (const item of items) item.setAttribute("role", "menuitem");
+    signOut.setAttribute("role", "menuitem");
 
-    dropdown.append(...items);
+    // Tema: escolha manual (fica neste navegador) ou o do sistema.
+    const themeGroup = el("div", "user-dropdown-group");
+    themeGroup.setAttribute("role", "group");
+    themeGroup.setAttribute("aria-label", "Tema");
+    themeGroup.append(el("span", "user-dropdown-label", "Tema"));
+    const themeButtons = (Object.keys(THEME_LABELS) as ThemePref[]).map((pref) => {
+        const option = el("button", "user-dropdown-item user-dropdown-item--option", THEME_LABELS[pref]);
+        option.type = "button";
+        option.setAttribute("role", "menuitemradio");
+        option.dataset.theme = pref;
+        option.addEventListener("click", () => {
+            setThemePref(pref);
+            renderThemeChecks();
+        });
+        return option;
+    });
+    const renderThemeChecks = (): void => {
+        const current = getThemePref();
+        for (const option of themeButtons) {
+            option.setAttribute("aria-checked", String(option.dataset.theme === current));
+        }
+    };
+    renderThemeChecks();
+    themeGroup.append(...themeButtons);
+
+    dropdown.append(...items, themeGroup, signOut);
     menu.append(button, dropdown);
     area.append(menu);
 
@@ -239,11 +274,45 @@ function renderVerifyBanner(me: Me): void {
     main.prepend(banner);
 }
 
+/**
+ * Busca recolhível (tela pequena): o botão da lupa abre o campo numa faixa
+ * logo abaixo do header; Esc ou sair do campo fecha. Em tela larga o botão
+ * nem aparece e o campo fica sempre visível (CSS).
+ */
+function initSearchToggle(header: HTMLElement): void {
+    const toggle = header.querySelector<HTMLButtonElement>("#searchToggle");
+    const input = header.querySelector<HTMLInputElement>("#searchInput");
+    if (!toggle || !input) return;
+
+    const setOpen = (open: boolean): void => {
+        header.classList.toggle("search-open", open);
+        toggle.setAttribute("aria-expanded", String(open));
+        toggle.setAttribute("aria-label", open ? "Fechar pesquisa" : "Abrir pesquisa");
+    };
+    toggle.addEventListener("click", () => {
+        const open = !header.classList.contains("search-open");
+        setOpen(open);
+        if (open) input.focus();
+    });
+    input.addEventListener("keydown", (event) => {
+        if (event.key === "Escape" && header.classList.contains("search-open") && !input.value) {
+            setOpen(false);
+            toggle.focus();
+        }
+    });
+    header.querySelector("#searchForm")?.addEventListener("focusout", (event) => {
+        const next = (event as FocusEvent).relatedTarget as Node | null;
+        if (next && (header.querySelector("#searchForm")?.contains(next) || next === toggle)) return;
+        if (!input.value) setOpen(false);
+    });
+}
+
 function renderHeader(header: HTMLElement): void {
     header.innerHTML = HEADER_HTML;
 
     const logo = header.querySelector<HTMLAnchorElement>('[data-nav="home"]');
     if (logo) logo.href = pages.home;
+    initSearchToggle(header);
 
     const area = header.querySelector<HTMLElement>("#userArea");
     if (!area) return;
@@ -416,7 +485,22 @@ export function initLayout(options: LayoutOptions = {}): void {
 
     if (header) renderHeader(header);
     if (sidebar) renderSidebar(sidebar, options);
+    addSkipLink();
 
     initHeaderDropdowns();
     initSidebar();
+}
+
+/**
+ * "Pular para o conteúdo": primeiro item do Tab, aparece só com foco. Sem ele,
+ * quem navega por teclado atravessa header e sidebar inteiros em toda página.
+ */
+function addSkipLink(): void {
+    const main = document.querySelector<HTMLElement>("main");
+    if (!main || document.querySelector(".skip-link")) return;
+    if (!main.id) main.id = "main-content";
+    if (!main.hasAttribute("tabindex")) main.tabIndex = -1; // recebe o foco do link
+    const link = el("a", "skip-link", "Pular para o conteúdo");
+    link.href = `#${main.id}`;
+    document.body.prepend(link);
 }

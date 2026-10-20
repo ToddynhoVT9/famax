@@ -20,7 +20,7 @@
     overflow-x: auto;
     padding-bottom: 15px;
     scrollbar-width: thin;
-    scrollbar-color: #828282 transparent;
+    scrollbar-color: var(--color-border-strong) transparent;
 }
 
 .cards-container::-webkit-scrollbar {
@@ -34,26 +34,26 @@
 }
 
 .cards-container::-webkit-scrollbar-thumb {
-    background-color: #828282;
+    background-color: var(--color-chrome);
     border-radius: 10px;
 }
 
 .cards-container::-webkit-scrollbar-thumb:hover {
-    background-color: #a0a0a0;
+    background-color: var(--color-chrome-hover);
 }
 
 .card {
     width: 250px;
     min-width: 250px;
     height: 400px;
-    background-color: #3a3a3a;
+    background-color: var(--color-surface-3);
     border-radius: 8px;
     display: flex;
     flex-direction: column;
     position: relative;
     flex-shrink: 0;
     overflow: hidden;
-    color: #ffffff;
+    color: var(--color-text);
     cursor: pointer;
     transition: transform 0.2s ease, filter 0.2s ease;
     text-decoration: none;
@@ -103,12 +103,12 @@
 
 .card-members {
     font-size: 0.85rem;
-    color: #cccccc;
+    color: var(--color-text-muted);
 }
 
 .card-description {
     font-size: 0.85rem;
-    color: #dddddd;
+    color: var(--color-text-soft);
     line-height: 1.4;
     display: -webkit-box;
     -webkit-line-clamp: 2;
@@ -127,8 +127,8 @@
 
 .home-chip {
     background: none;
-    border: 1px solid #777777;
-    color: #dddddd;
+    border: 1px solid var(--color-border-strong);
+    color: var(--color-text-soft);
     border-radius: 16px;
     padding: 6px 14px;
     font: inherit;
@@ -137,14 +137,14 @@
 }
 
 .home-chip:hover {
-    border-color: #ffffff;
-    color: #ffffff;
+    border-color: var(--color-text);
+    color: var(--color-text);
 }
 
 .home-chip[aria-pressed="true"] {
-    background-color: #ffffff;
-    border-color: #ffffff;
-    color: #222222;
+    background-color: var(--color-paper);
+    border-color: var(--color-text);
+    color: var(--color-ink);
     font-weight: 600;
 }
 
@@ -152,12 +152,12 @@
 .feed-status {
     padding: 60px 20px;
     text-align: center;
-    color: #aaaaaa;
+    color: var(--color-text-faint);
     font-size: 1.05rem;
 }
 
 .feed-status.error {
-    color: #ff9aa4;
+    color: var(--color-danger-on-dark);
 }
 
 /* ----- Abas Comunidades / Seguindo ----- */
@@ -165,14 +165,14 @@
     display: flex;
     gap: 8px;
     margin-bottom: 20px;
-    border-bottom: 1px solid #444444;
+    border-bottom: 1px solid var(--color-border);
 }
 
 .home-tab {
     background: none;
     border: none;
     border-bottom: 3px solid transparent;
-    color: #bbbbbb;
+    color: var(--color-text-muted);
     font-size: 1.05rem;
     font-weight: 600;
     padding: 10px 14px;
@@ -180,12 +180,12 @@
 }
 
 .home-tab:hover {
-    color: #ffffff;
+    color: var(--color-text);
 }
 
 .home-tab.active {
-    color: #ffffff;
-    border-bottom-color: #ffffff;
+    color: var(--color-text);
+    border-bottom-color: var(--color-text);
 }
 
 .home-following {

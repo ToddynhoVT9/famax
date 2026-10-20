@@ -3,6 +3,10 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+    <!-- Tema escolhido à mão (shared/theme.ts), aplicado antes da primeira pintura:
+         sem isto a página piscaria no tema errado até o módulo carregar. -->
+    <script>try{var t=localStorage.getItem("famax_theme");if(t==="light"||t==="dark")document.documentElement.dataset.theme=t}catch(e){}</script>
     <title>FAMAX - Meu Perfil</title>
     <link rel="stylesheet" href="../../css/global.css">
     <link rel="stylesheet" href="../../css/layout.css">
@@ -60,11 +64,11 @@
                 Este perfil é privado. Só o dono pode ver os posts e as respostas.
             </div>
 
-            <div class="profile-tabs" id="profileTabs" role="tablist" hidden>
-                <button type="button" class="tab-btn active" role="tab" aria-selected="true" data-tab="posts">Posts</button>
-                <button type="button" class="tab-btn" role="tab" aria-selected="false" data-tab="comments">Respostas</button>
+            <div class="profile-tabs" id="profileTabs" role="tablist" aria-label="Atividade do perfil" hidden>
+                <button type="button" class="tab-btn active" role="tab" aria-selected="true" aria-controls="profileFeed" data-tab="posts">Posts</button>
+                <button type="button" class="tab-btn" role="tab" aria-selected="false" aria-controls="profileFeed" data-tab="comments">Respostas</button>
                 <!-- Só no próprio perfil: a lista de salvos é privada. -->
-                <button type="button" class="tab-btn" role="tab" aria-selected="false" data-tab="saved" id="tabSaved" hidden>Salvos</button>
+                <button type="button" class="tab-btn" role="tab" aria-selected="false" aria-controls="profileFeed" data-tab="saved" id="tabSaved" hidden>Salvos</button>
             </div>
 
             <div class="profile-feed" id="profileFeed" role="tabpanel" hidden>

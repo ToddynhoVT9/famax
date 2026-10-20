@@ -15,6 +15,8 @@ import { initLayout, updateHeaderUser } from "../shared/layout.js";
 import { avatarColor, initials } from "../shared/dom.js";
 import { MAX_SOCIAL_LINKS, SOCIAL_PLATFORM_LABELS } from "../shared/social.js";
 import { initAccountSecurity } from "./account-security.js";
+import { attachCharCounter } from "../shared/char-counter.js";
+import { trapFocus } from "../shared/focus-trap.js";
 
 requireLogin();
 initLayout();
@@ -335,14 +337,21 @@ setupMedia({
 // Modais (comum)
 // ===========================================================================
 
+/** Modal aberto -> função que solta o foco (e o devolve a quem abriu). */
+const openModals = new Map<HTMLElement, () => void>();
+
 function openModal(overlay: HTMLElement | null, focus?: HTMLElement | null): void {
-    if (!overlay) return;
+    if (!overlay || openModals.has(overlay)) return;
     overlay.classList.add("show");
-    window.setTimeout(() => focus?.focus(), 50);
+    const box = overlay.querySelector<HTMLElement>('[role="dialog"]') ?? overlay;
+    openModals.set(overlay, trapFocus(box, { onEscape: () => closeModal(overlay), initialFocus: focus }));
 }
 
 function closeModal(overlay: HTMLElement | null): void {
-    overlay?.classList.remove("show");
+    if (!overlay) return;
+    overlay.classList.remove("show");
+    openModals.get(overlay)?.();
+    openModals.delete(overlay);
 }
 
 for (const overlay of document.querySelectorAll<HTMLElement>(".modal-overlay")) {
@@ -352,11 +361,6 @@ for (const overlay of document.querySelectorAll<HTMLElement>(".modal-overlay")) 
         if (target === overlay || target.closest("[data-close-modal]")) closeModal(overlay);
     });
 }
-
-document.addEventListener("keydown", (event) => {
-    if (event.key !== "Escape") return;
-    document.querySelectorAll<HTMLElement>(".modal-overlay.show").forEach(closeModal);
-});
 
 // Checkboxes "Mostrar senha": data-toggle-password lista os ids dos campos.
 // (Antes era onclick inline chamando uma função pendurada em window.)
@@ -502,14 +506,12 @@ function selectGender(value: string): void {
     }
 }
 
-function updateBioCounter(): void {
-    if (bioInput && bioCounter) bioCounter.textContent = `${bioInput.value.length}/500`;
-}
+const updateBioCounter =
+    bioInput instanceof HTMLTextAreaElement ? attachCharCounter(bioInput, { counter: bioCounter }) : () => {};
 
 for (const button of genderButtons) {
     button.addEventListener("click", () => selectGender(button.dataset.gender ?? ""));
 }
-bioInput?.addEventListener("input", updateBioCounter);
 
 $("btnSobre")?.addEventListener("click", () => {
     if (!me || !birthInput || !bioInput) return;

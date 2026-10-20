@@ -10,6 +10,7 @@ import { goToLogin } from "./auth-guard.js";
 import { profileUrl } from "./pages.js";
 import { avatarColor, initials } from "./dom.js";
 import { toast } from "./dialog.js";
+import { trapFocus } from "./focus-trap.js";
 
 export interface FollowState {
     following: boolean;
@@ -115,7 +116,6 @@ function renderListItem(item: FollowListItem): HTMLLIElement {
 
 /** Diálogo com a lista "Seguidores" ou "Seguindo" de alguém. */
 export function openFollowList(userId: string, kind: "followers" | "following", ownerName: string): void {
-    const previousFocus = document.activeElement as HTMLElement | null;
 
     const overlay = el("div", "dialog-overlay");
     const box = el("div", "dialog-box follow-list-box");
@@ -169,16 +169,10 @@ export function openFollowList(userId: string, kind: "followers" | "following", 
         }
     }
 
-    const onKey = (event: KeyboardEvent): void => {
-        if (event.key === "Escape") {
-            event.stopPropagation();
-            dismiss();
-        }
-    };
+    let releaseFocus = (): void => {};
     function dismiss(): void {
-        document.removeEventListener("keydown", onKey);
         overlay.remove();
-        previousFocus?.focus();
+        releaseFocus();
     }
 
     close.addEventListener("click", dismiss);
@@ -186,8 +180,6 @@ export function openFollowList(userId: string, kind: "followers" | "following", 
     overlay.addEventListener("click", (event) => {
         if (event.target === overlay) dismiss();
     });
-    document.addEventListener("keydown", onKey);
-
-    close.focus();
+    releaseFocus = trapFocus(box, { onEscape: dismiss, initialFocus: close });
     void load();
 }

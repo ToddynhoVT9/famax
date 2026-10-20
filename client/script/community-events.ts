@@ -15,6 +15,8 @@ import { communityUrl } from "./shared/pages.js";
 import { confirmDialog, toast } from "./shared/dialog.js";
 import { isSafeLink } from "./shared/social.js";
 import type { CommunityRole } from "./shared/moderation.js";
+import { trapFocus } from "./shared/focus-trap.js";
+import { bindTabKeys } from "./shared/tabs.js";
 
 export interface CommunityEvent {
     event_id: string;
@@ -112,7 +114,6 @@ function locationNode(location: string): HTMLElement {
 
 function openEventEditor(communityId: string, event?: CommunityEvent): Promise<CommunityEvent | null> {
     return new Promise((resolve) => {
-        const previousFocus = document.activeElement as HTMLElement | null;
         const overlay = el("div", "modal-overlay show");
         const form = el("form", "modal-box");
         form.noValidate = true;
@@ -187,27 +188,23 @@ function openEventEditor(communityId: string, event?: CommunityEvent): Promise<C
         );
         overlay.append(form);
         document.body.append(overlay);
-        window.setTimeout(() => titleInput.focus(), 30);
 
         const showError = (message: string | null): void => {
             error.textContent = message ?? "";
             error.classList.toggle("show", message !== null);
         };
+        let releaseFocus = (): void => {};
         const finish = (result: CommunityEvent | null): void => {
-            document.removeEventListener("keydown", onKey);
             overlay.remove();
-            previousFocus?.focus();
+            releaseFocus();
             resolve(result);
-        };
-        const onKey = (e: KeyboardEvent): void => {
-            if (e.key === "Escape") finish(null);
         };
         close.addEventListener("click", () => finish(null));
         cancel.addEventListener("click", () => finish(null));
         overlay.addEventListener("click", (e) => {
             if (e.target === overlay) finish(null);
         });
-        document.addEventListener("keydown", onKey);
+        releaseFocus = trapFocus(form, { onEscape: () => finish(null), initialFocus: titleInput });
 
         form.addEventListener("submit", async (e) => {
             e.preventDefault();
@@ -427,6 +424,7 @@ export function createEventsView(root: HTMLElement, options: EventsViewOptions):
         });
         void load(true);
     });
+    bindTabKeys(tabs);
     more.addEventListener("click", () => void load(false));
     create.addEventListener("click", async () => {
         const saved = await openEventEditor(options.communityId);

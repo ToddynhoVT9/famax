@@ -3,26 +3,35 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+    <!-- Tema escolhido à mão (shared/theme.ts), aplicado antes da primeira pintura:
+         sem isto a página piscaria no tema errado até o módulo carregar. -->
+    <script>try{var t=localStorage.getItem("famax_theme");if(t==="light"||t==="dark")document.documentElement.dataset.theme=t}catch(e){}</script>
     <title>FAMAX - Criar uma conta</title>
     <link rel="stylesheet" href="../../css/global.css">
     <link rel="stylesheet" href="../../css/auth/auth-common.css">
     <link rel="stylesheet" href="../../css/auth/register.css">
 </head>
 <body>
-    <div class="header">
-        <h1>FAMAX</h1>
-        <div class="subtitle">Logo</div>
-    </div>
+    <a class="header" href="../../index.html" aria-label="FAMAX — início">
+        <img class="header-mark" src="/favicon.svg" alt="" width="56" height="56">
+        <span class="header-name">FAMAX</span>
+    </a>
 
-    <div class="register-container">
-        <div class="register-title">Criar uma conta</div>
+    <main class="register-container">
+        <h1 class="register-title">Criar uma conta</h1>
         
         <div class="form-group">
-            <input type="email" id="email" class="input-field" placeholder="E-mail">
-            <input type="password" id="password" class="input-field" placeholder="Senha">
-            <input type="password" id="confirm-password" class="input-field" placeholder="Confirmar senha">
-            <input type="text" id="username" class="input-field" placeholder="Nome de usuário">
-            <input type="text" id="display-name" class="input-field" placeholder="Nome de exibição">
+            <label class="field-label" for="email">E-mail</label>
+            <input type="email" id="email" class="input-field" placeholder="E-mail" autocomplete="email">
+            <label class="field-label" for="password">Senha</label>
+            <input type="password" id="password" class="input-field" placeholder="Senha" autocomplete="new-password">
+            <label class="field-label" for="confirm-password">Confirmar senha</label>
+            <input type="password" id="confirm-password" class="input-field" placeholder="Confirmar senha" autocomplete="new-password">
+            <label class="field-label" for="username">Nome de usuário</label>
+            <input type="text" id="username" class="input-field" placeholder="Nome de usuário" autocomplete="username">
+            <label class="field-label" for="display-name">Nome de exibição</label>
+            <input type="text" id="display-name" class="input-field" placeholder="Nome de exibição" autocomplete="nickname">
             
             <div class="checkbox-container">
                 <input type="checkbox" id="private-checkbox">
@@ -32,25 +41,26 @@
 
             <div class="checkbox-container">
                 <input type="checkbox" id="terms-checkbox">
-                <label for="terms-checkbox">Aceitar <span class="terms-text" id="termsTrigger">termos de usuário</span></label>
+                <label for="terms-checkbox">Aceitar</label>
+                <button type="button" class="terms-text" id="termsTrigger" aria-haspopup="dialog">termos de usuário</button>
             </div>
             
             <button class="btn-register" id="registerButton">Cadastrar</button>
-            <div id="register-error" class="error-message"></div>
+            <div id="register-error" class="error-message" role="alert" hidden></div>
         </div>
-    </div>
+    </main>
 
     <!--Termos de Uso -->
-    <div class="modal-overlay" id="terms-modal">
-        <div class="modal-content">
-            <button class="close-btn" id="closeModalButton">&times;</button>
-            <div class="modal-title">Termos de Uso e Condições</div>
+    <div class="modal-overlay" id="terms-modal" hidden>
+        <div class="modal-content" role="dialog" aria-modal="true" aria-labelledby="terms-modal-title" tabindex="-1">
+            <button type="button" class="close-btn" id="closeModalButton" aria-label="Fechar termos">&times;</button>
+            <h2 class="modal-title" id="terms-modal-title">Termos de Uso e Condições</h2>
             <a href="../legal/terms.html" class="terms-full-page">Abrir em página inteira</a>
             <div class="modal-body">
-                <h2>1. Aceitação dos Termos</h2>
+                <h3>1. Aceitação dos Termos</h3>
                 <p>Ao acessar, registrar uma conta e utilizar o fórum <strong>FAMAX</strong>, você concorda automática e integralmente em cumprir e estar vinculado a estes Termos de Uso. Caso não concorde com qualquer regra imposta aqui, você não deve utilizar a plataforma.</p>
 
-                <h2>2. Regras de Conduta e Postagem</h2>
+                <h3>2. Regras de Conduta e Postagem</h3>
                 <p>O FAMAX é uma comunidade focada no respeito mútuo e na troca saudável de ideias. Ao interagir no fórum, você compromete-se a <strong>não praticar</strong> as seguintes ações:</p>
                 <ul>
                     <li><strong>Discurso de Ódio e Assédio:</strong> Publicar conteúdos ou proferir ofensas de cunho racista, homofóbico, machista, ou atacar diretamente outro membro ou minoria.</li>
@@ -59,23 +69,23 @@
                     <li><strong>Doxxing:</strong> Expor intencionalmente dados sensíveis/pessoais de outros usuários ou indivíduos (endereços, telefones, fotos não autorizadas, etc.).</li>
                 </ul>
 
-                <h2>3. Moderação e Punições</h2>
+                <h3>3. Moderação e Punições</h3>
                 <p>É responsabilidade da equipe de Moderação e Administração zelar pelo bom andamento do fórum. Reservamo-nos o direito de:</p>
                 <ul>
                     <li>Monitorar, editar, trancar ou apagar postagens, tópicos ou comentários que descumpram este regulamento.</li>
                     <li>Aplicar advertências, suspensões provisórias (mutes) e banimentos temporários ou permanentes a usuários infratores, de acordo com a gravidade da violação, a nosso exclusivo critério.</li>
                 </ul>
 
-                <h2>4. Propriedade Intelectual</h2>
+                <h3>4. Propriedade Intelectual</h3>
                 <p>Você continua sendo o(a) dono(a) de tudo o que escreve ou posta no fórum. No entanto, ao usar nossa plataforma, você confere ao FAMAX a permissão (licença não-exclusiva e gratuita) para reproduzir, hospedar e exibir publicamente esse material dentro do escopo de serviço do site para outros usuários.</p>
 
-                <h2>5. Responsabilidade e Isenção</h2>
+                <h3>5. Responsabilidade e Isenção</h3>
                 <p>O conteúdo publicado no fórum é de total responsabilidade civil e penal de quem o escreve. O FAMAX funciona exclusivamente como uma plataforma hospedeira de discussões, logo, não se responsabiliza pelas opiniões divulgadas nem endossa o que é postado por terceiros.</p>
 
-                <h2>6. Atualizações do Termo</h2>
+                <h3>6. Atualizações do Termo</h3>
                 <p>A equipe do FAMAX garante o direito de modificar e atualizar estes Termos de Uso em qualquer momento, visando melhorar as dinâmicas de segurança. Avisaremos a comunidade sobre alterações significativas, e continuar a usar a plataforma configurará sua aprovação às mudanças.</p>
 
-                <h2>7. Contato e Denúncias</h2>
+                <h3>7. Contato e Denúncias</h3>
                 <p>Em caso de dúvidas a respeito do processo, ou se necessitar reportar postagens irregulares, utilize a ferramenta oficial de "Denunciar Post" ou entre em contato direto com a administração/moderação ativa.</p>
             </div>
         </div>

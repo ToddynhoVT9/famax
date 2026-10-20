@@ -34,6 +34,8 @@ import { avatarColor, escapeHtml, initials, shortTime } from "./dom.js";
 import { confirmDialog, toast } from "./dialog.js";
 import { isRealtimeOpen, onRealtime, onRealtimeStatus } from "./realtime.js";
 import { OPEN_CHAT_EVENT, type OpenChatDetail } from "./chat-bus.js";
+import { skeleton } from "./skeleton.js";
+import "./char-counter.js";
 
 /** Polling de reserva (stream fora): widget aberto / fechado. */
 const POLL_OPEN_MS = 5_000;
@@ -107,7 +109,7 @@ function initChatWidget(): void {
     widget.className = "chat-widget";
     widget.id = "chatWidget";
     widget.innerHTML = `
-        <button class="chat-toggle" id="chatToggle" aria-label="Abrir chat">
+        <button class="chat-toggle" id="chatToggle" aria-label="Abrir chat" aria-expanded="false" aria-controls="chatPanel">
             💬<span class="chat-unread-badge" id="chatUnreadBadge"></span>
         </button>
         <div class="chat-panel" id="chatPanel" role="dialog" aria-label="Chat bate-papo">
@@ -117,8 +119,8 @@ function initChatWidget(): void {
                     <p id="chatSubtitle">Converse com seus amigos</p>
                 </div>
                 <div class="chat-header-actions">
-                    <button class="chat-header-btn" id="chatNewBtn" aria-label="Nova conversa" title="Nova conversa ou grupo">＋</button>
-                    <button class="chat-header-btn" id="chatClose" aria-label="Fechar chat">✕</button>
+                    <button type="button" class="chat-header-btn" id="chatNewBtn" aria-label="Nova conversa" title="Nova conversa ou grupo">＋</button>
+                    <button type="button" class="chat-header-btn" id="chatClose" aria-label="Fechar chat">✕</button>
                 </div>
             </div>
             <div class="chat-search" id="chatSearch">
@@ -143,7 +145,7 @@ function initChatWidget(): void {
                     <div class="chat-group-panel" id="chatGroupPanel" hidden></div>
                     <div class="chat-typing" id="chatTyping" hidden></div>
                     <form class="chat-input-row" id="chatForm">
-                        <input id="chatInput" type="text" placeholder="Digite uma mensagem..." maxlength="2000" disabled aria-label="Mensagem" />
+                        <input id="chatInput" type="text" placeholder="Digite uma mensagem..." maxlength="2000" data-char-counter="near" disabled aria-label="Mensagem" />
                         <button type="submit" id="chatSend" disabled>Enviar</button>
                     </form>
                 </section>
@@ -460,7 +462,7 @@ function initChatWidget(): void {
         renderContacts();
         renderHeader();
 
-        messagesEl.innerHTML = '<div class="chat-status">Carregando...</div>';
+        messagesEl.replaceChildren(skeleton("message", 4, "Carregando mensagens..."));
         setInputEnabled(true);
 
         try {
@@ -1102,6 +1104,8 @@ function initChatWidget(): void {
         widget.classList.toggle("open");
 
         if (isOpen()) {
+            // Foco para dentro do painel (teclado e leitor de tela vão junto).
+            closeBtn.focus();
             void loadConversations().then(() => {
                 // Abre direto na primeira conversa, como o protótipo fazia.
                 if (!active && conversations.length > 0) {
@@ -1120,7 +1124,22 @@ function initChatWidget(): void {
         widget.classList.remove("open");
         widget.classList.remove("searching");
         scheduleNextTick();
+        toggle.focus();
     });
+
+    // Esc dentro do painel fecha (um diálogo aberto por cima trata o próprio Esc).
+    widget.addEventListener("keydown", (event: KeyboardEvent) => {
+        if (event.key !== "Escape" || !isOpen() || document.querySelector(".dialog-overlay")) return;
+        closeBtn.click();
+    });
+
+    // aria-expanded do botão acompanha a classe "open", venha de onde vier.
+    new MutationObserver(() => {
+        const open = isOpen();
+        toggle.setAttribute("aria-expanded", String(open));
+        toggle.setAttribute("aria-label", open ? "Fechar chat" : "Abrir chat");
+        document.body.classList.toggle("chat-is-open", open);
+    }).observe(widget, { attributes: true, attributeFilter: ["class"] });
 
     document.addEventListener("click", (event: MouseEvent) => {
         const target = event.target;

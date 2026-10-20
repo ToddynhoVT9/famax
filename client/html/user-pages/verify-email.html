@@ -3,6 +3,10 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+    <!-- Tema escolhido à mão (shared/theme.ts), aplicado antes da primeira pintura:
+         sem isto a página piscaria no tema errado até o módulo carregar. -->
+    <script>try{var t=localStorage.getItem("famax_theme");if(t==="light"||t==="dark")document.documentElement.dataset.theme=t}catch(e){}</script>
     <title>FAMAX - Confirmar e-mail</title>
     <!-- O token vem no fragmento (#token=): não vai para o servidor nem para o Referer. -->
     <meta name="referrer" content="no-referrer">
@@ -11,13 +15,13 @@
     <link rel="stylesheet" href="../../css/auth/recover-password.css">
 </head>
 <body>
-    <div class="header">
-        <h1>FAMAX</h1>
-        <div class="subtitle">Logo</div>
-    </div>
+    <a class="header" href="../../index.html" aria-label="FAMAX — início">
+        <img class="header-mark" src="/favicon.svg" alt="" width="56" height="56">
+        <span class="header-name">FAMAX</span>
+    </a>
 
     <main class="recovery-container" aria-live="polite">
-        <h2 class="recovery-title" id="verifyTitle">Confirmando seu e-mail...</h2>
+        <h1 class="recovery-title" id="verifyTitle">Confirmando seu e-mail...</h1>
         <p class="recovery-text" id="verifyText">Só um instante.</p>
         <a class="btn-generate" id="verifyContinue" href="../home.html" hidden>Continuar</a>
     </main>

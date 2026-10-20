@@ -23,6 +23,8 @@ import { confirmDialog, toast } from "../shared/dialog.js";
 import { bindFollowButton, openFollowList } from "../shared/follow.js";
 import { markdownToText } from "../shared/markdown.js";
 import { openChatWith } from "../shared/chat-bus.js";
+import { skeleton } from "../shared/skeleton.js";
+import { bindTabKeys } from "../shared/tabs.js";
 
 // Visitante pode ver o perfil público de alguém; o próprio perfil exige conta.
 const requestedId = queryParam("id");
@@ -335,9 +337,9 @@ async function loadTab(tab: Tab, reset: boolean): Promise<void> {
     if (reset) {
         currentTab = tab;
         currentPage = 0;
-        feedList.replaceChildren();
+        feedList.replaceChildren(skeleton("post", 2, "Carregando..."));
         loadMoreBtn.hidden = true;
-        setStatus("Carregando...");
+        setStatus(null);
     }
     loadMoreBtn.disabled = true;
 
@@ -354,6 +356,7 @@ async function loadTab(tab: Tab, reset: boolean): Promise<void> {
                 : await api<Page<ProfilePost>>(path);
         if (seq !== requestSeq) return;
 
+        if (currentPage === 0) feedList.replaceChildren(); // tira o esqueleto
         currentPage = nextPage;
         const nodes =
             tab === "comments"
@@ -365,6 +368,7 @@ async function loadTab(tab: Tab, reset: boolean): Promise<void> {
         loadMoreBtn.hidden = currentPage >= result.pagination.totalPages;
     } catch (err) {
         if (seq !== requestSeq) return;
+        if (currentPage === 0) feedList.replaceChildren();
         setStatus(err instanceof Error ? `Não foi possível carregar: ${err.message}` : "Não foi possível carregar.");
     } finally {
         if (seq === requestSeq) loadMoreBtn.disabled = false;
@@ -383,6 +387,7 @@ tabsEl?.addEventListener("click", (event) => {
     });
     void loadTab(tab, true);
 });
+bindTabKeys(tabsEl);
 
 loadMoreBtn?.addEventListener("click", () => {
     void loadTab(currentTab, false);

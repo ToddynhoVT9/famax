@@ -40,6 +40,8 @@ import {
     type ReactionType,
 } from "./reactions.js";
 import { renderMarkdown } from "./markdown.js";
+import { skeleton } from "./skeleton.js";
+import "./char-counter.js";
 import { imagesGridHtml, openLightbox, type PostImage } from "./post-images.js";
 
 // ===========================================================================
@@ -228,7 +230,7 @@ export function renderPost(post: Post, options: { single?: boolean; showCommunit
                     <div class="tf-comment-list"></div>
                     <button type="button" class="tf-comments-more" data-action="more-comments" hidden>Carregar mais comentários</button>
                     <form class="tf-comment-form" data-form="comment">
-                        <input type="text" class="tf-comment-input" maxlength="2000"
+                        <input type="text" class="tf-comment-input" maxlength="2000" data-char-counter="near"
                                placeholder="Escreva um comentário... (**negrito**, @menção, ||spoiler||)" aria-label="Comentário" />
                         <button type="submit">Enviar</button>
                     </form>
@@ -602,7 +604,7 @@ export function createPostThread(container: HTMLElement, options: PostThreadOpti
         if (!postId || !list || !moreBtn) return;
 
         const cursor = more ? commentCursors.get(postId) : null;
-        if (!more) list.innerHTML = '<div class="tf-comment-status">Carregando comentários...</div>';
+        if (!more) list.replaceChildren(skeleton("comment", 2, "Carregando comentários..."));
         moreBtn.disabled = true;
 
         try {
@@ -679,7 +681,7 @@ export function createPostThread(container: HTMLElement, options: PostThreadOpti
         form.className = "tf-comment-form tf-reply-form";
         form.dataset.form = "reply";
         form.innerHTML = `
-            <input type="text" class="tf-comment-input" maxlength="2000" aria-label="Resposta" />
+            <input type="text" class="tf-comment-input" maxlength="2000" data-char-counter="near" aria-label="Resposta" />
             <button type="submit">Enviar</button>
             <button type="button" class="tf-comment-action" data-action="cancel-form">Cancelar</button>`;
         const input = form.querySelector<HTMLInputElement>("input");
@@ -696,7 +698,7 @@ export function createPostThread(container: HTMLElement, options: PostThreadOpti
         form.className = "tf-edit-form";
         form.dataset.form = "edit-comment";
         form.innerHTML = `
-            <textarea class="tf-edit-input" maxlength="2000" rows="3" aria-label="Editar comentário"></textarea>
+            <textarea class="tf-edit-input" maxlength="2000" rows="3" data-char-counter="near" aria-label="Editar comentário"></textarea>
             <div class="tf-edit-actions">
                 <button type="button" class="tf-comment-action" data-action="cancel-form">Cancelar</button>
                 <button type="submit" class="tf-edit-save">Salvar</button>

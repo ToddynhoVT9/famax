@@ -3,6 +3,10 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+    <!-- Tema escolhido à mão (shared/theme.ts), aplicado antes da primeira pintura:
+         sem isto a página piscaria no tema errado até o módulo carregar. -->
+    <script>try{var t=localStorage.getItem("famax_theme");if(t==="light"||t==="dark")document.documentElement.dataset.theme=t}catch(e){}</script>
     <title>FAMAX - Termos de Uso</title>
     <link rel="stylesheet" href="../../css/global.css">
     <link rel="stylesheet" href="../../css/legal/terms.css">
@@ -13,7 +17,7 @@
         <a href="../user-pages/register.html" class="btn-voltar" id="backButton">← Voltar para o Cadastro</a>
         
         <h1>Termos de Uso e Condições</h1>
-        <p style="text-align: center; margin-bottom: 40px; color: #888;">Última atualização: Março de 2026</p>
+        <p class="terms-updated">Última atualização: Março de 2026</p>
 
         <h2>1. Aceitação dos Termos</h2>
         <p>Ao acessar, registrar uma conta e utilizar o fórum <strong>FAMAX</strong>, você concorda automática e integralmente em cumprir e estar vinculado a estes Termos de Uso. Caso não concorde com qualquer regra imposta aqui, você não deve utilizar a plataforma.</p>

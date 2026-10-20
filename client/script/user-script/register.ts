@@ -1,6 +1,7 @@
 import { api, setToken } from "../shared/api.js";
 import { redirectIfLoggedIn } from "../shared/auth-guard.js";
 import { pages } from "../shared/pages.js";
+import { trapFocus } from "../shared/focus-trap.js";
 
 redirectIfLoggedIn();
 
@@ -31,21 +32,28 @@ if (
   closeModalButton instanceof HTMLButtonElement &&
   registerButton instanceof HTMLButtonElement
 ) {
-  const openModal = (): void => {
-    modal.style.display = "flex";
-  };
+  const dialog = modal.querySelector<HTMLElement>(".modal-content") ?? modal;
+  let releaseFocus: (() => void) | null = null;
 
   const closeModal = (): void => {
-    modal.style.display = "none";
+    modal.hidden = true;
+    releaseFocus?.();
+    releaseFocus = null;
+  };
+
+  // Foco preso no modal enquanto aberto; Esc fecha e o foco volta ao link.
+  const openModal = (): void => {
+    modal.hidden = false;
+    releaseFocus = trapFocus(dialog, { onEscape: closeModal, initialFocus: closeModalButton });
   };
 
   const showError = (message: string): void => {
     errorElement.innerText = message;
-    errorElement.style.display = "block";
+    errorElement.hidden = false;
   };
 
   const handleRegister = async (): Promise<void> => {
-    errorElement.style.display = "none";
+    errorElement.hidden = true;
 
     const email = emailInput.value.trim();
     const password = passwordInput.value;

@@ -4,33 +4,42 @@
    =================================== */
 
 body {
-    height: 100vh;
+    min-height: 100vh;
     position: relative;
 }
 
 /* Header simples das páginas de auth (logo no canto) */
+/* Marca no canto: leva de volta ao início. */
 .header {
     position: absolute;
     top: 30px;
     left: 50px;
     display: flex;
-    flex-direction: column;
-    align-items: flex-end;
+    align-items: center;
+    gap: var(--space-3);
+    color: var(--color-text);
+    text-decoration: none;
 }
 
-.header h1 {
-    font-size: 3.5rem;
+.header-mark {
+    width: 56px;
+    height: 56px;
+    flex-shrink: 0;
+}
+
+.header-name {
+    font-size: 3rem;
     font-weight: 700;
-    margin: 0;
     line-height: 1;
     letter-spacing: 1px;
 }
 
-.header .subtitle {
-    font-size: 1.5rem;
-    font-weight: 300;
-    margin-top: 2px;
-    margin-right: 5px;
+/* Rótulo visível acima de cada campo (o placeholder some ao digitar). */
+.field-label {
+    align-self: stretch;
+    margin-bottom: var(--space-1);
+    font-size: 0.85rem;
+    color: var(--color-text-soft);
 }
 
 /* Form group e input field compartilhados */
@@ -45,8 +54,8 @@ body {
     padding: 14px;
     border: none;
     border-radius: 6px;
-    background-color: #7b7b7b;
-    color: #ffffff;
+    background-color: var(--color-control);
+    color: var(--color-text);
     font-size: 0.95rem;
     box-sizing: border-box;
     text-align: center;
@@ -55,19 +64,42 @@ body {
 }
 
 .input-field::placeholder {
-    color: #e0e0e0;
+    color: var(--color-text-soft);
 }
 
 .input-field:focus {
-    outline: 2px solid #ffffff;
-    background-color: #888888;
+    outline: 2px solid var(--color-text);
+    background-color: var(--color-control-hover);
 }
 
 /* Mensagem de erro genérica */
 .error-message {
-    color: #ff6b6b;
+    color: var(--color-danger-on-dark);
     font-size: 0.85rem;
     text-align: center;
     margin-top: 10px;
-    display: none;
+}
+
+/* ----- Telas pequenas: a marca sai do canto e vai para o topo, sem cobrir o
+   formulário; o conteúdo ganha respiro nas laterais. ----- */
+@media (max-width: 768px) {
+    body {
+        padding: 0 var(--space-4) var(--space-6);
+        box-sizing: border-box;
+    }
+
+    .header {
+        position: static;
+        justify-content: center;
+        margin: var(--space-6) auto var(--space-4);
+    }
+
+    .header-mark {
+        width: 40px;
+        height: 40px;
+    }
+
+    .header-name {
+        font-size: 2rem;
+    }
 }

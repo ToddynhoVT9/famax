@@ -3,8 +3,8 @@
    =========================================================================== */
 
 body.community-new-page {
-    background-color: #222222;
-    color: #ffffff;
+    background-color: var(--color-bg);
+    color: var(--color-text);
     min-height: 100vh;
 }
 
@@ -18,26 +18,26 @@ body.community-new-page {
 
 .page-card {
     width: min(720px, 100%);
-    background-color: #2b2b2b;
+    background-color: var(--color-surface);
     border-radius: 24px;
     box-shadow: 0 24px 64px rgba(0, 0, 0, 0.45);
     overflow: hidden;
 }
 
 .page-header {
-    background-color: #828282;
+    background-color: var(--color-chrome);
     padding: 26px 28px;
 }
 
 .page-header h1 {
     font-size: 2rem;
     font-weight: 800;
-    color: #ffffff;
+    color: var(--color-on-chrome);
     margin-bottom: 8px;
 }
 
 .page-header p {
-    color: #f4f4f4;
+    color: var(--color-on-chrome);
     font-size: 1rem;
     opacity: 0.9;
 }
@@ -58,7 +58,7 @@ body.community-new-page {
 
 .form-field label {
     font-size: 0.95rem;
-    color: #f4f4f4;
+    color: var(--color-text-soft);
 }
 
 .form-field input[type="text"],
@@ -67,10 +67,10 @@ body.community-new-page {
 .form-field input[type="file"] {
     width: 100%;
     border-radius: 14px;
-    border: 1px solid #555555;
+    border: 1px solid var(--color-border-strong);
     padding: 14px 16px;
-    background-color: #1d1d1d;
-    color: #f4f4f4;
+    background-color: var(--color-bg-deep);
+    color: var(--color-text-soft);
     font-size: 1rem;
     font-family: inherit;
 }
@@ -93,19 +93,19 @@ body.community-new-page {
 
 .field-hint {
     font-size: 0.82rem;
-    color: #a8a8a8;
+    color: var(--color-text-faint);
 }
 
 .image-preview {
     min-height: 150px;
-    border: 2px dashed #555555;
+    border: 2px dashed var(--color-border-strong);
     border-radius: 16px;
     display: flex;
     align-items: center;
     justify-content: center;
     padding: 18px;
-    color: #bcbcbc;
-    background: #181818;
+    color: var(--color-text-muted);
+    background: var(--color-bg-deep);
     text-align: center;
 }
 
@@ -121,7 +121,7 @@ body.community-new-page {
     display: none;
     background: rgba(220, 53, 69, 0.12);
     border: 1px solid rgba(220, 53, 69, 0.5);
-    color: #ff9aa4;
+    color: var(--color-danger-on-dark);
     border-radius: 12px;
     padding: 12px 16px;
     font-size: 0.92rem;
@@ -150,13 +150,14 @@ body.community-new-page {
 }
 
 .btn-secondary {
-    background: #383838;
-    color: #f4f4f4;
+    background: var(--color-surface-2);
+    color: var(--color-text);
+    border: 1px solid var(--color-border);
 }
 
 .btn-primary {
-    background: #ffffff;
-    color: #222222;
+    background: var(--color-paper);
+    color: var(--color-ink);
 }
 
 .btn-primary:hover,
@@ -185,7 +186,7 @@ body.community-new-page {
     align-items: center;
     gap: 8px;
     margin-bottom: 12px;
-    color: #dddddd;
+    color: var(--color-text-soft);
     cursor: pointer;
 }
 
@@ -199,20 +200,20 @@ body.community-new-page {
 .danger-zone h2 {
     font-size: 1.15rem;
     margin-bottom: 8px;
-    color: #ff8a85;
+    color: var(--color-danger-on-dark);
 }
 
 .danger-zone p {
-    color: #cccccc;
+    color: var(--color-text-muted);
     margin-bottom: 16px;
     line-height: 1.5;
 }
 
 .btn-danger {
-    background-color: #d9534f;
-    color: #ffffff;
+    background-color: var(--color-danger);
+    color: var(--color-on-chrome);
 }
 
 .btn-danger:hover {
-    background-color: #c9302c;
+    background-color: var(--color-danger-strong);
 }

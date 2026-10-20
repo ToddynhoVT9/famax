@@ -13,10 +13,11 @@
  */
 import { api, getToken } from "./shared/api.js";
 import { initLayout } from "./shared/layout.js";
-import { communityUrl } from "./shared/pages.js";
+import { communityUrl, pages } from "./shared/pages.js";
 import { avatarColor, escapeHtml, truncate } from "./shared/dom.js";
 import { toast } from "./shared/dialog.js";
 import { createPostThread, type Post } from "./shared/post-thread.js";
+import { emptyState, skeleton } from "./shared/skeleton.js";
 
 initLayout();
 
@@ -87,7 +88,7 @@ function syncUrl(): void {
 async function loadFeed(): Promise<void> {
     if (!feed) return;
     const seq = ++feedSeq;
-    showStatus("Carregando comunidades...");
+    feed.replaceChildren(skeleton("card", 6, "Carregando comunidades..."));
 
     try {
         const params = new URLSearchParams({ limit: "50" });
@@ -96,10 +97,14 @@ async function loadFeed(): Promise<void> {
         if (seq !== feedSeq) return;
 
         if (data.length === 0) {
-            showStatus(
-                categoryFilter
-                    ? "Nenhuma comunidade nesta categoria ainda."
-                    : "Nenhuma comunidade ainda. Crie a primeira!",
+            feed.replaceChildren(
+                emptyState(
+                    categoryFilter
+                        ? "Nenhuma comunidade nesta categoria ainda."
+                        : "Nenhuma comunidade ainda.",
+                    "Que tal começar uma?",
+                    { label: "Criar comunidade", href: pages.newCommunity },
+                ),
             );
             return;
         }
@@ -207,7 +212,7 @@ async function loadFollowing(reset: boolean): Promise<void> {
     if (reset) {
         followingPage = 0;
         followingThread.clear();
-        followingStatus("Carregando posts de quem você segue...");
+        followingList.replaceChildren(skeleton("post", 3, "Carregando posts de quem você segue..."));
         followingMore.hidden = true;
     }
     followingMore.disabled = true;
@@ -219,8 +224,12 @@ async function loadFollowing(reset: boolean): Promise<void> {
         if (reset) followingList.innerHTML = "";
         followingThread.add(result.data);
         if (followingThread.posts.size === 0) {
-            followingStatus(
-                "Nada por aqui ainda. Siga pessoas pelo perfil delas para ver aqui o que elas publicam.",
+            followingList.replaceChildren(
+                emptyState(
+                    "Nada por aqui ainda.",
+                    "Siga pessoas pelo perfil delas para ver aqui o que elas publicam. Comece pelas comunidades.",
+                    { label: "Explorar comunidades", href: pages.home },
+                ),
             );
         }
         followingMore.hidden = followingPage >= result.pagination.totalPages;

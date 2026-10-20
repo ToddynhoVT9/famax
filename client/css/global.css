@@ -1,17 +1,210 @@
 /* ===================================
-   FAMAX — Global Reset & Base Styles
+   FAMAX — Global Reset, Tokens & Base Styles
    =================================== */
+
+/* ===========================================================================
+   Tokens
+   ---------------------------------------------------------------------------
+   O FAMAX tem dois mundos de cor:
+     - o "chrome" escuro — página, diálogos, campos — que INVERTE no tema
+       claro (--color-bg, --color-surface-*, --color-text-*, --color-border*);
+     - os cartões brancos (posts, dropdowns, chat), que ficam brancos nos dois
+       temas (--color-paper*, --color-ink*).
+   O cinza do header/sidebar (--color-chrome) e as cores de destaque também
+   são iguais nos dois temas.
+
+   Contraste (WCAG AA, 4.5:1 para texto): o cinza do header escureceu de
+   #828282 (3.8:1 com branco) para #737373, os avatares ganharam tons mais
+   fechados para as iniciais brancas, e cinzas de texto sobre branco mais
+   claros que #666 foram para #666.
+
+   Tema: escuro por padrão; claro com prefers-color-scheme: light, ou à mão
+   pelo menu do usuário (data-theme no <html>, ver shared/theme.ts).
+   =========================================================================== */
+:root {
+    color-scheme: dark;
+
+    /* Chrome escuro (inverte no tema claro) */
+    --color-bg: #222222;
+    --color-bg-deep: #1a1a1a;
+    --color-surface: #2b2b2b;
+    --color-surface-2: #333333;
+    --color-surface-3: #3a3a3a;
+    --color-surface-4: #444444;
+    --color-surface-5: #555555;
+    --color-surface-6: #666666;
+    --color-control: #6b6b6b;
+    --color-control-hover: #777777;
+    --color-text: #ffffff;
+    --color-text-soft: #dddddd;
+    --color-text-muted: #bbbbbb;
+    --color-text-faint: #aaaaaa;
+    --color-border: #444444;
+    --color-border-strong: #666666;
+    --color-overlay: rgba(0, 0, 0, 0.65);
+
+    /* Header, sidebar e botões de marca (iguais nos dois temas) */
+    --color-chrome: #737373;
+    --color-chrome-hover: #666666;
+    --color-on-chrome: #ffffff;
+    /* Botão "Criar conta" da tela inicial: o cinza quente da marca. */
+    --color-chrome-warm: #7d7272;
+    --color-chrome-warm-hover: #6e6464;
+
+    /* Cartões brancos (iguais nos dois temas) */
+    --color-paper: #ffffff;
+    --color-paper-2: #f4f4f4;
+    --color-paper-3: #e8e8e8;
+    --color-paper-border: #e0e0e0;
+    --color-paper-border-strong: #c4c4c4;
+    --color-ink: #111111;
+    --color-ink-soft: #333333;
+    --color-ink-muted: #555555;
+    --color-ink-faint: #666666;
+
+    /* Peças escuras dentro de cartões brancos (fixas) */
+    --color-dark-0: #000000;
+    --color-dark-1: #111111;
+    --color-dark-2: #222222;
+    --color-dark-3: #333333;
+    --color-dark-4: #444444;
+
+    /* Destaques */
+    --color-on-accent: #ffffff;
+    --color-primary: #0067cc;
+    --color-link: #1a5fb4;
+    --color-danger: #c0392b;
+    --color-danger-strong: #b3261e;
+    --color-danger-deep: #8b2e2b;
+    --color-danger-border: #e3a3a0;
+    --color-danger-surface: #3a1a1a;
+    --color-danger-on-dark: #ff9aa4;
+    --color-danger-on-dark-soft: #ffdede;
+    --color-success: #23803f;
+    --color-success-strong: #1e6b34;
+    --color-success-surface: #e3f4e8;
+    --color-success-on-dark: #7fd38a;
+    --color-warning-surface: #fff3cd;
+    --color-warning-ink: #5c4400;
+    --color-warning-strong: #7a5a00;
+    --color-warning-on-dark: #ffd27a;
+    --color-info-surface: #eef4fc;
+    --color-info-surface-strong: #e3edf9;
+    --color-highlight-surface: #fff6d6;
+    --color-highlight-border: #e8c96a;
+    --color-gold: #8a6508;
+    --color-bronze: #a0522d;
+    --color-focus: #4d9fff;
+
+    /* Avatares (iniciais brancas: todos com 4.5:1 ou mais) */
+    --avatar-blue: #0067cc;
+    --avatar-pink: #c2407c;
+    --avatar-gray: #6b6b6b;
+    --avatar-orange: #b85a1e;
+    --avatar-lightblue: #2b78a8;
+    --avatar-teal: #1f7f69;
+
+    /* Espaços, raios, sombras, tipografia */
+    --space-1: 4px;
+    --space-2: 8px;
+    --space-3: 12px;
+    --space-4: 16px;
+    --space-5: 24px;
+    --space-6: 32px;
+    --radius-sm: 4px;
+    --radius-md: 6px;
+    --radius-lg: 10px;
+    --radius-pill: 999px;
+    --shadow-sm: 0 2px 6px rgba(0, 0, 0, 0.2);
+    --shadow-md: 0 4px 14px rgba(0, 0, 0, 0.3);
+    --shadow-lg: 0 10px 30px rgba(0, 0, 0, 0.45);
+    --font-sans: system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+    --font-mono: Consolas, 'Courier New', monospace;
+    --text-xs: 0.75rem;
+    --text-sm: 0.875rem;
+    --text-md: 1rem;
+    --text-lg: 1.25rem;
+    --text-xl: 1.6rem;
+    --header-height: 80px;
+    --touch-target: 44px;
+}
+
+/* Tema claro: os mesmos nomes, valores claros para o chrome. Duas vezes,
+   porque o CSS não deixa um bloco valer para um seletor E uma media query:
+   escolha manual (data-theme="light") e preferência do sistema, quando a
+   pessoa não fixou o escuro à mão. Mudou um valor? Mude nos dois. */
+:root[data-theme="light"] {
+    color-scheme: light;
+    --color-bg: #f0f0f3;
+    --color-bg-deep: #e4e4e9;
+    --color-surface: #ffffff;
+    --color-surface-2: #ffffff;
+    --color-surface-3: #ffffff;
+    --color-surface-4: #e9e9ee;
+    --color-surface-5: #f4f4f7;
+    --color-surface-6: #dcdce3;
+    --color-control: #ffffff;
+    --color-control-hover: #f4f4f7;
+    --color-text: #16161a;
+    --color-text-soft: #2d2d33;
+    --color-text-muted: #45454d;
+    --color-text-faint: #595960;
+    --color-border: #cfcfd6;
+    --color-border-strong: #a9a9b2;
+    --color-overlay: rgba(20, 20, 30, 0.45);
+    --color-chrome: #5f5f68;
+    --color-chrome-hover: #4f4f57;
+    --color-danger-surface: #fde8e8;
+    --color-danger-on-dark: #b3261e;
+    --color-danger-on-dark-soft: #5a1712;
+    --color-success-on-dark: #1e6b34;
+    --color-warning-on-dark: #7a5a00;
+    --shadow-md: 0 4px 14px rgba(0, 0, 0, 0.12);
+    --shadow-lg: 0 10px 30px rgba(0, 0, 0, 0.18);
+}
+
+@media (prefers-color-scheme: light) {
+    :root:not([data-theme="dark"]) {
+        color-scheme: light;
+        --color-bg: #f0f0f3;
+        --color-bg-deep: #e4e4e9;
+        --color-surface: #ffffff;
+        --color-surface-2: #ffffff;
+        --color-surface-3: #ffffff;
+        --color-surface-4: #e9e9ee;
+        --color-surface-5: #f4f4f7;
+        --color-surface-6: #dcdce3;
+        --color-control: #ffffff;
+        --color-control-hover: #f4f4f7;
+        --color-text: #16161a;
+        --color-text-soft: #2d2d33;
+        --color-text-muted: #45454d;
+        --color-text-faint: #595960;
+        --color-border: #cfcfd6;
+        --color-border-strong: #a9a9b2;
+        --color-overlay: rgba(20, 20, 30, 0.45);
+        --color-chrome: #5f5f68;
+        --color-chrome-hover: #4f4f57;
+        --color-danger-surface: #fde8e8;
+        --color-danger-on-dark: #b3261e;
+        --color-danger-on-dark-soft: #5a1712;
+        --color-success-on-dark: #1e6b34;
+        --color-warning-on-dark: #7a5a00;
+        --shadow-md: 0 4px 14px rgba(0, 0, 0, 0.12);
+        --shadow-lg: 0 10px 30px rgba(0, 0, 0, 0.18);
+    }
+}
 
 * {
     margin: 0;
     padding: 0;
     box-sizing: border-box;
-    font-family: system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+    font-family: var(--font-sans);
 }
 
 body {
-    background-color: #222222;
-    color: #ffffff;
+    background-color: var(--color-bg);
+    color: var(--color-text);
     overflow-x: hidden;
     min-height: 100vh;
     display: flex;
@@ -20,6 +213,12 @@ body {
 
 a {
     color: inherit;
+}
+
+/* Foco visível em tudo que é alcançável por teclado (WCAG 2.4.7). */
+:focus-visible {
+    outline: 3px solid var(--color-focus);
+    outline-offset: 2px;
 }
 
 /* Texto só para leitor de tela (ex.: rótulo de um ícone). */
@@ -35,9 +234,159 @@ a {
     border: 0;
 }
 
+/* "Pular para o conteúdo": primeiro Tab da página. */
+.skip-link {
+    position: absolute;
+    top: -100px;
+    left: var(--space-4);
+    z-index: 5000;
+    padding: var(--space-2) var(--space-4);
+    border-radius: var(--radius-md);
+    background-color: var(--color-paper);
+    color: var(--color-ink);
+    font-weight: 700;
+}
+
+.skip-link:focus {
+    top: var(--space-2);
+}
+
 /* O atributo hidden precisa vencer o display das classes (.btn-load-more,
    .profile-tabs...): sem isto, um elemento com display próprio no CSS
    continua visível mesmo com hidden, e o JS que esconde por hidden falha. */
 [hidden] {
     display: none !important;
+}
+
+/* Quem pediu menos movimento ao sistema não vê animações nem transições. */
+@media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+        scroll-behavior: auto !important;
+    }
+}
+
+/* ----- Esqueletos de carregamento (shared/skeleton.ts) ----- */
+.skeleton-group {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-3);
+    width: 100%;
+}
+
+.skeleton-item {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-2);
+    padding: var(--space-4);
+    border-radius: var(--radius-md, 8px);
+    background-color: var(--color-paper);
+}
+
+.skeleton-item--message {
+    width: 55%;
+    padding: var(--space-3);
+    background-color: var(--color-paper-2);
+}
+
+.skeleton-item--mine {
+    align-self: flex-end;
+}
+
+.skeleton-line {
+    display: block;
+    height: 12px;
+    border-radius: 6px;
+    background: linear-gradient(90deg, var(--color-paper-2) 25%, var(--color-paper-border) 50%, var(--color-paper-2) 75%);
+    background-size: 200% 100%;
+    animation: skeleton-shimmer 1.4s ease-in-out infinite;
+}
+
+.skeleton-item--post .skeleton-line:first-child {
+    height: 18px;
+}
+
+@keyframes skeleton-shimmer {
+    from { background-position: 100% 0; }
+    to { background-position: -100% 0; }
+}
+
+/* ----- Estado vazio com ação ----- */
+.empty-state {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: var(--space-2);
+    padding: var(--space-6) var(--space-4);
+    text-align: center;
+    color: var(--color-text);
+}
+
+.empty-state-title {
+    margin: 0;
+    font-size: 1.1rem;
+    font-weight: 600;
+}
+
+.empty-state-text {
+    margin: 0;
+    max-width: 420px;
+    color: var(--color-text-muted);
+}
+
+.empty-state-action {
+    margin-top: var(--space-2);
+    display: inline-flex;
+    align-items: center;
+    min-height: 44px;
+    padding: 0 var(--space-5);
+    border: none;
+    border-radius: var(--radius-pill, 999px);
+    background-color: var(--color-primary);
+    color: var(--color-on-accent);
+    font: inherit;
+    font-weight: 600;
+    text-decoration: none;
+    cursor: pointer;
+}
+
+.empty-state-action:hover {
+    filter: brightness(1.1);
+}
+
+/* ----- Contador de caracteres (shared/char-counter.ts) ----- */
+.char-counter {
+    display: block;
+    text-align: right;
+    align-self: flex-end;
+    margin-top: var(--space-1);
+    font-size: var(--text-xs);
+    /* Herda a cor do lugar (fundo do tema ou cartão branco): contraste garantido. */
+    color: inherit;
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+}
+
+.char-counter--near {
+    font-weight: 700;
+}
+
+.char-counter--full {
+    text-decoration: underline;
+}
+
+/* Em linha com o campo e o botão (comentário, chat). */
+.tf-comment-form .char-counter,
+.chat-input-row .char-counter {
+    align-self: center;
+    margin-top: 0;
+}
+
+/* O <main> recebe foco pelo "Pular para o conteúdo": sem contorno no bloco todo. */
+main[tabindex="-1"]:focus {
+    outline: none;
 }
