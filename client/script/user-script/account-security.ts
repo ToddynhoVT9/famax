@@ -16,6 +16,7 @@ import { ApiError, api, clearToken, getToken, type Me } from "../shared/api.js";
 import { pages, profileUrl } from "../shared/pages.js";
 import { confirmDialog, toast } from "../shared/dialog.js";
 import { timeAgo } from "../shared/dom.js";
+import type { SessionInfo, UserSummary as BlockedUser } from "../../../shared/api-types.js";
 
 export interface SecurityContext {
     apply(user: Me): void;
@@ -106,7 +107,7 @@ function emailCard(ctx: SecurityContext): Card {
     resend.addEventListener("click", async () => {
         resend.disabled = true;
         try {
-            const result = await api<{ message: string }>("/auth/resend-verification", { method: "POST" });
+            const result = await api.auth.resendVerification();
             setStatus(message, result.message, "ok");
         } catch (err) {
             setStatus(message, errorMessage(err, "Não foi possível reenviar."));
@@ -117,7 +118,7 @@ function emailCard(ctx: SecurityContext): Card {
 
     cancelPending.addEventListener("click", async () => {
         try {
-            const { user } = await api<{ user: Me }>("/me/email/pending", { method: "DELETE" });
+            const { user } = await api.me.cancelPendingEmail();
             ctx.apply(user);
             setStatus(message, "Troca de e-mail cancelada.", "ok");
         } catch (err) {
@@ -134,10 +135,7 @@ function emailCard(ctx: SecurityContext): Card {
         }
         submit.disabled = true;
         try {
-            const { user } = await api<{ user: Me }>("/me/email", {
-                method: "PATCH",
-                body: JSON.stringify({ newEmail, password: password.value }),
-            });
+            const { user } = await api.me.changeEmail(newEmail, password.value);
             ctx.apply(user);
             newInput.value = "";
             password.value = "";
@@ -220,7 +218,7 @@ function twoFactorCard(ctx: SecurityContext): Card {
     let current: Me | null = null;
 
     const refreshMe = async (): Promise<void> => {
-        const { user } = await api<{ user: Me }>("/me");
+        const { user } = await api.me.get();
         ctx.apply(user);
     };
 
@@ -228,7 +226,7 @@ function twoFactorCard(ctx: SecurityContext): Card {
     async function startSetup(): Promise<void> {
         setStatus(message, null);
         try {
-            const setup = await api<{ secret: string; qrCode: string }>("/me/2fa/setup", { method: "POST" });
+            const setup = await api.twoFactor.setup();
             const qr = el("img", "twofa-qr");
             qr.src = setup.qrCode;
             qr.alt = "QR code para o app autenticador";
@@ -262,10 +260,7 @@ function twoFactorCard(ctx: SecurityContext): Card {
                 event.preventDefault();
                 confirm.disabled = true;
                 try {
-                    const { recoveryCodes } = await api<{ recoveryCodes: string[] }>("/me/2fa/enable", {
-                        method: "POST",
-                        body: JSON.stringify({ code: code.value.trim() }),
-                    });
+                    const { recoveryCodes } = await api.twoFactor.enable(code.value.trim());
                     const done = el("button", "btn-modal btn-modal--primary", "Guardei os códigos");
                     done.type = "button";
                     done.addEventListener("click", () => void refreshMe());
@@ -311,10 +306,7 @@ function twoFactorCard(ctx: SecurityContext): Card {
             event.preventDefault();
             submit.disabled = true;
             try {
-                const result = await api<{ recoveryCodes?: string[] }>(
-                    action === "disable" ? "/me/2fa/disable" : "/me/2fa/recovery-codes",
-                    { method: "POST", body: JSON.stringify({ password: password.value, code: code.value.trim() }) },
-                );
+                const result = await (action === "disable" ? api.twoFactor.disable : api.twoFactor.regenerateCodes)(password.value, code.value.trim());
                 if (action === "disable") {
                     setStatus(message, "Verificação em duas etapas desativada.", "ok");
                     await refreshMe();
@@ -368,14 +360,6 @@ function twoFactorCard(ctx: SecurityContext): Card {
 // Sessões ativas
 // ===========================================================================
 
-interface SessionInfo {
-    sessionId: string;
-    device: string;
-    ip: string | null;
-    lastSeenAt: string;
-    current: boolean;
-}
-
 function sessionsCard(): Card {
     const { element, body } = card(
         "Sessões ativas",
@@ -390,7 +374,7 @@ function sessionsCard(): Card {
 
     async function load(): Promise<void> {
         try {
-            const { data } = await api<{ data: SessionInfo[] }>("/me/sessions");
+            const { data } = await api.me.sessions();
             list.replaceChildren(
                 ...data.map((session) => {
                     const item = el("li", "security-list-item");
@@ -406,7 +390,7 @@ function sessionsCard(): Card {
                         end.addEventListener("click", async () => {
                             end.disabled = true;
                             try {
-                                await api(`/me/sessions/${encodeURIComponent(session.sessionId)}`, { method: "DELETE" });
+                                await api.me.revokeSession(session.sessionId);
                                 item.remove();
                                 revokeOthers.hidden = list.childElementCount <= 1;
                             } catch (err) {
@@ -434,7 +418,7 @@ function sessionsCard(): Card {
         });
         if (!ok) return;
         try {
-            await api("/me/sessions/revoke-others", { method: "POST" });
+            await api.me.revokeOtherSessions();
             setStatus(message, "Os outros dispositivos foram desconectados.", "ok");
             await load();
         } catch (err) {
@@ -456,12 +440,6 @@ function sessionsCard(): Card {
 // Usuários bloqueados
 // ===========================================================================
 
-interface BlockedUser {
-    user_id: string;
-    username: string;
-    display_name: string | null;
-}
-
 function blocksCard(): Card {
     const { element, body } = card(
         "Usuários bloqueados",
@@ -474,7 +452,7 @@ function blocksCard(): Card {
 
     async function load(): Promise<void> {
         try {
-            const { data } = await api<{ data: BlockedUser[] }>("/me/blocks");
+            const { data } = await api.me.blocks();
             if (data.length === 0) {
                 list.replaceChildren(el("li", "security-card-text", "Você não bloqueou ninguém."));
                 return;
@@ -483,15 +461,15 @@ function blocksCard(): Card {
                 ...data.map((user) => {
                     const item = el("li", "security-list-item");
                     const info = el("div", "security-list-info");
-                    const link = el("a", "", user.display_name?.trim() || user.username);
-                    link.href = profileUrl(user.user_id);
+                    const link = el("a", "", user.displayName?.trim() || user.username);
+                    link.href = profileUrl(user.userId);
                     info.append(link, el("span", "security-list-meta", `@${user.username}`));
                     const unblock = el("button", "btn-modal", "Desbloquear");
                     unblock.type = "button";
                     unblock.addEventListener("click", async () => {
                         unblock.disabled = true;
                         try {
-                            await api(`/users/${encodeURIComponent(user.user_id)}/block`, { method: "DELETE" });
+                            await api.users.setBlocked(user.userId, false);
                             item.remove();
                             if (list.childElementCount === 0) void load();
                         } catch (err) {
@@ -617,10 +595,7 @@ function dataCard(): Card {
             if (!ok) return;
             submit.disabled = true;
             try {
-                await api("/me", {
-                    method: "DELETE",
-                    body: JSON.stringify({ password: password.value, code: code?.value.trim() || undefined }),
-                });
+                await api.me.deleteAccount(password.value, code?.value.trim() || undefined);
                 clearToken();
                 window.location.replace(`${pages.login}?deleted=1`);
             } catch (err) {

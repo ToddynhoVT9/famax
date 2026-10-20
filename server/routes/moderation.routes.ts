@@ -29,11 +29,6 @@ const fromParams = (req: import("express").Request) => {
   return parsed.success ? parsed.data.communityId : undefined;
 };
 
-function zodError(res: import("express").Response, err: z.ZodError) {
-  return res
-    .status(400)
-    .json({ error: err.issues[0]?.message ?? "Dados inválidos", details: err.flatten() });
-}
 
 // ===========================================================================
 // GET /api/communities/:communityId/members?role=&page=&limit=
@@ -106,7 +101,6 @@ router.get(
         pagination: { page, limit, total, totalPages: Math.ceil(total / limit) },
       });
     } catch (err) {
-      if (err instanceof z.ZodError) return zodError(res, err);
       next(err);
     }
   },
@@ -169,7 +163,6 @@ router.patch(
       res.json({ member });
     } catch (err) {
       await client.query("ROLLBACK").catch(() => {});
-      if (err instanceof z.ZodError) return zodError(res, err);
       next(err);
     } finally {
       client.release();
@@ -245,7 +238,6 @@ router.post(
       res.json({ transferred: true, ownerId: userId });
     } catch (err) {
       await client.query("ROLLBACK").catch(() => {});
-      if (err instanceof z.ZodError) return zodError(res, err);
       next(err);
     } finally {
       client.release();
@@ -285,7 +277,6 @@ router.get(
       );
       res.json({ data: rows });
     } catch (err) {
-      if (err instanceof z.ZodError) return zodError(res, err);
       next(err);
     }
   },
@@ -314,7 +305,6 @@ router.post(
       }
       res.status(201).json({ ban: result.ban });
     } catch (err) {
-      if (err instanceof z.ZodError) return zodError(res, err);
       next(err);
     }
   },
@@ -338,7 +328,6 @@ router.delete(
       }
       res.status(204).end();
     } catch (err) {
-      if (err instanceof z.ZodError) return zodError(res, err);
       next(err);
     }
   },

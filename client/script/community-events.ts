@@ -17,22 +17,8 @@ import { isSafeLink } from "./shared/social.js";
 import type { CommunityRole } from "./shared/moderation.js";
 import { trapFocus } from "./shared/focus-trap.js";
 import { bindTabKeys } from "./shared/tabs.js";
-
-export interface CommunityEvent {
-    event_id: string;
-    community_id: string;
-    title: string;
-    description: string | null;
-    starts_at: string;
-    ends_at: string | null;
-    location: string | null;
-    creator_id: string | null;
-    creator_username: string | null;
-    creator_display_name: string | null;
-    attendees_count: number;
-    attending: boolean;
-    is_past: boolean;
-}
+import type { CommunityEvent } from "../../shared/api-types.js";
+export type { CommunityEvent };
 
 type Scope = "upcoming" | "past";
 
@@ -67,10 +53,10 @@ function sameDay(a: Date, b: Date): boolean {
 }
 
 /** "sábado, 25 de outubro, 19:00 – 21:00" (ou com a data do fim, se outro dia). */
-export function eventWhen(event: Pick<CommunityEvent, "starts_at" | "ends_at">): string {
-    const start = new Date(event.starts_at);
-    if (!event.ends_at) return fullFormat.format(start);
-    const end = new Date(event.ends_at);
+export function eventWhen(event: Pick<CommunityEvent, "startsAt" | "endsAt">): string {
+    const start = new Date(event.startsAt);
+    if (!event.endsAt) return fullFormat.format(start);
+    const end = new Date(event.endsAt);
     return `${fullFormat.format(start)} – ${sameDay(start, end) ? timeFormat.format(end) : fullFormat.format(end)}`;
 }
 
@@ -150,10 +136,10 @@ function openEventEditor(communityId: string, event?: CommunityEvent): Promise<C
         titleInput.placeholder = "Ex.: Encontro mensal";
         const startInput = el("input", "modal-input");
         startInput.type = "datetime-local";
-        startInput.value = toLocalInput(event?.starts_at ?? null);
+        startInput.value = toLocalInput(event?.startsAt ?? null);
         const endInput = el("input", "modal-input");
         endInput.type = "datetime-local";
-        endInput.value = toLocalInput(event?.ends_at ?? null);
+        endInput.value = toLocalInput(event?.endsAt ?? null);
         const locationInput = el("input", "modal-input");
         locationInput.maxLength = 300;
         locationInput.value = event?.location ?? "";
@@ -226,14 +212,8 @@ function openEventEditor(communityId: string, event?: CommunityEvent): Promise<C
             showError(null);
             try {
                 const result = event
-                    ? await api<{ event: CommunityEvent }>(`/events/${encodeURIComponent(event.event_id)}`, {
-                          method: "PATCH",
-                          body: JSON.stringify(body),
-                      })
-                    : await api<{ event: CommunityEvent }>(`/communities/${encodeURIComponent(communityId)}/events`, {
-                          method: "POST",
-                          body: JSON.stringify(body),
-                      });
+                    ? await api.events.update(event.eventId, body)
+                    : await api.communities.createEvent(communityId, body);
                 finish(result.event);
             } catch (err) {
                 showError(errorMessage(err, "Não foi possível salvar o evento."));
@@ -292,8 +272,8 @@ export function createEventsView(root: HTMLElement, options: EventsViewOptions):
     const isMember = () => options.viewerRole() !== null;
 
     function renderEvent(event: CommunityEvent): HTMLElement {
-        const card = el("article", `tf-event${event.is_past ? " is-past" : ""}`);
-        card.dataset.eventId = event.event_id;
+        const card = el("article", `tf-event${event.isPast ? " is-past" : ""}`);
+        card.dataset.eventId = event.eventId;
 
         const body = el("div", "tf-event-body");
         body.append(el("h3", "tf-event-title", event.title), el("p", "tf-event-when", eventWhen(event)));
@@ -304,12 +284,12 @@ export function createEventsView(root: HTMLElement, options: EventsViewOptions):
         const count = el(
             "span",
             "tf-event-count",
-            `${event.attendees_count} ${event.attendees_count === 1 ? "pessoa vai" : "pessoas vão"}`,
+            `${event.attendeesCount} ${event.attendeesCount === 1 ? "pessoa vai" : "pessoas vão"}`,
         );
         footer.append(count);
 
         // "Vou": membros, em evento que ainda não terminou. Visitante vai ao login.
-        if (!event.is_past && (isMember() || !getToken())) {
+        if (!event.isPast && (isMember() || !getToken())) {
             const going = el("button", `tf-event-going${event.attending ? " is-going" : ""}`, event.attending ? "✓ Vou" : "Vou");
             going.type = "button";
             going.setAttribute("aria-pressed", String(event.attending));
@@ -317,12 +297,9 @@ export function createEventsView(root: HTMLElement, options: EventsViewOptions):
                 if (!getToken()) return goToLogin();
                 going.disabled = true;
                 try {
-                    const result = await api<{ attending: boolean; attendeesCount: number }>(
-                        `/events/${encodeURIComponent(event.event_id)}/attend`,
-                        { method: event.attending ? "DELETE" : "POST" },
-                    );
+                    const result = await api.events.setAttending(event.eventId, !event.attending);
                     event.attending = result.attending;
-                    event.attendees_count = result.attendeesCount;
+                    event.attendeesCount = result.attendeesCount;
                     card.replaceWith(renderEvent(event));
                 } catch (err) {
                     toast(errorMessage(err, "Não foi possível marcar presença."), "error");
@@ -355,7 +332,7 @@ export function createEventsView(root: HTMLElement, options: EventsViewOptions):
                 });
                 if (!ok) return;
                 try {
-                    await api(`/events/${encodeURIComponent(event.event_id)}`, { method: "DELETE" });
+                    await api.events.remove(event.eventId);
                     card.remove();
                     if (list.childElementCount === 0) setStatus(emptyMessage());
                     options.onChanged?.();
@@ -368,7 +345,7 @@ export function createEventsView(root: HTMLElement, options: EventsViewOptions):
         }
 
         body.append(footer);
-        card.append(dateBadge(event.starts_at), body);
+        card.append(dateBadge(event.startsAt), body);
         return card;
     }
 
@@ -396,9 +373,7 @@ export function createEventsView(root: HTMLElement, options: EventsViewOptions):
         create.hidden = !isStaff();
         more.disabled = true;
         try {
-            const result = await api<{ data: CommunityEvent[]; pagination: { totalPages: number } }>(
-                `/communities/${encodeURIComponent(options.communityId)}/events?scope=${scope}&page=${page + 1}&limit=10`,
-            );
+            const result = await api.communities.events(options.communityId, { scope, page: page + 1, limit: 10 });
             if (current !== seq) return;
             page += 1;
             list.append(...result.data.map(renderEvent));
@@ -447,9 +422,7 @@ export async function loadUpcomingWidget(widget: HTMLElement, communityId: strin
     if (!list) return;
     if (link) link.href = communityUrl(communityId, "events");
     try {
-        const { data } = await api<{ data: CommunityEvent[] }>(
-            `/communities/${encodeURIComponent(communityId)}/events?scope=upcoming&limit=3`,
-        );
+        const { data } = await api.communities.events(communityId, { scope: "upcoming", limit: 3 });
         if (data.length === 0) {
             list.replaceChildren(el("p", "tf-lb-status", "Nenhum evento marcado."));
             return;
@@ -461,9 +434,9 @@ export async function loadUpcomingWidget(widget: HTMLElement, communityId: strin
                 const text = el("span", "tf-upcoming-text");
                 text.append(
                     el("strong", "", event.title),
-                    el("span", "tf-upcoming-when", eventWhen({ starts_at: event.starts_at, ends_at: null })),
+                    el("span", "tf-upcoming-when", eventWhen({ startsAt: event.startsAt, endsAt: null })),
                 );
-                item.append(dateBadge(event.starts_at), text);
+                item.append(dateBadge(event.startsAt), text);
                 return item;
             }),
         );

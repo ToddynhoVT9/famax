@@ -32,7 +32,7 @@ async function init(): Promise<void> {
     if (!queueRoot) return;
     queueRoot.hidden = false;
     // Admin age como dono em qualquer comunidade (ver lib/moderation.ts).
-    void createReportQueue(queueRoot, { endpoint: "/admin/reports", viewerRole: "owner" }).reload();
+    void createReportQueue(queueRoot, { source: "admin", viewerRole: "owner" }).reload();
 }
 
 void init();

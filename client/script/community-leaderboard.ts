@@ -11,17 +11,9 @@ import { api } from "./shared/api.js";
 import { profileUrl } from "./shared/pages.js";
 import { avatarColor, initials } from "./shared/dom.js";
 import { bindTabKeys } from "./shared/tabs.js";
+import type { LeaderboardEntry as LeaderboardRow } from "../../shared/api-types.js";
 
 type Period = "week" | "all";
-
-interface LeaderboardRow {
-    user_id: string;
-    username: string;
-    display_name: string | null;
-    avatar_url: string | null;
-    points: number;
-    rank: number;
-}
 
 const EMPTY: Record<Period, string> = {
     week: "Ninguém pontuou nesta semana ainda. Publique uma discussão para aparecer aqui!",
@@ -29,7 +21,7 @@ const EMPTY: Record<Period, string> = {
 };
 
 function renderRow(row: LeaderboardRow): HTMLLIElement {
-    const name = row.display_name?.trim() || row.username;
+    const name = row.displayName?.trim() || row.username;
     const li = document.createElement("li");
     li.className = "tf-lb-item";
 
@@ -39,18 +31,18 @@ function renderRow(row: LeaderboardRow): HTMLLIElement {
 
     const link = document.createElement("a");
     link.className = "tf-lb-user";
-    link.href = profileUrl(row.user_id);
+    link.href = profileUrl(row.userId);
 
     const avatar = document.createElement("span");
     avatar.className = "tf-lb-avatar";
-    if (row.avatar_url) {
+    if (row.avatarUrl) {
         const img = document.createElement("img");
-        img.src = row.avatar_url;
+        img.src = row.avatarUrl;
         img.alt = "";
         img.loading = "lazy";
         avatar.append(img);
     } else {
-        avatar.classList.add(avatarColor(row.user_id));
+        avatar.classList.add(avatarColor(row.userId));
         avatar.textContent = initials(name);
     }
 
@@ -87,9 +79,7 @@ export function createLeaderboard(widget: HTMLElement, communityId: string): { r
         const current = ++seq;
         widget.setAttribute("aria-busy", "true");
         try {
-            const { data } = await api<{ data: LeaderboardRow[] }>(
-                `/communities/${encodeURIComponent(communityId)}/leaderboard?period=${period}&limit=5`,
-            );
+            const { data } = await api.communities.leaderboard(communityId, { period, limit: 5 });
             if (current !== seq) return;
             list.replaceChildren(...data.map(renderRow));
             setStatus(data.length === 0 ? EMPTY[period] : null);

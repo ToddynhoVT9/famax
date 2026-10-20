@@ -263,7 +263,7 @@ function renderVerifyBanner(me: Me): void {
     resend.addEventListener("click", async () => {
         resend.disabled = true;
         try {
-            const { message } = await api<{ message: string }>("/auth/resend-verification", { method: "POST" });
+            const { message } = await api.auth.resendVerification();
             text.textContent = message;
         } catch (err) {
             text.textContent = err instanceof Error ? err.message : "Não foi possível reenviar.";
@@ -389,9 +389,7 @@ export async function refreshMyCommunities(): Promise<void> {
     }
 
     try {
-        const { data } = await api<{
-            data: Array<{ community_id: string; name: string }>;
-        }>("/me/communities");
+        const { data } = await api.me.communities();
 
         if (data.length === 0) {
             container.replaceChildren(
@@ -401,7 +399,7 @@ export async function refreshMyCommunities(): Promise<void> {
         }
 
         container.replaceChildren(
-            ...data.map((c) => sidebarLink(c.name, communityUrl(c.community_id))),
+            ...data.map((c) => sidebarLink(c.name, communityUrl(c.communityId))),
         );
     } catch {
         // Sidebar é acessório; a página continua utilizável sem ela.

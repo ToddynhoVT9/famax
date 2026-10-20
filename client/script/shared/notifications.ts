@@ -17,44 +17,8 @@ import { api, getToken } from "./api.js";
 import { communityUrl, pages, postUrl, profileUrl } from "./pages.js";
 import { avatarColor, initials, timeAgo, truncate } from "./dom.js";
 import { isRealtimeOpen, onRealtime, onRealtimeStatus } from "./realtime.js";
-
-export type NotificationType =
-    | "post_comment"
-    | "comment_reply"
-    | "post_like"
-    | "content_removed"
-    | "community_role"
-    | "mention"
-    | "follow"
-    | "event";
-
-export interface AppNotification {
-    notification_id: string;
-    type: NotificationType;
-    read_at: string | null;
-    created_at: string;
-    post_id: string | null;
-    comment_id: string | null;
-    community_id: string | null;
-    event_id?: string | null;
-    event_title?: string | null;
-    event_starts_at?: string | null;
-    data: { role?: string; kind?: string; title?: string; excerpt?: string } | null;
-    actor_id: string | null;
-    actor_username: string | null;
-    actor_display_name: string | null;
-    actor_avatar_url: string | null;
-    post_title: string | null;
-    community_name: string | null;
-    comment_excerpt: string | null;
-    likes_count: number | null;
-}
-
-export interface NotificationPage {
-    data: AppNotification[];
-    nextCursor: string | null;
-    unread: number;
-}
+import type { AppNotification, NotificationPage, NotificationType } from "../../../shared/api-types.js";
+export type { AppNotification, NotificationPage, NotificationType };
 
 /** Polling de reserva, só enquanto o stream SSE está fora. */
 const FALLBACK_POLL_MS = 60_000;
@@ -71,7 +35,7 @@ function el<K extends keyof HTMLElementTagNameMap>(tag: K, className = "", text?
 // ===========================================================================
 
 function actorName(n: AppNotification): string {
-    return n.actor_display_name?.trim() || n.actor_username || "Alguém";
+    return n.actorDisplayName?.trim() || n.actorUsername || "Alguém";
 }
 
 const quoted = (text: string | null | undefined) => `“${truncate(text ?? "", 80)}”`;
@@ -84,26 +48,26 @@ type Part = string | { strong: string };
 
 function describe(n: AppNotification): Part[] {
     const actor = { strong: actorName(n) };
-    const title = quoted(n.post_title);
+    const title = quoted(n.postTitle);
     switch (n.type) {
         case "post_comment":
             return [actor, " comentou na sua discussão ", title];
         case "comment_reply":
             return [actor, " respondeu seu comentário em ", title];
         case "post_like": {
-            const others = Math.max(0, (n.likes_count ?? 1) - 1);
+            const others = Math.max(0, (n.likesCount ?? 1) - 1);
             return others > 0
                 ? [actor, ` e mais ${others} ${others === 1 ? "pessoa reagiram a" : "pessoas reagiram a"} `, title]
                 : [actor, " reagiu a ", title];
         }
         case "content_removed":
             return n.data?.kind === "comment"
-                ? ["A moderação de ", { strong: n.community_name ?? "uma comunidade" }, " removeu seu comentário ", quoted(n.data?.excerpt)]
-                : ["A moderação de ", { strong: n.community_name ?? "uma comunidade" }, " removeu sua discussão ", quoted(n.data?.title)];
+                ? ["A moderação de ", { strong: n.communityName ?? "uma comunidade" }, " removeu seu comentário ", quoted(n.data?.excerpt)]
+                : ["A moderação de ", { strong: n.communityName ?? "uma comunidade" }, " removeu sua discussão ", quoted(n.data?.title)];
         case "community_role":
             return n.data?.role === "owner"
-                ? [actor, " transferiu ", { strong: n.community_name ?? "a comunidade" }, " para você"]
-                : ["Você agora é moderador de ", { strong: n.community_name ?? "uma comunidade" }];
+                ? [actor, " transferiu ", { strong: n.communityName ?? "a comunidade" }, " para você"]
+                : ["Você agora é moderador de ", { strong: n.communityName ?? "uma comunidade" }];
         case "mention":
             return [actor, " mencionou você em ", title];
         case "follow":
@@ -111,9 +75,9 @@ function describe(n: AppNotification): Part[] {
         case "event":
             return [
                 "Novo evento em ",
-                { strong: n.community_name ?? "uma comunidade" },
+                { strong: n.communityName ?? "uma comunidade" },
                 ": ",
-                quoted(n.event_title ?? n.data?.title),
+                quoted(n.eventTitle ?? n.data?.title),
             ];
         default:
             return ["Nova notificação"];
@@ -126,42 +90,42 @@ export function notificationHref(n: AppNotification): string {
         case "post_comment":
         case "comment_reply":
         case "mention":
-            return n.post_id ? postUrl(n.post_id, n.comment_id) : pages.home;
+            return n.postId ? postUrl(n.postId, n.commentId) : pages.home;
         case "post_like":
-            return n.post_id ? postUrl(n.post_id) : pages.home;
+            return n.postId ? postUrl(n.postId) : pages.home;
         case "follow":
-            return n.actor_id ? profileUrl(n.actor_id) : pages.home;
+            return n.actorId ? profileUrl(n.actorId) : pages.home;
         case "event":
-            return n.community_id ? communityUrl(n.community_id, "events") : pages.home;
+            return n.communityId ? communityUrl(n.communityId, "events") : pages.home;
         default:
             // Conteúdo removido (o post não existe mais) e papel.
-            return n.community_id ? communityUrl(n.community_id) : pages.home;
+            return n.communityId ? communityUrl(n.communityId) : pages.home;
     }
 }
 
 function renderAvatar(n: AppNotification): HTMLElement {
     // Aviso do sistema (moderação): sem pessoa, um ícone.
-    if (!n.actor_id || n.type === "content_removed") {
+    if (!n.actorId || n.type === "content_removed") {
         const icon = el("span", "notif-avatar notif-avatar--system", "!");
         icon.setAttribute("aria-hidden", "true");
         return icon;
     }
-    if (n.actor_avatar_url) {
+    if (n.actorAvatarUrl) {
         const img = el("img", "notif-avatar");
-        img.src = n.actor_avatar_url;
+        img.src = n.actorAvatarUrl;
         img.alt = "";
         return img;
     }
-    const span = el("span", `notif-avatar ${avatarColor(n.actor_id)}`, initials(actorName(n)));
+    const span = el("span", `notif-avatar ${avatarColor(n.actorId)}`, initials(actorName(n)));
     span.setAttribute("aria-hidden", "true");
     return span;
 }
 
 /** Um aviso como link. Quem chama decide o que fazer no clique (marcar lida). */
 export function renderNotification(n: AppNotification): HTMLAnchorElement {
-    const item = el("a", `notif-item${n.read_at ? "" : " is-unread"}`);
+    const item = el("a", `notif-item${n.readAt ? "" : " is-unread"}`);
     item.href = notificationHref(n);
-    item.dataset.id = n.notification_id;
+    item.dataset.id = n.notificationId;
 
     const body = el("span", "notif-body");
     const text = el("span", "notif-text");
@@ -170,13 +134,13 @@ export function renderNotification(n: AppNotification): HTMLAnchorElement {
     }
     body.append(text);
 
-    if ((n.type === "post_comment" || n.type === "comment_reply") && n.comment_excerpt) {
-        body.append(el("span", "notif-excerpt", truncate(n.comment_excerpt, 120)));
+    if ((n.type === "post_comment" || n.type === "comment_reply") && n.commentExcerpt) {
+        body.append(el("span", "notif-excerpt", truncate(n.commentExcerpt, 120)));
     }
-    body.append(el("span", "notif-time", timeAgo(n.created_at)));
+    body.append(el("span", "notif-time", timeAgo(n.createdAt)));
 
     item.append(renderAvatar(n), body);
-    if (!n.read_at) {
+    if (!n.readAt) {
         const dot = el("span", "notif-dot");
         dot.setAttribute("aria-label", "não lida");
         item.append(dot);
@@ -231,20 +195,14 @@ function watchTitle(): void {
 export async function fetchNotifications(cursor?: string | null, limit = 20): Promise<NotificationPage> {
     const params = new URLSearchParams({ limit: String(limit) });
     if (cursor) params.set("cursor", cursor);
-    const page = await api<NotificationPage>(`/notifications?${params}`);
+    const page = await api.notifications.list({ limit, cursor });
     setUnreadCount(page.unread);
     return page;
 }
 
 /** Sem ids: todas. Atualiza o badge com a contagem que o servidor devolve. */
 export async function markRead(ids?: string[]): Promise<void> {
-    const { unread: count } = await api<{ unread: number }>("/notifications/read", {
-        method: "POST",
-        body: JSON.stringify(ids ? { ids } : {}),
-        // Clique num aviso navega logo em seguida: keepalive deixa o pedido
-        // terminar mesmo com a página saindo.
-        keepalive: true,
-    });
+    const { unread: count } = await api.notifications.markRead(ids);
     setUnreadCount(count);
 }
 
@@ -281,7 +239,7 @@ let polling = false;
 async function refreshCount(): Promise<void> {
     if (!getToken()) return;
     try {
-        const { unread: count } = await api<{ unread: number }>("/notifications/unread-count");
+        const { unread: count } = await api.notifications.unreadCount();
         setUnreadCount(count);
     } catch {
         /* rede instável: tenta de novo no próximo ciclo; 401 o api() já trata */

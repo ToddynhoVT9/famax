@@ -39,9 +39,6 @@ function unavailable(res: Response) {
   return res.status(503).json({ error: TWO_FACTOR_UNAVAILABLE });
 }
 
-function zodError(res: Response, err: z.ZodError) {
-  return res.status(400).json({ error: err.issues[0]?.message ?? "Dados inválidos", details: err.flatten() });
-}
 
 const twoFactorLimit = rateLimit({
   name: "two-factor-settings",
@@ -140,7 +137,6 @@ router.post("/me/2fa/enable", requireAuth, twoFactorLimit, async (req, res, next
     sendMailInBackground(twoFactorChangedMail(account.email, account.name, true));
     res.json({ enabled: true, recoveryCodes });
   } catch (err) {
-    if (err instanceof z.ZodError) return zodError(res, err);
     next(err);
   }
 });
@@ -204,7 +200,6 @@ router.post("/me/2fa/disable", requireAuth, twoFactorLimit, async (req, res, nex
     sendMailInBackground(twoFactorChangedMail(account.email, account.name, false));
     res.json({ enabled: false });
   } catch (err) {
-    if (err instanceof z.ZodError) return zodError(res, err);
     next(err);
   }
 });
@@ -228,7 +223,6 @@ router.post("/me/2fa/recovery-codes", requireAuth, twoFactorLimit, async (req, r
       client.release();
     }
   } catch (err) {
-    if (err instanceof z.ZodError) return zodError(res, err);
     next(err);
   }
 });

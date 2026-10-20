@@ -168,10 +168,7 @@ identityForm?.addEventListener("submit", async (event) => {
     identitySave.disabled = true;
     show(identityStatus, null);
     try {
-        const { user } = await api<{ user: Me }>("/me/profile", {
-            method: "PATCH",
-            body: JSON.stringify({ displayName, nickname: nicknameInput.value }),
-        });
+        const { user } = await api.me.updateProfile({ displayName, nickname: nicknameInput.value });
         displayNameInput.blur();
         nicknameInput.blur();
         apply(user);
@@ -208,10 +205,7 @@ function bindToggle(button: HTMLButtonElement | null, key: ToggleKey): void {
         button.disabled = true;
         show(settingsStatus, null);
         try {
-            const { user } = await api<{ user: Me }>("/me/settings", {
-                method: "PATCH",
-                body: JSON.stringify({ [key]: next }),
-            });
+            const { user } = await api.me.updateSettings({ [key]: next });
             apply(user);
         } catch (err) {
             setToggle(button, me[key]);
@@ -279,10 +273,7 @@ function setupMedia(options: {
         const form = new FormData();
         form.append(options.field, file);
         try {
-            const { user } = await api<{ user: Me }>(`/me/${options.field}`, {
-                method: "POST",
-                body: form,
-            });
+            const { user } = await api.me.uploadImage(options.field, form);
             apply(user);
             flash(mediaStatus, options.doneLabel);
         } catch (err) {
@@ -300,7 +291,7 @@ function setupMedia(options: {
         removeBtn.disabled = true;
         show(mediaStatus, null);
         try {
-            const { user } = await api<{ user: Me }>(`/me/${options.field}`, { method: "DELETE" });
+            const { user } = await api.me.removeImage(options.field);
             apply(user);
         } catch (err) {
             show(mediaStatus, errorMessage(err, "Não foi possível remover a imagem."));
@@ -455,13 +446,7 @@ step2?.addEventListener("submit", async (event) => {
     passwordSaveBtn.disabled = true;
     show(step2Error, null);
     try {
-        await api("/me/password", {
-            method: "POST",
-            body: JSON.stringify({
-                currentPassword: currentPasswordInput.value,
-                newPassword,
-            }),
-        });
+        await api.me.changePassword(currentPasswordInput.value, newPassword);
         // Só aqui, com a API confirmando, aparece o sucesso.
         showStep(3);
         window.setTimeout(() => closeModal(senhaOverlay), 2500);
@@ -532,14 +517,7 @@ sobreForm?.addEventListener("submit", async (event) => {
     sobreSave.disabled = true;
     show(sobreError, null);
     try {
-        const { user } = await api<{ user: Me }>("/me/profile", {
-            method: "PATCH",
-            body: JSON.stringify({
-                birthDate: birthInput.value || null,
-                gender: selectedGender || null,
-                bio: bioInput.value,
-            }),
-        });
+        const { user } = await api.me.updateProfile({ birthDate: birthInput.value || null, gender: selectedGender || null, bio: bioInput.value });
         apply(user);
         closeModal(sobreOverlay);
         flash(settingsStatus, "Sobre atualizado.");
@@ -638,10 +616,7 @@ socialForm?.addEventListener("submit", async (event) => {
     socialSave.disabled = true;
     show(socialError, null);
     try {
-        const { user } = await api<{ user: Me }>("/me/social-links", {
-            method: "PUT",
-            body: JSON.stringify({ links }),
-        });
+        const { user } = await api.me.setSocialLinks(links);
         apply(user);
         closeModal(socialOverlay);
         flash(settingsStatus, "Redes sociais atualizadas.");

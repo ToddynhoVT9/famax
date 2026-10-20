@@ -53,13 +53,7 @@ if (
     loginButton.disabled = true;
 
     try {
-      const result = await api<{ token?: string; mfaRequired?: boolean; mfaToken?: string }>(
-        "/auth/login",
-        {
-          method: "POST",
-          body: JSON.stringify({ identifier, password }),
-        },
-      );
+      const result = await api.auth.login(identifier, password);
       if (result.mfaRequired && result.mfaToken) {
         // Senha certa, falta o código do app (5 min para digitar).
         mfaToken = result.mfaToken;
@@ -90,10 +84,7 @@ if (
     button.addEventListener("click", async () => {
       button.disabled = true;
       try {
-        const result = await api<{ token?: string; mfaRequired?: boolean; mfaToken?: string }>(
-          "/auth/reactivate",
-          { method: "POST", body: JSON.stringify({ identifier, password }) },
-        );
+        const result = await api.auth.reactivate(identifier, password);
         button.remove();
         errorElement.hidden = true;
         if (result.mfaRequired && result.mfaToken) {
@@ -123,10 +114,7 @@ if (
     }
     if (codeButton) codeButton.disabled = true;
     try {
-      const { token, recoveryCodesLeft } = await api<{ token: string; recoveryCodesLeft?: number }>(
-        "/auth/login/2fa",
-        { method: "POST", body: JSON.stringify({ mfaToken, code }) },
-      );
+      const { token, recoveryCodesLeft } = await api.auth.loginTwoFactor(mfaToken, code);
       setToken(token);
       if (recoveryCodesLeft !== undefined && notice && codeStep) {
         // Avisa antes de sair: os códigos de recuperação acabam.

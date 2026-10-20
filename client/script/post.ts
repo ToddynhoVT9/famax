@@ -35,15 +35,15 @@ function showStatus(message: string, isError = false): void {
 
 /** Título da aba e meta description refletem o post. */
 function applyMeta(post: Post): void {
-    document.title = `${post.title} · ${post.community_name} · FAMAX`;
+    document.title = `${post.title} · ${post.communityName} · FAMAX`;
     const heading = document.getElementById("postPageTitle");
     if (heading) heading.textContent = post.title;
     $("metaDescription")?.setAttribute("content", truncate(markdownToText(post.content), 160));
 
     const community = $<HTMLAnchorElement>("breadcrumbCommunity");
     if (community) {
-        community.textContent = post.community_name;
-        community.href = communityUrl(post.community_id);
+        community.textContent = post.communityName;
+        community.href = communityUrl(post.communityId);
     }
     const crumb = $("breadcrumbPost");
     if (crumb) crumb.textContent = truncate(post.title, 60);
@@ -56,16 +56,14 @@ const thread = container
               // As subcategorias só são buscadas se o autor abrir o editor.
               if (!categories) {
                   try {
-                      const result = await api<{ categories: PostCategory[] }>(
-                          `/communities/${encodeURIComponent(post.community_id)}`,
-                      );
+                      const result = await api.communities.get(post.communityId);
                       categories = result.categories;
                   } catch {
                       categories = [];
                   }
               }
               const saved = await openPostEditor({
-                  communityId: post.community_id,
+                  communityId: post.communityId,
                   categories,
                   post,
               });
@@ -78,7 +76,7 @@ const thread = container
           // Sem post não há o que mostrar aqui: volta para a comunidade.
           onPostDeleted: () => {
               const post = currentPost;
-              window.location.replace(post ? communityUrl(post.community_id) : pages.home);
+              window.location.replace(post ? communityUrl(post.communityId) : pages.home);
           },
       })
     : null;
@@ -105,17 +103,17 @@ async function init(): Promise<void> {
     }
 
     try {
-        const { post } = await api<{ post: Post }>(`/posts/${encodeURIComponent(postId)}`);
+        const { post } = await api.posts.get(postId);
         currentPost = post;
         applyMeta(post);
         container.innerHTML = "";
         thread.add([post]);
         if (copyBtn) copyBtn.disabled = false;
-        await thread.loadComments(post.post_id);
+        await thread.loadComments(post.postId);
 
         // Link de notificação: #comment-<id> rola até o comentário.
         const anchor = window.location.hash.match(/^#comment-([0-9a-f-]{36})$/i);
-        if (anchor && !(await thread.revealComment(post.post_id, anchor[1]))) {
+        if (anchor && !(await thread.revealComment(post.postId, anchor[1]))) {
             toast("Esse comentário não está mais disponível.");
         }
     } catch (err) {

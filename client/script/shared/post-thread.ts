@@ -43,67 +43,12 @@ import { renderMarkdown } from "./markdown.js";
 import { skeleton } from "./skeleton.js";
 import "./char-counter.js";
 import { imagesGridHtml, openLightbox, type PostImage } from "./post-images.js";
+import type { Comment, Post } from "../../../shared/api-types.js";
+export type { Comment, Post };
 
 // ===========================================================================
 // Tipos
 // ===========================================================================
-
-export interface Post {
-    post_id: string;
-    title: string;
-    content: string;
-    likes_count: number;
-    comments_count: number;
-    created_at: string;
-    edited_at: string | null;
-    /** Fixado no topo pelo dono/moderação (null = não fixado). */
-    pinned_at: string | null;
-    /** Comentário marcado pelo autor como resposta aceita. */
-    resolved_comment_id: string | null;
-    community_category_id: string | null;
-    community_id: string;
-    community_name: string;
-    author_id: string;
-    author_username: string;
-    author_display_name: string | null;
-    author_avatar_url: string | null;
-    category_name: string | null;
-    liked_by_me: boolean;
-    /** Reação de quem vê (null = nenhuma) e contagem por tipo. likes_count é o total. */
-    my_reaction: ReactionType | null;
-    reaction_counts: ReactionCounts;
-    /** Está nos salvos de quem vê. */
-    saved_by_me: boolean;
-    /** Imagens anexadas (até 4), na ordem de exibição. */
-    images: PostImage[];
-    /** Quem vê bloqueou o autor: o post aparece recolhido ("mostrar"). */
-    author_blocked_by_me?: boolean;
-    /** +18 (o post ou a comunidade dele); post_is_nsfw é só a marca do post. */
-    is_nsfw?: boolean;
-    post_is_nsfw?: boolean;
-    /** +18 e quem vê não pode ver: veio só o título. */
-    nsfw_hidden?: boolean;
-    /** Papel do autor na comunidade (selo) e de quem vê (pode moderar?). */
-    author_role: CommunityRole | null;
-    viewer_role: CommunityRole | null;
-}
-
-/** Comentário apagado com respostas chega com is_deleted e sem autor/texto. */
-export interface Comment {
-    comment_id: string;
-    parent_comment_id: string | null;
-    content: string | null;
-    created_at: string;
-    edited_at: string | null;
-    is_deleted: boolean;
-    replies_count: number;
-    author_id: string | null;
-    author_username: string | null;
-    author_display_name: string | null;
-    author_role?: CommunityRole | null;
-    /** Quem vê bloqueou o autor: o comentário aparece recolhido. */
-    author_blocked_by_me?: boolean;
-}
 
 export interface PostThreadOptions {
     /** Página do post: conteúdo inteiro, título sem link, comentários abertos. */
@@ -126,8 +71,8 @@ function errorMessage(err: unknown, fallback: string): string {
     return err instanceof Error ? err.message : fallback;
 }
 
-function authorName(item: { author_display_name: string | null; author_username: string | null }): string {
-    return item.author_display_name?.trim() || item.author_username || "Usuário";
+function authorName(item: { authorDisplayName: string | null; authorUsername: string | null }): string {
+    return item.authorDisplayName?.trim() || item.authorUsername || "Usuário";
 }
 
 /** Exige sessão; sem ela manda para o login e devolve false. */
@@ -155,16 +100,16 @@ function postMenuItems(post: Post): string {
     if (!getToken()) return "";
     // Fixar vale para qualquer post, inclusive os da própria moderação.
     const pinItem =
-        post.viewer_role === "owner" || post.viewer_role === "moderator"
-            ? post.pinned_at
+        post.viewerRole === "owner" || post.viewerRole === "moderator"
+            ? post.pinnedAt
                 ? menuItem("unpin-post", "Desafixar")
                 : menuItem("pin-post", "Fixar no topo")
             : "";
-    if (post.author_id === getCurrentUserId()) {
+    if (post.authorId === getCurrentUserId()) {
         return pinItem + menuItem("edit-post", "Editar") + menuItem("delete-post", "Excluir", true);
     }
     let items = pinItem + menuItem("report-post", "Denunciar");
-    if (canModerate(post.viewer_role, post.author_role)) {
+    if (canModerate(post.viewerRole, post.authorRole)) {
         items += menuItem("mod-remove-post", "Remover", true) + menuItem("ban-post-author", "Banir autor", true);
     }
     return items;
@@ -173,16 +118,16 @@ function postMenuItems(post: Post): string {
 /** Selos "Fixado" e "Resolvido" acima do título. */
 function postBadges(post: Post): string {
     const badges = [
-        post.pinned_at ? '<span class="tf-badge tf-badge--pinned">📌 Fixado</span>' : "",
-        post.resolved_comment_id ? '<span class="tf-badge tf-badge--resolved">✓ Resolvido</span>' : "",
-        post.is_nsfw ? '<span class="tf-badge tf-badge--nsfw">+18</span>' : "",
+        post.pinnedAt ? '<span class="tf-badge tf-badge--pinned">📌 Fixado</span>' : "",
+        post.resolvedCommentId ? '<span class="tf-badge tf-badge--resolved">✓ Resolvido</span>' : "",
+        post.isNsfw ? '<span class="tf-badge tf-badge--nsfw">+18</span>' : "",
     ].join("");
     return `<div class="tf-post-badges"${badges ? "" : " hidden"}>${badges}</div>`;
 }
 
 export function renderPost(post: Post, options: { single?: boolean; showCommunity?: boolean } = {}): string {
     const name = authorName(post);
-    const id = escapeHtml(post.post_id);
+    const id = escapeHtml(post.postId);
     const title = escapeHtml(post.title);
 
     const items = postMenuItems(post);
@@ -197,34 +142,34 @@ export function renderPost(post: Post, options: { single?: boolean; showCommunit
     // No feed o título leva à página do post; na própria página é só título.
     const heading = options.single
         ? `<h1 class="tf-post-title">${title}</h1>`
-        : `<h3 class="tf-post-title"><a class="tf-post-title-link" href="${escapeHtml(postUrl(post.post_id))}">${title}</a></h3>`;
+        : `<h3 class="tf-post-title"><a class="tf-post-title-link" href="${escapeHtml(postUrl(post.postId))}">${title}</a></h3>`;
 
     return `
-        <article class="tf-post${options.single ? " tf-post--single" : ""}${post.author_blocked_by_me ? " is-blocked" : ""}" data-post-id="${id}">
-            ${post.author_blocked_by_me ? BLOCKED_NOTICE : ""}
-            <div class="tf-post-avatar-container" data-author-id="${escapeHtml(post.author_id)}">
-                <div class="tf-avatar ${avatarColor(post.author_id)}">${escapeHtml(initials(name))}</div>
+        <article class="tf-post${options.single ? " tf-post--single" : ""}${post.authorBlockedByMe ? " is-blocked" : ""}" data-post-id="${id}">
+            ${post.authorBlockedByMe ? BLOCKED_NOTICE : ""}
+            <div class="tf-post-avatar-container" data-author-id="${escapeHtml(post.authorId)}">
+                <div class="tf-avatar ${avatarColor(post.authorId)}">${escapeHtml(initials(name))}</div>
             </div>
             <div class="tf-post-body">
                 <div class="tf-post-meta">
                     <span>
-                        <strong data-author-id="${escapeHtml(post.author_id)}">${escapeHtml(name)}</strong>${roleBadgeHtml(post.author_role)}
-                        • ${options.showCommunity ? `em <a class="tf-post-community" href="${escapeHtml(communityUrl(post.community_id))}">${escapeHtml(post.community_name)}</a> • ` : ""}${post.category_name ? `em ${escapeHtml(post.category_name)} • ` : ""}${escapeHtml(timeAgo(post.created_at))}${post.edited_at ? ' <span class="tf-edited">(editado)</span>' : ""}
+                        <strong data-author-id="${escapeHtml(post.authorId)}">${escapeHtml(name)}</strong>${roleBadgeHtml(post.authorRole)}
+                        • ${options.showCommunity ? `em <a class="tf-post-community" href="${escapeHtml(communityUrl(post.communityId))}">${escapeHtml(post.communityName)}</a> • ` : ""}${post.categoryName ? `em ${escapeHtml(post.categoryName)} • ` : ""}${escapeHtml(timeAgo(post.createdAt))}${post.editedAt ? ' <span class="tf-edited">(editado)</span>' : ""}
                     </span>
                     ${menu}
                 </div>
                 ${postBadges(post)}
                 ${heading}
-                ${post.nsfw_hidden ? nsfwNoticeHtml() : `<div class="tf-post-snippet md${options.single ? " expanded" : ""}">${renderMarkdown(post.content)}</div>
+                ${post.nsfwHidden ? nsfwNoticeHtml() : `<div class="tf-post-snippet md${options.single ? " expanded" : ""}">${renderMarkdown(post.content)}</div>
                 <button type="button" class="tf-read-more" data-action="read-more" hidden>ler mais</button>
                 ${imagesGridHtml(post.images)}`}
-                <div class="tf-post-stats"${post.nsfw_hidden ? " hidden" : ""}>
-                    ${reactionControlHtml(post.my_reaction ?? null, post.likes_count, post.reaction_counts ?? {})}
+                <div class="tf-post-stats"${post.nsfwHidden ? " hidden" : ""}>
+                    ${reactionControlHtml(post.myReaction ?? null, post.likesCount, post.reactionCounts ?? {})}
                     <button type="button" class="tf-stat" data-action="toggle-comments"
                             aria-expanded="${options.single ? "true" : "false"}" aria-label="Comentários">
-                        💬 <span class="comment-count">${post.comments_count}</span>
+                        💬 <span class="comment-count">${post.commentsCount}</span>
                     </button>
-                    ${saveButtonHtml(post.saved_by_me)}
+                    ${saveButtonHtml(post.savedByMe)}
                 </div>
                 <div class="tf-post-comments"${options.single ? "" : " hidden"}>
                     <div class="tf-comment-list"></div>
@@ -285,9 +230,9 @@ interface CommentContext {
 
 function commentContext(post: Post | undefined): CommentContext {
     return {
-        viewerRole: post?.viewer_role ?? null,
-        resolvedId: post?.resolved_comment_id ?? null,
-        viewerIsPostAuthor: Boolean(post && post.author_id === getCurrentUserId()),
+        viewerRole: post?.viewerRole ?? null,
+        resolvedId: post?.resolvedCommentId ?? null,
+        viewerIsPostAuthor: Boolean(post && post.authorId === getCurrentUserId()),
     };
 }
 
@@ -295,35 +240,35 @@ const NO_CONTEXT: CommentContext = { viewerRole: null, resolvedId: null, viewerI
 
 function renderCommentMain(comment: Comment, context: CommentContext = NO_CONTEXT): string {
     const viewerRole = context.viewerRole;
-    if (comment.is_deleted) {
+    if (comment.isDeleted) {
         return `<div class="tf-comment-main">
                     <p class="tf-comment-removed">[comentário removido]</p>
-                    <span class="tf-comment-time">${escapeHtml(timeAgo(comment.created_at))}</span>
+                    <span class="tf-comment-time">${escapeHtml(timeAgo(comment.createdAt))}</span>
                 </div>`;
     }
-    const mine = comment.author_id === getCurrentUserId();
+    const mine = comment.authorId === getCurrentUserId();
     let actions = "";
     if (mine) {
         actions = `<button type="button" class="tf-comment-action" data-action="edit-comment">Editar</button>
                    <button type="button" class="tf-comment-action tf-comment-action--danger" data-action="delete-comment">Excluir</button>`;
     } else if (getToken()) {
         actions = `<button type="button" class="tf-comment-action" data-action="report-comment">Denunciar</button>`;
-        if (canModerate(viewerRole, comment.author_role)) {
+        if (canModerate(viewerRole, comment.authorRole)) {
             actions += `<button type="button" class="tf-comment-action tf-comment-action--danger" data-action="mod-remove-comment">Remover</button>
                         <button type="button" class="tf-comment-action tf-comment-action--danger" data-action="ban-comment-author">Banir</button>`;
         }
     }
-    const accepted = comment.comment_id === context.resolvedId;
+    const accepted = comment.commentId === context.resolvedId;
     if (context.viewerIsPostAuthor) {
         actions += accepted
             ? '<button type="button" class="tf-comment-action" data-action="unaccept-answer">Desmarcar resposta</button>'
             : '<button type="button" class="tf-comment-action" data-action="accept-answer">Marcar como resposta</button>';
     }
     return `<div class="tf-comment-main">
-                <strong data-author-id="${escapeHtml(comment.author_id ?? "")}">${escapeHtml(authorName(comment))}</strong>${roleBadgeHtml(comment.author_role)}${accepted ? '<span class="tf-accepted-badge">✓ Resposta aceita</span>' : ""}
+                <strong data-author-id="${escapeHtml(comment.authorId ?? "")}">${escapeHtml(authorName(comment))}</strong>${roleBadgeHtml(comment.authorRole)}${accepted ? '<span class="tf-accepted-badge">✓ Resposta aceita</span>' : ""}
                 <div class="tf-comment-text md" data-content="${escapeHtml(comment.content ?? "")}">${renderMarkdown(comment.content ?? "")}</div>
                 <div class="tf-comment-footer">
-                    <span class="tf-comment-time">${escapeHtml(timeAgo(comment.created_at))}${comment.edited_at ? " · editado" : ""}</span>
+                    <span class="tf-comment-time">${escapeHtml(timeAgo(comment.createdAt))}${comment.editedAt ? " · editado" : ""}</span>
                     <button type="button" class="tf-comment-action" data-action="reply">Responder</button>
                     ${actions}
                 </div>
@@ -331,14 +276,14 @@ function renderCommentMain(comment: Comment, context: CommentContext = NO_CONTEX
 }
 
 function renderComment(comment: Comment, depth: number, context: CommentContext): string {
-    const accepted = !comment.is_deleted && comment.comment_id === context.resolvedId;
+    const accepted = !comment.isDeleted && comment.commentId === context.resolvedId;
     // id: âncora #comment-<id> dos links de notificação.
-    return `<div class="tf-comment-item${comment.is_deleted ? " is-deleted" : ""}${accepted ? " is-accepted" : ""}${comment.author_blocked_by_me ? " is-blocked" : ""}"
-                 id="comment-${escapeHtml(comment.comment_id)}"
-                 data-comment-id="${escapeHtml(comment.comment_id)}" data-depth="${depth}"
-                 data-created-at="${escapeHtml(comment.created_at)}" data-edited="${comment.edited_at ? "true" : "false"}"
-                 data-author-role="${escapeHtml(comment.author_role ?? "")}">
-                ${comment.author_blocked_by_me ? BLOCKED_NOTICE : ""}
+    return `<div class="tf-comment-item${comment.isDeleted ? " is-deleted" : ""}${accepted ? " is-accepted" : ""}${comment.authorBlockedByMe ? " is-blocked" : ""}"
+                 id="comment-${escapeHtml(comment.commentId)}"
+                 data-comment-id="${escapeHtml(comment.commentId)}" data-depth="${depth}"
+                 data-created-at="${escapeHtml(comment.createdAt)}" data-edited="${comment.editedAt ? "true" : "false"}"
+                 data-author-role="${escapeHtml(comment.authorRole ?? "")}">
+                ${comment.authorBlockedByMe ? BLOCKED_NOTICE : ""}
                 ${renderCommentMain(comment, context)}
                 <div class="tf-comment-replies"></div>
             </div>`;
@@ -354,17 +299,17 @@ function commentFromDom(item: HTMLElement, main: HTMLElement): Comment | null {
     const author = main.querySelector<HTMLElement>(":scope > strong[data-author-id]");
     if (!id || !author) return null;
     return {
-        comment_id: id,
-        parent_comment_id: null,
+        commentId: id,
+        parentCommentId: null,
         content: main.querySelector<HTMLElement>(".tf-comment-text")?.dataset.content ?? "",
-        created_at: item.dataset.createdAt ?? new Date().toISOString(),
-        edited_at: item.dataset.edited === "true" ? item.dataset.createdAt ?? null : null,
-        is_deleted: false,
-        replies_count: 0,
-        author_id: author.dataset.authorId ?? null,
-        author_username: null,
-        author_display_name: author.textContent,
-        author_role: (item.dataset.authorRole || null) as CommunityRole | null,
+        createdAt: item.dataset.createdAt ?? new Date().toISOString(),
+        editedAt: item.dataset.edited === "true" ? item.dataset.createdAt ?? null : null,
+        isDeleted: false,
+        repliesCount: 0,
+        authorId: author.dataset.authorId ?? null,
+        authorUsername: null,
+        authorDisplayName: author.textContent,
+        authorRole: (item.dataset.authorRole || null) as CommunityRole | null,
     };
 }
 
@@ -430,10 +375,10 @@ export function createPostThread(container: HTMLElement, options: PostThreadOpti
 
         const post = posts.get(postEl.dataset.postId ?? "");
         if (post) {
-            post.my_reaction = reaction;
-            post.liked_by_me = reaction !== null;
-            post.likes_count = total;
-            post.reaction_counts = counts;
+            post.myReaction = reaction;
+            post.likedByMe = reaction !== null;
+            post.likesCount = total;
+            post.reactionCounts = counts;
         }
     }
 
@@ -445,9 +390,9 @@ export function createPostThread(container: HTMLElement, options: PostThreadOpti
 
         // Otimista: o clique responde na hora e volta atrás se a API recusar.
         const before = {
-            reaction: post.my_reaction ?? null,
-            total: post.likes_count,
-            counts: { ...(post.reaction_counts ?? {}) },
+            reaction: post.myReaction ?? null,
+            total: post.likesCount,
+            counts: { ...(post.reactionCounts ?? {}) },
         };
         const guess = nextReaction(before.reaction, requested);
         const delta = (guess ? 1 : 0) - (before.reaction ? 1 : 0);
@@ -456,10 +401,7 @@ export function createPostThread(container: HTMLElement, options: PostThreadOpti
         const button = postEl.querySelector<HTMLButtonElement>('[data-action="like"]');
         if (button) button.disabled = true;
         try {
-            const result = await api<{ reaction: string | null; likesCount: number; reactionCounts: ReactionCounts }>(
-                `/posts/${encodeURIComponent(postId)}/reactions`,
-                { method: "POST", body: JSON.stringify(requested ? { type: requested } : {}) },
-            );
+            const result = await api.posts.react(postId, requested);
             applyReaction(
                 postEl,
                 isReactionType(result.reaction) ? result.reaction : null,
@@ -558,7 +500,7 @@ export function createPostThread(container: HTMLElement, options: PostThreadOpti
         if (!ok) return;
 
         try {
-            await api(`/posts/${encodeURIComponent(postId)}`, { method: "DELETE" });
+            await api.posts.remove(postId);
             article.remove();
             posts.delete(postId);
             toast(asModerator ? "Discussão removida." : "Discussão excluída.");
@@ -581,8 +523,8 @@ export function createPostThread(container: HTMLElement, options: PostThreadOpti
         const context = commentContext(posts.get(postEl.dataset.postId ?? ""));
 
         for (const comment of comments) {
-            const parent = comment.parent_comment_id
-                ? list.querySelector<HTMLElement>(`.tf-comment-item[data-comment-id="${cssId(comment.parent_comment_id)}"]`)
+            const parent = comment.parentCommentId
+                ? list.querySelector<HTMLElement>(`.tf-comment-item[data-comment-id="${cssId(comment.parentCommentId)}"]`)
                 : null;
             const target = parent ? parent.querySelector<HTMLElement>(":scope > .tf-comment-replies") : list;
             const depth = parent ? Number(parent.dataset.depth ?? "0") + 1 : 0;
@@ -610,9 +552,7 @@ export function createPostThread(container: HTMLElement, options: PostThreadOpti
         try {
             const params = new URLSearchParams({ limit: String(COMMENTS_PER_PAGE) });
             if (cursor) params.set("cursor", cursor);
-            const { data, nextCursor } = await api<{ data: Comment[]; nextCursor: string | null }>(
-                `/posts/${encodeURIComponent(postId)}/comments?${params}`,
-            );
+            const { data, nextCursor } = await api.posts.comments(postId, { limit: COMMENTS_PER_PAGE, cursor });
 
             commentCursors.set(postId, nextCursor);
             if (!more) list.innerHTML = "";
@@ -639,7 +579,7 @@ export function createPostThread(container: HTMLElement, options: PostThreadOpti
         const countEl = postEl.querySelector(".comment-count");
         if (countEl) countEl.textContent = String(Math.max(0, Number(countEl.textContent ?? "0") + delta));
         const post = posts.get(postEl.dataset.postId ?? "");
-        if (post) post.comments_count = Math.max(0, post.comments_count + delta);
+        if (post) post.commentsCount = Math.max(0, post.commentsCount + delta);
     }
 
     async function submitComment(form: HTMLFormElement, postEl: HTMLElement, parentId: string | null): Promise<void> {
@@ -654,10 +594,7 @@ export function createPostThread(container: HTMLElement, options: PostThreadOpti
         if (submit) submit.disabled = true;
         setInlineError(postEl, null);
         try {
-            const { comment } = await api<{ comment: Comment }>(
-                `/posts/${encodeURIComponent(postId)}/comments`,
-                { method: "POST", body: JSON.stringify({ content, parentCommentId: parentId }) },
-            );
+            const { comment } = await api.posts.comment(postId, content, parentId);
             insertComments(postEl, [comment]);
             bumpCommentCount(postEl, 1);
             input.value = "";
@@ -722,10 +659,7 @@ export function createPostThread(container: HTMLElement, options: PostThreadOpti
 
         if (save) save.disabled = true;
         try {
-            const { comment } = await api<{ comment: Comment }>(`/comments/${encodeURIComponent(commentId)}`, {
-                method: "PATCH",
-                body: JSON.stringify({ content }),
-            });
+            const { comment } = await api.comments.update(commentId, content);
             item.dataset.edited = "true";
             const main = item.querySelector(":scope > .tf-comment-main");
             main?.insertAdjacentHTML(
@@ -755,7 +689,7 @@ export function createPostThread(container: HTMLElement, options: PostThreadOpti
         if (!ok) return;
 
         try {
-            await api(`/comments/${encodeURIComponent(commentId)}`, { method: "DELETE" });
+            await api.comments.remove(commentId);
             const replies = item.querySelector(":scope > .tf-comment-replies");
             if (replies && replies.childElementCount > 0) {
                 // Mantém a conversa: o comentário vira "[comentário removido]".
@@ -764,16 +698,16 @@ export function createPostThread(container: HTMLElement, options: PostThreadOpti
                 main?.insertAdjacentHTML(
                     "afterend",
                     renderCommentMain({
-                        comment_id: commentId,
-                        parent_comment_id: null,
+                        commentId: commentId,
+                        parentCommentId: null,
                         content: null,
-                        created_at: new Date().toISOString(),
-                        edited_at: null,
-                        is_deleted: true,
-                        replies_count: replies.childElementCount,
-                        author_id: null,
-                        author_username: null,
-                        author_display_name: null,
+                        createdAt: new Date().toISOString(),
+                        editedAt: null,
+                        isDeleted: true,
+                        repliesCount: replies.childElementCount,
+                        authorId: null,
+                        authorUsername: null,
+                        authorDisplayName: null,
                     }),
                 );
                 main?.remove();
@@ -783,7 +717,7 @@ export function createPostThread(container: HTMLElement, options: PostThreadOpti
             bumpCommentCount(postEl, -1);
             // A resposta aceita apagada reabre a pergunta (o servidor já fez).
             const post = posts.get(postEl.dataset.postId ?? "");
-            if (post?.resolved_comment_id === commentId) applyResolution(postEl, null);
+            if (post?.resolvedCommentId === commentId) applyResolution(postEl, null);
         } catch (err) {
             toast(errorMessage(err, "Não foi possível excluir."), "error");
         }
@@ -796,17 +730,17 @@ export function createPostThread(container: HTMLElement, options: PostThreadOpti
         button?.insertAdjacentHTML("afterend", saveButtonHtml(saved));
         button?.remove();
         const post = posts.get(postEl.dataset.postId ?? "");
-        if (post) post.saved_by_me = saved;
+        if (post) post.savedByMe = saved;
     }
 
     async function toggleSave(postEl: HTMLElement): Promise<void> {
         const postId = postEl.dataset.postId;
         const post = postId ? posts.get(postId) : undefined;
         if (!postId || !post || !ensureLoggedIn()) return;
-        const wasSaved = post.saved_by_me;
+        const wasSaved = post.savedByMe;
         applySaved(postEl, !wasSaved); // otimista
         try {
-            await api(`/posts/${encodeURIComponent(postId)}/save`, { method: wasSaved ? "DELETE" : "POST" });
+            await api.posts.setSaved(postId, !wasSaved);
             toast(wasSaved ? "Removido dos salvos." : "Salvo! Veja seus salvos no seu perfil.");
         } catch (err) {
             applySaved(postEl, wasSaved);
@@ -820,9 +754,7 @@ export function createPostThread(container: HTMLElement, options: PostThreadOpti
         const postId = postEl.dataset.postId;
         if (!postId) return;
         try {
-            const { post } = await api<{ post: Post }>(`/posts/${encodeURIComponent(postId)}/pin`, {
-                method: pinned ? "POST" : "DELETE",
-            });
+            const { post } = await api.posts.setPinned(postId, pinned);
             redraw(post);
             toast(pinned ? "Post fixado no topo da comunidade." : "Post desafixado.");
         } catch (err) {
@@ -839,7 +771,7 @@ export function createPostThread(container: HTMLElement, options: PostThreadOpti
     function applyResolution(postEl: HTMLElement, commentId: string | null): void {
         const post = posts.get(postEl.dataset.postId ?? "");
         if (!post) return;
-        post.resolved_comment_id = commentId;
+        post.resolvedCommentId = commentId;
 
         postEl.querySelector(".tf-post-badges")?.insertAdjacentHTML("afterend", postBadges(post));
         postEl.querySelector(".tf-post-badges")?.remove();
@@ -863,11 +795,8 @@ export function createPostThread(container: HTMLElement, options: PostThreadOpti
         const postId = postEl.dataset.postId;
         if (!postId) return;
         try {
-            const { post } = await api<{ post: Post }>(`/posts/${encodeURIComponent(postId)}/resolution`, {
-                method: commentId ? "PUT" : "DELETE",
-                body: commentId ? JSON.stringify({ commentId }) : undefined,
-            });
-            applyResolution(postEl, post.resolved_comment_id);
+            const { post } = await api.posts.setResolution(postId, commentId);
+            applyResolution(postEl, post.resolvedCommentId);
             toast(commentId ? "Resposta marcada como aceita." : "Resposta desmarcada.");
         } catch (err) {
             toast(errorMessage(err, "Não foi possível marcar a resposta."), "error");
@@ -883,7 +812,7 @@ export function createPostThread(container: HTMLElement, options: PostThreadOpti
     async function banAuthor(communityId: string, userId: string, name: string): Promise<void> {
         if (!(await openBanDialog(communityId, userId, name))) return;
         for (const post of posts.values()) {
-            if (post.author_id === userId) post.author_role = null;
+            if (post.authorId === userId) post.authorRole = null;
         }
         container.querySelectorAll<HTMLElement>(`strong[data-author-id="${cssId(userId)}"]`).forEach((strong) => {
             const badge = strong.nextElementSibling;
@@ -1012,7 +941,7 @@ export function createPostThread(container: HTMLElement, options: PostThreadOpti
                 case "ban-post-author": {
                     closeMenus();
                     const post = posts.get(postId);
-                    if (post) void banAuthor(post.community_id, post.author_id, authorName(post));
+                    if (post) void banAuthor(post.communityId, post.authorId, authorName(post));
                     return;
                 }
                 case "reply":
@@ -1034,7 +963,7 @@ export function createPostThread(container: HTMLElement, options: PostThreadOpti
                     const post = posts.get(postId);
                     const author = item?.querySelector<HTMLElement>(":scope > .tf-comment-main strong[data-author-id]");
                     if (post && author?.dataset.authorId) {
-                        void banAuthor(post.community_id, author.dataset.authorId, author.textContent ?? "");
+                        void banAuthor(post.communityId, author.dataset.authorId, author.textContent ?? "");
                     }
                     return;
                 }
@@ -1069,13 +998,13 @@ export function createPostThread(container: HTMLElement, options: PostThreadOpti
 
     /** Redesenha um post (edição, fixar/desafixar); os comentários recarregam se abertos. */
     function redraw(post: Post): void {
-        posts.set(post.post_id, post);
-        const current = postElement(post.post_id);
+        posts.set(post.postId, post);
+        const current = postElement(post.postId);
         if (!current) return;
         current.insertAdjacentHTML("afterend", renderPost(post, options));
         const replacement = current.nextElementSibling as HTMLElement;
         current.remove();
-        commentCursors.delete(post.post_id);
+        commentCursors.delete(post.postId);
         markOverflow(replacement);
         if (options.single) void loadComments(replacement);
     }
@@ -1083,7 +1012,7 @@ export function createPostThread(container: HTMLElement, options: PostThreadOpti
     return {
         posts,
         add(list, position = "append") {
-            for (const post of list) posts.set(post.post_id, post);
+            for (const post of list) posts.set(post.postId, post);
             const html = list.map((post) => renderPost(post, options)).join("");
             container.insertAdjacentHTML(position === "append" ? "beforeend" : "afterbegin", html);
             markOverflow(container);

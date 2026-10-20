@@ -333,7 +333,7 @@ check(
     categories.status === 200 && categories.body.data.length >= 5,
     JSON.stringify(categories.body).slice(0, 120),
 );
-const categoryId = categories.body?.data?.[0]?.category_id;
+const categoryId = categories.body?.data?.[0]?.categoryId;
 
 const noAuth = await call("POST", "/communities", {
     body: { name: "Sem Token", categoryId },
@@ -374,7 +374,7 @@ check(
     detail.status === 200 && detail.body.categories.length === 6,
     `status=${detail.status} categorias=${detail.body?.categories?.length}`,
 );
-const subCategoryId = detail.body?.categories?.[0]?.community_category_id;
+const subCategoryId = detail.body?.categories?.[0]?.communityCategoryId;
 
 const mine = await call("GET", "/me/communities", { token: aliceToken });
 check(
@@ -388,7 +388,7 @@ check(
 const feed = await call("GET", "/communities");
 check(
     "GET /communities lista no feed",
-    feed.status === 200 && feed.body.data.some((c) => c.community_id === communityId),
+    feed.status === 200 && feed.body.data.some((c) => c.communityId === communityId),
 );
 
 // --- Posts ------------------------------------------------------------------
@@ -535,14 +535,14 @@ const post = await call("POST", "/posts", {
     },
 });
 check("membro publica", post.status === 201, JSON.stringify(post.body).slice(0, 200));
-const postId = post.body?.post?.post_id;
+const postId = post.body?.post?.postId;
 
 // Subcategoria existe, mas é da comunidade do dave (criada no upload de capa).
 const daveCommunity = await call(
     "GET",
     `/communities/${coverOk.body?.community?.communityId}`,
 );
-const foreignSubCategoryId = daveCommunity.body?.categories?.[0]?.community_category_id;
+const foreignSubCategoryId = daveCommunity.body?.categories?.[0]?.communityCategoryId;
 const postForeignCategory = await call("POST", "/posts", {
     token: aliceToken,
     body: {
@@ -578,18 +578,18 @@ const comment = await call("POST", `/posts/${postId}/comments`, {
     body: { content: "Comentário do bob" },
 });
 check("comenta", comment.status === 201, JSON.stringify(comment.body).slice(0, 200));
-const commentId = comment.body?.comment?.comment_id;
+const commentId = comment.body?.comment?.commentId;
 check(
     "comentário volta com autor resolvido",
-    comment.body?.comment?.author_display_name === "Bob Teste",
+    comment.body?.comment?.authorDisplayName === "Bob Teste",
     JSON.stringify(comment.body?.comment),
 );
 
 const afterComment = await call("GET", `/communities/${communityId}/posts`);
 check(
     "comments_count incrementou",
-    afterComment.body?.data?.[0]?.comments_count === 1,
-    `count=${afterComment.body?.data?.[0]?.comments_count}`,
+    afterComment.body?.data?.[0]?.commentsCount === 1,
+    `count=${afterComment.body?.data?.[0]?.commentsCount}`,
 );
 
 const xssComment = await call("POST", `/posts/${postId}/comments`, {
@@ -636,14 +636,14 @@ const feedAsBob = await call("GET", `/communities/${communityId}/posts`, {
 });
 check(
     "liked_by_me = true para quem curtiu",
-    feedAsBob.body?.data?.[0]?.liked_by_me === true,
-    JSON.stringify(feedAsBob.body?.data?.[0]?.liked_by_me),
+    feedAsBob.body?.data?.[0]?.likedByMe === true,
+    JSON.stringify(feedAsBob.body?.data?.[0]?.likedByMe),
 );
 
 const feedAnon = await call("GET", `/communities/${communityId}/posts`);
 check(
     "liked_by_me = false sem sessão",
-    feedAnon.body?.data?.[0]?.liked_by_me === false,
+    feedAnon.body?.data?.[0]?.likedByMe === false,
 );
 
 // A dona da comunidade (alice) agora pode remover como moderadora; quem não
@@ -663,8 +663,8 @@ check("autor apaga o próprio comentário", deleteOwn.status === 204);
 const afterDelete = await call("GET", `/communities/${communityId}/posts`);
 check(
     "comments_count decrementou",
-    afterDelete.body?.data?.[0]?.comments_count === 1,
-    `count=${afterDelete.body?.data?.[0]?.comments_count}`,
+    afterDelete.body?.data?.[0]?.commentsCount === 1,
+    `count=${afterDelete.body?.data?.[0]?.commentsCount}`,
 );
 
 // --- Sistema 1: chat --------------------------------------------------------
@@ -719,13 +719,13 @@ check(
 const listForBob = await call("GET", "/conversations", { token: bobToken });
 check(
     "unread_count conta a mensagem não lida",
-    listForBob.body?.data?.[0]?.unread_count === 1,
-    `unread=${listForBob.body?.data?.[0]?.unread_count}`,
+    listForBob.body?.data?.[0]?.unreadCount === 1,
+    `unread=${listForBob.body?.data?.[0]?.unreadCount}`,
 );
 check(
     "lista traz a última mensagem e o outro participante",
-    listForBob.body?.data?.[0]?.last_message_content === "Oi Bob!" &&
-        listForBob.body?.data?.[0]?.other_display_name === "Alice Teste",
+    listForBob.body?.data?.[0]?.lastMessageContent === "Oi Bob!" &&
+        listForBob.body?.data?.[0]?.otherDisplayName === "Alice Teste",
     JSON.stringify(listForBob.body?.data?.[0]).slice(0, 200),
 );
 
@@ -737,12 +737,12 @@ check("marca como lida", read.status === 204);
 const afterRead = await call("GET", "/conversations", { token: bobToken });
 check(
     "unread_count zera após leitura",
-    afterRead.body?.data?.[0]?.unread_count === 0,
-    `unread=${afterRead.body?.data?.[0]?.unread_count}`,
+    afterRead.body?.data?.[0]?.unreadCount === 0,
+    `unread=${afterRead.body?.data?.[0]?.unreadCount}`,
 );
 
 // Cursor do polling.
-const cursor = sent.body?.message?.created_at;
+const cursor = sent.body?.message?.createdAt;
 const delta = await call(
     "GET",
     `/conversations/${conversationId}/messages?after=${encodeURIComponent(cursor)}`,
@@ -836,7 +836,7 @@ const erinOptional = await call("GET", `/communities/${communityId}/posts`, {
 });
 check(
     "rota com optionalAuth trata usuário excluído como visitante",
-    erinOptional.status === 200 && erinOptional.body?.data?.[0]?.liked_by_me === false,
+    erinOptional.status === 200 && erinOptional.body?.data?.[0]?.likedByMe === false,
     `${erinOptional.status}`,
 );
 
@@ -1212,7 +1212,7 @@ const ivyPost = await call("POST", "/posts", {
     token: ivyToken,
     body: { communityId, title: "Post da Ivy", content: "Conteúdo da Ivy" },
 });
-await call("POST", `/posts/${ivyPost.body?.post?.post_id}/comments`, {
+await call("POST", `/posts/${ivyPost.body?.post?.postId}/comments`, {
     token: ivyToken,
     body: { content: "Comentário da Ivy" },
 });
@@ -1271,7 +1271,7 @@ check(
     ivyPosts.status === 200 &&
         ivyPosts.body?.data?.length === 1 &&
         ivyPosts.body.data[0].title === "Post da Ivy" &&
-        ivyPosts.body.data[0].community_name === communityName &&
+        ivyPosts.body.data[0].communityName === communityName &&
         ivyPosts.body.pagination?.total === 1,
     JSON.stringify(ivyPosts.body).slice(0, 200),
 );
@@ -1281,8 +1281,8 @@ check(
     "GET /users/:id/comments traz o post e a comunidade de cada resposta",
     ivyComments.status === 200 &&
         ivyComments.body?.data?.[0]?.content === "Comentário da Ivy" &&
-        ivyComments.body.data[0].post_title === "Post da Ivy" &&
-        ivyComments.body.data[0].community_name === communityName,
+        ivyComments.body.data[0].postTitle === "Post da Ivy" &&
+        ivyComments.body.data[0].communityName === communityName,
     JSON.stringify(ivyComments.body).slice(0, 200),
 );
 
@@ -1547,15 +1547,15 @@ const c6AsBob = await call("GET", `/communities/${c6Id}`, { token: bobToken });
 check(
     "GET /communities/:id traz descrição, capa, dono, categoria e my_role",
     c6AsBob.body?.community?.description === "Descrição completa" &&
-        "cover_image_url" in (c6AsBob.body?.community ?? {}) &&
-        c6AsBob.body.community.owner_id === aliceReg.body?.user?.userId &&
-        c6AsBob.body.community.category_id === categoryId &&
-        c6AsBob.body.community.my_role === "member",
+        "coverImageUrl" in (c6AsBob.body?.community ?? {}) &&
+        c6AsBob.body.community.ownerId === aliceReg.body?.user?.userId &&
+        c6AsBob.body.community.categoryId === categoryId &&
+        c6AsBob.body.community.myRole === "member",
     JSON.stringify(c6AsBob.body?.community).slice(0, 240),
 );
 check(
     "my_role é null para visitante",
-    (await call("GET", `/communities/${c6Id}`)).body?.community?.my_role === null,
+    (await call("GET", `/communities/${c6Id}`)).body?.community?.myRole === null,
 );
 
 // leave
@@ -1567,7 +1567,7 @@ check(
     "membro sai da comunidade",
     carolJoinLeave.status === 200 &&
         carolLeave.status === 200 &&
-        (await call("GET", `/communities/${c6Id}`, { token: carolToken })).body?.community?.my_role === null,
+        (await call("GET", `/communities/${c6Id}`, { token: carolToken })).body?.community?.myRole === null,
 );
 
 // Posts: editar e excluir só pelo autor.
@@ -1576,10 +1576,10 @@ const bobPost6 = await call("POST", "/posts", {
     token: bobToken,
     body: { communityId: c6Id, title: "Post do Bob", content: "Original" },
 });
-const bobPost6Id = bobPost6.body?.post?.post_id;
+const bobPost6Id = bobPost6.body?.post?.postId;
 check(
     "post novo não aparece como editado",
-    bobPost6.body?.post?.edited_at === null,
+    bobPost6.body?.post?.editedAt === null,
     JSON.stringify(bobPost6.body?.post).slice(0, 160),
 );
 
@@ -1588,7 +1588,7 @@ await call("POST", `/posts/${bobPost6Id}/reactions`, { token: aliceToken });
 const afterLike = await call("GET", `/communities/${c6Id}/posts`);
 check(
     "curtida não marca o post como editado",
-    afterLike.body?.data?.[0]?.edited_at === null,
+    afterLike.body?.data?.[0]?.editedAt === null,
     JSON.stringify(afterLike.body?.data?.[0]).slice(0, 160),
 );
 
@@ -1600,16 +1600,16 @@ check("editar post alheio → 404", editByOther.status === 404, String(editByOth
 
 const editOwn = await call("PATCH", `/posts/${bobPost6Id}`, {
     token: bobToken,
-    body: { title: "Post do Bob (editado)", content: "Novo conteúdo", communityCategoryId: subcats[1]?.community_category_id },
+    body: { title: "Post do Bob (editado)", content: "Novo conteúdo", communityCategoryId: subcats[1]?.communityCategoryId },
 });
 check(
     "autor edita título, conteúdo e subcategoria; edited_at preenchido",
     editOwn.status === 200 &&
         editOwn.body?.post?.title === "Post do Bob (editado)" &&
         editOwn.body.post.content === "Novo conteúdo" &&
-        editOwn.body.post.category_name === subcats[1]?.name &&
-        editOwn.body.post.edited_at !== null &&
-        editOwn.body.post.liked_by_me === false,
+        editOwn.body.post.categoryName === subcats[1]?.name &&
+        editOwn.body.post.editedAt !== null &&
+        editOwn.body.post.likedByMe === false,
     JSON.stringify(editOwn.body).slice(0, 200),
 );
 
@@ -1629,21 +1629,21 @@ const alicePost6 = await call("POST", "/posts", {
     token: aliceToken,
     body: { communityId: c6Id, title: "Post da Alice", content: "Vai ter comentário" },
 });
-const alicePost6Id = alicePost6.body?.post?.post_id;
+const alicePost6Id = alicePost6.body?.post?.postId;
 const bobAnswer6 = await call("POST", `/posts/${alicePost6Id}/comments`, {
     token: bobToken,
     body: { content: "Respondendo a Alice" },
 });
 await call("PUT", `/posts/${alicePost6Id}/resolution`, {
     token: aliceToken,
-    body: { commentId: bobAnswer6.body?.comment?.comment_id },
+    body: { commentId: bobAnswer6.body?.comment?.commentId },
 });
 const unanswered = await call("GET", `/communities/${c6Id}/posts?unanswered=true`);
 check(
     "filtro unanswered traz só posts sem resposta aceita",
     unanswered.status === 200 &&
         unanswered.body?.data?.length === 1 &&
-        unanswered.body.data[0].post_id === bobPost6Id &&
+        unanswered.body.data[0].postId === bobPost6Id &&
         unanswered.body.pagination?.total === 1,
     JSON.stringify(unanswered.body?.pagination),
 );
@@ -1653,28 +1653,28 @@ const rootComment = await call("POST", `/posts/${alicePost6Id}/comments`, {
     token: aliceToken,
     body: { content: "Raiz da conversa" },
 });
-const rootId = rootComment.body?.comment?.comment_id;
+const rootId = rootComment.body?.comment?.commentId;
 const reply1 = await call("POST", `/posts/${alicePost6Id}/comments`, {
     token: bobToken,
     body: { content: "Resposta nível 1", parentCommentId: rootId },
 });
 const reply2 = await call("POST", `/posts/${alicePost6Id}/comments`, {
     token: aliceToken,
-    body: { content: "Resposta nível 2", parentCommentId: reply1.body?.comment?.comment_id },
+    body: { content: "Resposta nível 2", parentCommentId: reply1.body?.comment?.commentId },
 });
 check(
     "resposta volta com parent_comment_id",
-    reply2.status === 201 && reply2.body?.comment?.parent_comment_id === reply1.body?.comment?.comment_id,
+    reply2.status === 201 && reply2.body?.comment?.parentCommentId === reply1.body?.comment?.commentId,
 );
 
 const tree = await call("GET", `/posts/${alicePost6Id}/comments`);
-const byId = new Map((tree.body?.data ?? []).map((c) => [c.comment_id, c]));
+const byId = new Map((tree.body?.data ?? []).map((c) => [c.commentId, c]));
 check(
     "comentários vêm planos com parent_comment_id e replies_count",
     tree.status === 200 &&
-        byId.get(rootId)?.replies_count === 1 &&
-        byId.get(reply1.body?.comment?.comment_id)?.replies_count === 1 &&
-        byId.get(reply2.body?.comment?.comment_id)?.parent_comment_id === reply1.body?.comment?.comment_id,
+        byId.get(rootId)?.repliesCount === 1 &&
+        byId.get(reply1.body?.comment?.commentId)?.repliesCount === 1 &&
+        byId.get(reply2.body?.comment?.commentId)?.parentCommentId === reply1.body?.comment?.commentId,
     JSON.stringify(tree.body).slice(0, 240),
 );
 
@@ -1691,19 +1691,19 @@ check(
     "autor edita o comentário",
     editComment.status === 200 &&
         editComment.body?.comment?.content === "Raiz editada" &&
-        editComment.body.comment.edited_at !== null,
+        editComment.body.comment.editedAt !== null,
     JSON.stringify(editComment.body).slice(0, 160),
 );
 
 await call("DELETE", `/comments/${rootId}`, { token: aliceToken });
 const treeAfterDelete = await call("GET", `/posts/${alicePost6Id}/comments`);
-const removedRoot = treeAfterDelete.body?.data?.find((c) => c.comment_id === rootId);
+const removedRoot = treeAfterDelete.body?.data?.find((c) => c.commentId === rootId);
 check(
     "comentário apagado com respostas vira [removido] sem autor nem texto",
-    removedRoot?.is_deleted === true &&
+    removedRoot?.isDeleted === true &&
         removedRoot.content === null &&
-        removedRoot.author_id === null &&
-        treeAfterDelete.body.data.some((c) => c.comment_id === reply2.body?.comment?.comment_id),
+        removedRoot.authorId === null &&
+        treeAfterDelete.body.data.some((c) => c.commentId === reply2.body?.comment?.commentId),
     JSON.stringify(removedRoot),
 );
 
@@ -1712,11 +1712,11 @@ const leaf = await call("POST", `/posts/${alicePost6Id}/comments`, {
     token: bobToken,
     body: { content: "Folha que será apagada" },
 });
-await call("DELETE", `/comments/${leaf.body?.comment?.comment_id}`, { token: bobToken });
+await call("DELETE", `/comments/${leaf.body?.comment?.commentId}`, { token: bobToken });
 const treeLeaf = await call("GET", `/posts/${alicePost6Id}/comments`);
 check(
     "comentário apagado sem respostas some da listagem",
-    !treeLeaf.body?.data?.some((c) => c.comment_id === leaf.body?.comment?.comment_id),
+    !treeLeaf.body?.data?.some((c) => c.commentId === leaf.body?.comment?.commentId),
 );
 
 // Paginação por cursor nas raízes: 3 raízes vivas a mais, limite 2.
@@ -1728,7 +1728,7 @@ const page2 = await call(
     "GET",
     `/posts/${alicePost6Id}/comments?limit=2&cursor=${encodeURIComponent(page1.body?.nextCursor ?? "")}`,
 );
-const rootsOf = (body) => (body?.data ?? []).filter((c) => c.parent_comment_id === null).map((c) => c.comment_id);
+const rootsOf = (body) => (body?.data ?? []).filter((c) => c.parentCommentId === null).map((c) => c.commentId);
 check(
     "comentários paginam por cursor sem repetir raízes",
     page1.body?.nextCursor &&
@@ -1751,7 +1751,7 @@ check("autor exclui o próprio post → 204", deleteOwnPost.status === 204);
 const listAfterDelete = await call("GET", `/communities/${c6Id}/posts`);
 check(
     "post excluído some da listagem",
-    !listAfterDelete.body?.data?.some((p) => p.post_id === bobPost6Id),
+    !listAfterDelete.body?.data?.some((p) => p.postId === bobPost6Id),
 );
 check(
     "post excluído bloqueia comentário",
@@ -1826,7 +1826,7 @@ check("dono exclui a comunidade → 204", deleteCommunity.status === 204);
 check(
     "comunidade excluída some (404) e sai do feed",
     (await call("GET", `/communities/${c6Id}`)).status === 404 &&
-        !(await call("GET", "/communities?limit=50")).body?.data?.some((c) => c.community_id === c6Id),
+        !(await call("GET", "/communities?limit=50")).body?.data?.some((c) => c.communityId === c6Id),
 );
 
 // O nome de uma comunidade excluída pode ser reutilizado.
@@ -1856,13 +1856,13 @@ const searchPost = await call("POST", "/posts", {
         content: "Comparando moedores cônicos e planos para extração equilibrada.",
     },
 });
-const searchPostId = searchPost.body?.post?.post_id;
+const searchPostId = searchPost.body?.post?.postId;
 
 const sCommunities = await call("GET", `/search?q=${encodeURIComponent(`torrefa ${tag}`.slice(0, 7))}&type=communities`);
 check(
     "busca de comunidades acha por pedaço do nome",
     sCommunities.status === 200 &&
-        sCommunities.body?.results?.communities?.data?.some((c) => c.community_id === searchCommunityId),
+        sCommunities.body?.results?.communities?.data?.some((c) => c.communityId === searchCommunityId),
     JSON.stringify(sCommunities.body).slice(0, 200),
 );
 
@@ -1871,7 +1871,7 @@ const typo = `${tag.slice(0, -1)}x`;
 const sTypo = await call("GET", `/search?q=${encodeURIComponent(`Torrefação ${typo}`)}&type=communities`);
 check(
     "busca de comunidades tolera erro de digitação",
-    sTypo.body?.results?.communities?.data?.[0]?.community_id === searchCommunityId,
+    sTypo.body?.results?.communities?.data?.[0]?.communityId === searchCommunityId,
     JSON.stringify(sTypo.body?.results?.communities?.data?.map((c) => c.name)),
 );
 
@@ -1879,8 +1879,8 @@ const sPosts = await call("GET", `/search?q=${encodeURIComponent(`moedor ${tag}`
 check(
     "busca de posts por prefixo de palavra (full-text)",
     sPosts.status === 200 &&
-        sPosts.body?.results?.posts?.data?.[0]?.post_id === searchPostId &&
-        sPosts.body.results.posts.data[0].community_name === `Torrefação ${tag}`,
+        sPosts.body?.results?.posts?.data?.[0]?.postId === searchPostId &&
+        sPosts.body.results.posts.data[0].communityName === `Torrefação ${tag}`,
     JSON.stringify(sPosts.body).slice(0, 200),
 );
 
@@ -1914,7 +1914,7 @@ const lena = {
 const lenaReg = await call("POST", "/auth/register", { body: lena });
 const lenaToken = lenaReg.body?.token;
 const findLena = (body) =>
-    body?.results?.users?.data?.some((u) => u.user_id === lenaReg.body?.user?.userId) ?? false;
+    body?.results?.users?.data?.some((u) => u.userId === lenaReg.body?.user?.userId) ?? false;
 
 check(
     "perfil privado não aparece para visitante",
@@ -1940,10 +1940,10 @@ const singlePost = await call("GET", `/posts/${searchPostId}`, { token: aliceTok
 check(
     "GET /posts/:id traz o post com a comunidade e liked_by_me",
     singlePost.status === 200 &&
-        singlePost.body?.post?.post_id === searchPostId &&
-        singlePost.body.post.community_id === searchCommunityId &&
-        singlePost.body.post.community_name === `Torrefação ${tag}` &&
-        singlePost.body.post.liked_by_me === false,
+        singlePost.body?.post?.postId === searchPostId &&
+        singlePost.body.post.communityId === searchCommunityId &&
+        singlePost.body.post.communityName === `Torrefação ${tag}` &&
+        singlePost.body.post.likedByMe === false,
     JSON.stringify(singlePost.body).slice(0, 200),
 );
 check(
@@ -2027,15 +2027,15 @@ check(
     members.status === 200 &&
         members.body?.data?.[0]?.role === "owner" &&
         members.body.data[1]?.role === "moderator" &&
-        members.body.data[1].user_id === mod.id &&
-        Boolean(members.body.data[0].joined_at) &&
+        members.body.data[1].userId === mod.id &&
+        Boolean(members.body.data[0].joinedAt) &&
         members.body.pagination.total === 4,
     JSON.stringify(members.body).slice(0, 200),
 );
 const onlyMods = await call("GET", `/communities/${modCid}/members?role=moderator`);
 check(
     "filtro de membros por papel",
-    onlyMods.body?.data?.length === 1 && onlyMods.body.data[0].user_id === mod.id,
+    onlyMods.body?.data?.length === 1 && onlyMods.body.data[0].userId === mod.id,
     JSON.stringify(onlyMods.body).slice(0, 200),
 );
 
@@ -2045,17 +2045,17 @@ const trollPost = await call("POST", "/posts", {
     token: troll.token,
     body: { communityId: modCid, title: "Post problemático", content: "conteúdo ruim" },
 });
-const trollPostId = trollPost.body?.post?.post_id;
+const trollPostId = trollPost.body?.post?.postId;
 check(
     "post traz o papel do autor e de quem vê",
-    trollPost.body?.post?.author_role === "member" && trollPost.body.post.viewer_role === "member",
+    trollPost.body?.post?.authorRole === "member" && trollPost.body.post.viewerRole === "member",
     JSON.stringify(trollPost.body?.post).slice(0, 200),
 );
 const ownerPost = await call("POST", "/posts", {
     token: owner.token,
     body: { communityId: modCid, title: "Aviso da dona", content: "bem-vindos" },
 });
-const ownerPostId = ownerPost.body?.post?.post_id;
+const ownerPostId = ownerPost.body?.post?.postId;
 
 check(
     "membro comum não remove post de outro",
@@ -2070,10 +2070,10 @@ const trollComment = await call("POST", `/posts/${ownerPostId}/comments`, {
     token: troll.token,
     body: { content: "comentário ofensivo" },
 });
-const trollCommentId = trollComment.body?.comment?.comment_id;
+const trollCommentId = trollComment.body?.comment?.commentId;
 check(
     "comentário traz o papel do autor",
-    trollComment.body?.comment?.author_role === "member",
+    trollComment.body?.comment?.authorRole === "member",
     JSON.stringify(trollComment.body).slice(0, 200),
 );
 const modComment = await call("DELETE", `/comments/${trollCommentId}`, { token: mod.token });
@@ -2132,8 +2132,8 @@ check(
     "fila da comunidade traz as denúncias abertas com o alvo resolvido",
     queue.status === 200 &&
         queue.body?.pagination?.total === 2 &&
-        queue.body.data.every((r) => r.post_title === "Post problemático" && r.author_id === troll.id) &&
-        !queue.body.data.some((r) => r.target_type === "user"),
+        queue.body.data.every((r) => r.postTitle === "Post problemático" && r.authorId === troll.id) &&
+        !queue.body.data.some((r) => r.targetType === "user"),
     JSON.stringify(queue.body).slice(0, 300),
 );
 
@@ -2184,7 +2184,7 @@ const closedQueue = await call("GET", `/communities/${modCid}/reports?status=res
 check(
     "filtro por status mostra as resolvidas",
     closedQueue.body?.pagination?.total === 2 &&
-        closedQueue.body.data.some((r) => r.report_id === report2.body?.report?.reportId),
+        closedQueue.body.data.some((r) => r.reportId === report2.body?.report?.reportId),
     JSON.stringify(closedQueue.body).slice(0, 200),
 );
 check(
@@ -2200,9 +2200,9 @@ check(
 const trollCommunity = await call("GET", `/communities/${modCid}`, { token: troll.token });
 check(
     "banido sai dos membros e a comunidade avisa do ban",
-    trollCommunity.body?.community?.my_role === null &&
-        trollCommunity.body.community.is_banned === true &&
-        Boolean(trollCommunity.body.community.my_ban_expires_at),
+    trollCommunity.body?.community?.myRole === null &&
+        trollCommunity.body.community.isBanned === true &&
+        Boolean(trollCommunity.body.community.myBanExpiresAt),
     JSON.stringify(trollCommunity.body?.community).slice(0, 300),
 );
 check(
@@ -2244,7 +2244,7 @@ await db.query("DELETE FROM community_members WHERE user_id = $1 AND community_i
 const bans = await call("GET", `/communities/${modCid}/bans`, { token: mod.token });
 check(
     "lista de bans para a moderação",
-    bans.status === 200 && bans.body?.data?.[0]?.user_id === troll.id,
+    bans.status === 200 && bans.body?.data?.[0]?.userId === troll.id,
     JSON.stringify(bans.body).slice(0, 200),
 );
 check(
@@ -2270,7 +2270,7 @@ const directBan = await call("POST", `/communities/${modCid}/bans/${troll.id}`, 
 });
 check(
     "dono bane direto, permanente (sem prazo)",
-    directBan.status === 201 && directBan.body?.ban?.expires_at === null,
+    directBan.status === 201 && directBan.body?.ban?.expiresAt === null,
     JSON.stringify(directBan.body),
 );
 
@@ -2279,7 +2279,7 @@ const memberPost = await call("POST", "/posts", {
     token: member.token,
     body: { communityId: modCid, title: "Post fora do tema", content: "nada a ver" },
 });
-const memberPostId = memberPost.body?.post?.post_id;
+const memberPostId = memberPost.body?.post?.postId;
 const report3 = await call("POST", "/reports", {
     token: mod.token,
     body: { targetType: "post", targetId: memberPostId, reason: "Fora do tema" },
@@ -2294,7 +2294,7 @@ const { rows: removedRow } = await db.query("SELECT deleted_by FROM posts WHERE 
 check(
     "resolver removendo o conteúdo apaga o post (deleted_by = quem resolveu)",
     removeVia.status === 200 &&
-        removeVia.body?.report?.target_deleted === true &&
+        removeVia.body?.report?.targetDeleted === true &&
         removedRow[0]?.deleted_by === owner.id,
     `${removeVia.status} ${JSON.stringify(removeVia.body).slice(0, 150)}`,
 );
@@ -2309,8 +2309,8 @@ const adminQueue = await call("GET", "/admin/reports", { token: admin.token });
 check(
     "admin vê as denúncias de usuário",
     adminQueue.status === 200 &&
-        adminQueue.body?.data?.some((r) => r.target_type === "user" && r.author_id === troll.id) &&
-        adminQueue.body.data.every((r) => r.target_type === "user"),
+        adminQueue.body?.data?.some((r) => r.targetType === "user" && r.authorId === troll.id) &&
+        adminQueue.body.data.every((r) => r.targetType === "user"),
     JSON.stringify(adminQueue.body).slice(0, 200),
 );
 check(
@@ -2373,8 +2373,8 @@ const afterTransfer = await call("GET", `/communities/${modCid}`, { token: owner
 check(
     "transferência: novo dono e o antigo vira moderador",
     transfer.status === 200 &&
-        afterTransfer.body?.community?.owner_id === mod.id &&
-        afterTransfer.body.community.my_role === "moderator",
+        afterTransfer.body?.community?.ownerId === mod.id &&
+        afterTransfer.body.community.myRole === "moderator",
     JSON.stringify(afterTransfer.body?.community).slice(0, 200),
 );
 check(
@@ -2400,7 +2400,7 @@ const nPost = await call("POST", "/posts", {
     token: nAuthor.token,
     body: { communityId: nCid, title: "Post com avisos", content: "conteúdo" },
 });
-const nPostId = nPost.body?.post?.post_id;
+const nPostId = nPost.body?.post?.postId;
 
 const notifsOf = async (u, query = "") => (await call("GET", `/notifications${query}`, { token: u.token })).body;
 const unreadOf = async (u) => (await call("GET", "/notifications/unread-count", { token: u.token })).body?.unread;
@@ -2414,17 +2414,17 @@ const fanComment = await call("POST", `/posts/${nPostId}/comments`, {
     token: nFan.token,
     body: { content: "Ótimo post!" },
 });
-const fanCommentId = fanComment.body?.comment?.comment_id;
+const fanCommentId = fanComment.body?.comment?.commentId;
 let authorList = await notifsOf(nAuthor);
 check(
     "comentar no post avisa o autor (post_comment)",
     authorList?.data?.length === 1 &&
         authorList.data[0].type === "post_comment" &&
-        authorList.data[0].actor_id === nFan.id &&
-        authorList.data[0].post_id === nPostId &&
-        authorList.data[0].comment_id === fanCommentId &&
-        authorList.data[0].post_title === "Post com avisos" &&
-        authorList.data[0].comment_excerpt === "Ótimo post!" &&
+        authorList.data[0].actorId === nFan.id &&
+        authorList.data[0].postId === nPostId &&
+        authorList.data[0].commentId === fanCommentId &&
+        authorList.data[0].postTitle === "Post com avisos" &&
+        authorList.data[0].commentExcerpt === "Ótimo post!" &&
         authorList.unread === 1,
     JSON.stringify(authorList).slice(0, 300),
 );
@@ -2445,7 +2445,7 @@ check(
     "resposta avisa quem foi respondido (comment_reply)",
     fanList?.data?.length === 1 &&
         fanList.data[0].type === "comment_reply" &&
-        fanList.data[0].actor_id === nAuthor.id,
+        fanList.data[0].actorId === nAuthor.id,
     JSON.stringify(fanList).slice(0, 200),
 );
 check("o autor do post que respondeu não é avisado", (await unreadOf(nAuthor)) === 1);
@@ -2470,7 +2470,7 @@ await call("POST", `/posts/${nPostId}/reactions`, { token: nThird.token });
 let likes = (await notifsOf(nAuthor)).data.filter((n) => n.type === "post_like");
 check(
     "curtidas viram um aviso só, com a última pessoa e o total",
-    likes.length === 1 && likes[0].actor_id === nThird.id && likes[0].likes_count === 2,
+    likes.length === 1 && likes[0].actorId === nThird.id && likes[0].likesCount === 2,
     JSON.stringify(likes),
 );
 
@@ -2478,7 +2478,7 @@ await call("POST", `/posts/${nPostId}/reactions`, { token: nThird.token }); // d
 likes = (await notifsOf(nAuthor)).data.filter((n) => n.type === "post_like");
 check(
     "descurtir passa o aviso para a curtida anterior",
-    likes.length === 1 && likes[0].actor_id === nFan.id && likes[0].likes_count === 1,
+    likes.length === 1 && likes[0].actorId === nFan.id && likes[0].likesCount === 1,
     JSON.stringify(likes),
 );
 await call("POST", `/posts/${nPostId}/reactions`, { token: nFan.token }); // descurte
@@ -2488,7 +2488,7 @@ check("like seguido de unlike não deixa aviso órfão", likes.length === 0, JSO
 // --- Marcar como lida --------------------------------------------------------
 
 const beforeRead = await notifsOf(nAuthor);
-const firstId = beforeRead.data[0].notification_id;
+const firstId = beforeRead.data[0].notificationId;
 const otherRead = await call("POST", "/notifications/read", {
     token: nFan.token,
     body: { ids: [firstId] },
@@ -2504,7 +2504,7 @@ const readOne = await call("POST", "/notifications/read", {
 check(
     "marcar uma como lida",
     readOne.body?.unread === beforeRead.unread - 1 &&
-        Boolean((await notifsOf(nAuthor)).data.find((n) => n.notification_id === firstId)?.read_at),
+        Boolean((await notifsOf(nAuthor)).data.find((n) => n.notificationId === firstId)?.readAt),
     JSON.stringify(readOne.body),
 );
 const readAll = await call("POST", "/notifications/read", { token: nAuthor.token, body: {} });
@@ -2527,7 +2527,7 @@ check(
     pageA.data.length === 2 &&
         Boolean(pageA.nextCursor) &&
         pageB.data.length >= 1 &&
-        !pageB.data.some((n) => pageA.data.some((m) => m.notification_id === n.notification_id)),
+        !pageB.data.some((n) => pageA.data.some((m) => m.notificationId === n.notificationId)),
     `${pageA.data.length} / ${pageB.data?.length}`,
 );
 check("cursor inválido → 400", (await call("GET", "/notifications?cursor=lixo", { token: nAuthor.token })).status === 400);
@@ -2561,7 +2561,7 @@ await call("PATCH", `/communities/${nCid}/members/${nFan.id}`, {
 const roleNotif = (await notifsOf(nFan)).data.find((n) => n.type === "community_role");
 check(
     "virar moderador avisa (community_role)",
-    roleNotif?.data?.role === "moderator" && roleNotif.community_name === `Avisos ${stamp}`,
+    roleNotif?.data?.role === "moderator" && roleNotif.communityName === `Avisos ${stamp}`,
     JSON.stringify(roleNotif),
 );
 
@@ -2569,19 +2569,19 @@ const thirdPost = await call("POST", "/posts", {
     token: nThird.token,
     body: { communityId: nCid, title: "Post que será removido", content: "x" },
 });
-const thirdPostId = thirdPost.body?.post?.post_id;
+const thirdPostId = thirdPost.body?.post?.postId;
 await call("POST", `/posts/${thirdPostId}/reactions`, { token: nFan.token });
 await call("DELETE", `/posts/${thirdPostId}`, { token: nFan.token });
 const thirdList = (await notifsOf(nThird)).data;
 const removedNotif = thirdList.find((n) => n.type === "content_removed");
 check(
     "remoção pela moderação avisa o autor, sem dizer quem removeu",
-    removedNotif?.data?.title === "Post que será removido" && removedNotif.actor_id === null,
+    removedNotif?.data?.title === "Post que será removido" && removedNotif.actorId === null,
     JSON.stringify(removedNotif),
 );
 check(
     "avisos de post apagado somem (a curtida no post removido)",
-    !thirdList.some((n) => n.type === "post_like" && n.post_id === thirdPostId),
+    !thirdList.some((n) => n.type === "post_like" && n.postId === thirdPostId),
     JSON.stringify(thirdList.map((n) => n.type)),
 );
 
@@ -2602,7 +2602,7 @@ await call("POST", `/communities/${lbCid}/join`, { token: lbFan.token });
 const board = async (period = "week") =>
     (await call("GET", `/communities/${lbCid}/leaderboard?period=${period}`)).body;
 const pointsOf = async (u, period = "week") =>
-    (await board(period))?.data?.find((row) => row.user_id === u.id)?.points ?? 0;
+    (await board(period))?.data?.find((row) => row.userId === u.id)?.points ?? 0;
 const dbPoints = async (u) =>
     (
         await db.query(
@@ -2617,7 +2617,7 @@ const lbPost = await call("POST", "/posts", {
     token: lbAuthor.token,
     body: { communityId: lbCid, title: "Post do ranking", content: "conteúdo" },
 });
-const lbPostId = lbPost.body?.post?.post_id;
+const lbPostId = lbPost.body?.post?.postId;
 check("publicar post rende 5 pontos", (await pointsOf(lbAuthor)) === 5);
 
 await call("POST", `/posts/${lbPostId}/reactions`, { token: lbFan.token });
@@ -2632,7 +2632,7 @@ await call("POST", `/posts/${lbPostId}/reactions`, { token: lbAuthor.token }); /
 const weekBoard = await board();
 check(
     "ranking semanal com posição, nome e pontos",
-    weekBoard?.data?.[0]?.user_id === lbAuthor.id &&
+    weekBoard?.data?.[0]?.userId === lbAuthor.id &&
         weekBoard.data[0].rank === 1 &&
         weekBoard.data[0].points === 8 &&
         weekBoard.data[0].username === `lbautor${stamp}`.slice(0, 30) &&
@@ -2647,7 +2647,7 @@ const lbPost2 = await call("POST", "/posts", {
     token: lbAuthor.token,
     body: { communityId: lbCid, title: "Post que vai sumir", content: "x" },
 });
-const lbPost2Id = lbPost2.body?.post?.post_id;
+const lbPost2Id = lbPost2.body?.post?.postId;
 await call("POST", `/posts/${lbPost2Id}/comments`, { token: lbFan.token, body: { content: "oi" } });
 await call("POST", `/posts/${lbPost2Id}/reactions`, { token: lbFan.token });
 check("segundo post soma tudo", (await pointsOf(lbAuthor)) === 6 + 5 + 1 + 2);
@@ -2688,13 +2688,13 @@ const lbFanComment = await call("POST", `/posts/${lbPostId}/comments`, {
     body: { content: "comentário ruim" },
 });
 check("comentário do fã rende 1 ao autor", (await pointsOf(lbAuthor)) === 7);
-await call("DELETE", `/comments/${lbFanComment.body?.comment?.comment_id}`, { token: lbOwner.token });
+await call("DELETE", `/comments/${lbFanComment.body?.comment?.commentId}`, { token: lbOwner.token });
 check(
     "comentário removido pela moderação: −1 ao autor do post, −10 a quem comentou",
     (await pointsOf(lbAuthor)) === 6 && (await dbPoints(lbFan)) === -10,
     `${await pointsOf(lbAuthor)} / ${await dbPoints(lbFan)}`,
 );
-check("pontuação negativa não aparece no ranking", !(await board()).data.some((r) => r.user_id === lbFan.id));
+check("pontuação negativa não aparece no ranking", !(await board()).data.some((r) => r.userId === lbFan.id));
 
 await call("DELETE", `/posts/${lbPostId}`, { token: lbOwner.token });
 check(
@@ -2743,7 +2743,7 @@ check("seguir exige login", (await call("POST", `/users/${fBia.id}/follow`)).sta
 let biaNotifs = await followNotifs(fBia);
 check(
     "seguir gera notificação follow",
-    biaNotifs.length === 1 && biaNotifs[0].actor_id === fAna.id,
+    biaNotifs.length === 1 && biaNotifs[0].actorId === fAna.id,
     JSON.stringify(biaNotifs),
 );
 
@@ -2766,9 +2766,9 @@ check(
     "listas de seguidores e seguindo",
     biaFollowers.status === 200 &&
         biaFollowers.body?.data?.length === 1 &&
-        biaFollowers.body.data[0].user_id === fAna.id &&
-        biaFollowers.body.data[0].followed_by_me === false &&
-        anaFollowing.body?.data?.[0]?.user_id === fBia.id,
+        biaFollowers.body.data[0].userId === fAna.id &&
+        biaFollowers.body.data[0].followedByMe === false &&
+        anaFollowing.body?.data?.[0]?.userId === fBia.id,
     JSON.stringify(biaFollowers.body),
 );
 
@@ -2796,8 +2796,8 @@ check(
     followersA.body?.data?.length === 2 &&
         Boolean(followersA.body.nextCursor) &&
         followersB.body?.data?.length === 1 &&
-        !followersB.body.data.some((u) => followersA.body.data.some((v) => v.user_id === u.user_id)) &&
-        followersA.body.data[0].user_id === fDeb.id,
+        !followersB.body.data.some((u) => followersA.body.data.some((v) => v.userId === u.userId)) &&
+        followersA.body.data[0].userId === fDeb.id,
     JSON.stringify(followersA.body),
 );
 
@@ -2839,21 +2839,21 @@ const biaGone = await call("POST", "/posts", {
     token: fBia.token,
     body: { communityId: fCommunityId, title: "Post apagado da Bia", content: "x" },
 });
-await call("DELETE", `/posts/${biaGone.body?.post?.post_id}`, { token: fBia.token });
+await call("DELETE", `/posts/${biaGone.body?.post?.postId}`, { token: fBia.token });
 
 const anaFeed = await call("GET", "/feed/following", { token: fAna.token });
 const evaFeed = await call("GET", "/feed/following", { token: fEva.token });
 check(
     "feed Seguindo traz posts de quem a pessoa segue",
     anaFeed.status === 200 &&
-        anaFeed.body?.data?.some((p) => p.post_id === biaPost.body?.post?.post_id) &&
-        anaFeed.body.data.every((p) => p.author_id === fBia.id || p.author_id === fCid.id) &&
-        anaFeed.body.data[0].community_name === `Seguindo ${stamp}`,
+        anaFeed.body?.data?.some((p) => p.postId === biaPost.body?.post?.postId) &&
+        anaFeed.body.data.every((p) => p.authorId === fBia.id || p.authorId === fCid.id) &&
+        anaFeed.body.data[0].communityName === `Seguindo ${stamp}`,
     JSON.stringify(anaFeed.body).slice(0, 300),
 );
 check(
     "feed Seguindo não traz post apagado",
-    !anaFeed.body?.data?.some((p) => p.post_id === biaGone.body?.post?.post_id),
+    !anaFeed.body?.data?.some((p) => p.postId === biaGone.body?.post?.postId),
 );
 check(
     "feed Seguindo só de quem se segue",
@@ -2889,7 +2889,7 @@ for (const [label, hours, likes, comments] of [
         token: sOwner.token,
         body: { communityId: sCid, title: `Post ${label}`, content: "x" },
     });
-    const id = created.body?.post?.post_id;
+    const id = created.body?.post?.postId;
     sorted[id] = label;
     await db.query(
         `UPDATE posts SET likes_count = $2, comments_count = $3,
@@ -2902,7 +2902,7 @@ for (const [label, hours, likes, comments] of [
 const orderOf = async (sort) => {
     const query = sort ? `?sort=${sort}` : "";
     const res = await call("GET", `/communities/${sCid}/posts${query}`);
-    return (res.body?.data ?? []).map((p) => sorted[p.post_id]).join(",");
+    return (res.body?.data ?? []).map((p) => sorted[p.postId]).join(",");
 };
 
 check("padrão: mais recentes", (await orderOf()) === "P1,P3,P4,P2", await orderOf());
@@ -2914,8 +2914,8 @@ const sortEcho = await call("GET", `/communities/${sCid}/posts?sort=top&limit=2&
 check(
     "ordenação vale na paginação e volta na resposta",
     sortEcho.body?.sort === "top" &&
-        sortEcho.body.data.map((p) => sorted[p.post_id]).join(",") === "P4,P1",
-    JSON.stringify(sortEcho.body?.data?.map((p) => sorted[p.post_id])),
+        sortEcho.body.data.map((p) => sorted[p.postId]).join(",") === "P4,P1",
+    JSON.stringify(sortEcho.body?.data?.map((p) => sorted[p.postId])),
 );
 check("sort inválido → 400", (await call("GET", `/communities/${sCid}/posts?sort=aleatorio`)).status === 400);
 
@@ -2943,18 +2943,18 @@ for (let i = 1; i <= 5; i++) {
         token: pMember.token,
         body: { communityId: pCid, title: `Pergunta ${i}`, content: "Alguém sabe?" },
     });
-    pPosts.push(created.body?.post?.post_id);
+    pPosts.push(created.body?.post?.postId);
 }
 const pin = (u, postId) => call("POST", `/posts/${postId}/pin`, { token: u.token });
 const unpin = (u, postId) => call("DELETE", `/posts/${postId}/pin`, { token: u.token });
 const feedIds = async (query = "") =>
-    ((await call("GET", `/communities/${pCid}/posts${query}`)).body?.data ?? []).map((p) => p.post_id);
+    ((await call("GET", `/communities/${pCid}/posts${query}`)).body?.data ?? []).map((p) => p.postId);
 
 check("membro comum não fixa → 403", (await pin(pMember, pPosts[0])).status === 403);
 const pinned1 = await pin(pMod, pPosts[0]);
 check(
     "moderador fixa e o post volta com pinned_at",
-    pinned1.status === 200 && Boolean(pinned1.body?.post?.pinned_at),
+    pinned1.status === 200 && Boolean(pinned1.body?.post?.pinnedAt),
     JSON.stringify(pinned1.body).slice(0, 200),
 );
 await pin(pMod, pPosts[1]);
@@ -2978,7 +2978,7 @@ check(
 const pUnpinned = await unpin(pMod, pPosts[1]);
 check(
     "desafixar libera a vaga",
-    pUnpinned.status === 200 && pUnpinned.body?.post?.pinned_at === null && (await pin(pOwner, pPosts[3])).status === 200,
+    pUnpinned.status === 200 && pUnpinned.body?.post?.pinnedAt === null && (await pin(pOwner, pPosts[3])).status === 200,
 );
 await call("DELETE", `/posts/${pPosts[2]}`, { token: pMember.token });
 check("post fixado excluído não ocupa vaga", (await pin(pOwner, pPosts[4])).status === 200);
@@ -2989,7 +2989,7 @@ const pAnswer = await call("POST", `/posts/${pPosts[0]}/comments`, {
     token: pMod.token,
     body: { content: "Faz assim, ó." },
 });
-const answerId = pAnswer.body?.comment?.comment_id;
+const answerId = pAnswer.body?.comment?.commentId;
 const otherPostComment = await call("POST", `/posts/${pPosts[1]}/comments`, {
     token: pMod.token,
     body: { content: "Outro post" },
@@ -3000,12 +3000,12 @@ const resolve = (u, postId, commentId) =>
 check("só o autor marca a resposta aceita → 404 para os outros", (await resolve(pOwner, pPosts[0], answerId)).status === 404);
 check(
     "comentário de outro post não pode ser a resposta → 400",
-    (await resolve(pMember, pPosts[0], otherPostComment.body?.comment?.comment_id)).status === 400,
+    (await resolve(pMember, pPosts[0], otherPostComment.body?.comment?.commentId)).status === 400,
 );
 const pResolved = await resolve(pMember, pPosts[0], answerId);
 check(
     "autor marca a resposta aceita",
-    pResolved.status === 200 && pResolved.body?.post?.resolved_comment_id === answerId,
+    pResolved.status === 200 && pResolved.body?.post?.resolvedCommentId === answerId,
     JSON.stringify(pResolved.body).slice(0, 200),
 );
 check(
@@ -3015,7 +3015,7 @@ check(
 const pUnresolved = await call("DELETE", `/posts/${pPosts[0]}/resolution`, { token: pMember.token });
 check(
     "autor desmarca a resposta aceita",
-    pUnresolved.status === 200 && pUnresolved.body?.post?.resolved_comment_id === null &&
+    pUnresolved.status === 200 && pUnresolved.body?.post?.resolvedCommentId === null &&
         (await feedIds("?unanswered=true")).includes(pPosts[0]),
 );
 await resolve(pMember, pPosts[0], answerId);
@@ -3023,8 +3023,8 @@ await call("DELETE", `/comments/${answerId}`, { token: pMod.token });
 const pAfterDelete = await call("GET", `/posts/${pPosts[0]}`);
 check(
     "excluir a resposta aceita reabre a pergunta",
-    pAfterDelete.body?.post?.resolved_comment_id === null,
-    JSON.stringify(pAfterDelete.body?.post?.resolved_comment_id),
+    pAfterDelete.body?.post?.resolvedCommentId === null,
+    JSON.stringify(pAfterDelete.body?.post?.resolvedCommentId),
 );
 
 console.log("\n[Engajamento E] Mais reações");
@@ -3044,11 +3044,11 @@ const rPost = await call("POST", "/posts", {
     token: rOwner.token,
     body: { communityId: rCid, title: "Reaja a isto", content: "x" },
 });
-const rPostId = rPost.body?.post?.post_id;
+const rPostId = rPost.body?.post?.postId;
 const react = (u, type) =>
     call("POST", `/posts/${rPostId}/reactions`, { token: u.token, body: type ? { type } : undefined });
 const ownerPoints = async () =>
-    (await call("GET", `/communities/${rCid}/leaderboard`)).body?.data?.find((r) => r.user_id === rOwner.id)?.points;
+    (await call("GET", `/communities/${rCid}/leaderboard`)).body?.data?.find((r) => r.userId === rOwner.id)?.points;
 const likeNotifs = async () =>
     (await call("GET", "/notifications", { token: rOwner.token })).body?.data?.filter((n) => n.type === "post_like") ?? [];
 
@@ -3079,9 +3079,9 @@ check(
 const fanView = await call("GET", `/posts/${rPostId}`, { token: rFan.token });
 check(
     "post traz my_reaction e reaction_counts",
-    fanView.body?.post?.my_reaction === "haha" &&
-        fanView.body.post.liked_by_me === true &&
-        fanView.body.post.reaction_counts?.haha === 1,
+    fanView.body?.post?.myReaction === "haha" &&
+        fanView.body.post.likedByMe === true &&
+        fanView.body.post.reactionCounts?.haha === 1,
     JSON.stringify(fanView.body?.post).slice(0, 300),
 );
 
@@ -3089,15 +3089,15 @@ await react(rOther, "sad");
 const both = await call("GET", `/posts/${rPostId}`);
 check(
     "contagem por tipo e total de reações",
-    both.body?.post?.likes_count === 2 &&
-        both.body.post.reaction_counts?.sad === 1 &&
-        both.body.post.reaction_counts.haha === 1 &&
-        both.body.post.my_reaction === null,
-    JSON.stringify(both.body?.post?.reaction_counts),
+    both.body?.post?.likesCount === 2 &&
+        both.body.post.reactionCounts?.sad === 1 &&
+        both.body.post.reactionCounts.haha === 1 &&
+        both.body.post.myReaction === null,
+    JSON.stringify(both.body?.post?.reactionCounts),
 );
 check(
     "aviso agrupado conta todas as reações",
-    (await likeNotifs())[0]?.likes_count === 2 && (await likeNotifs())[0]?.actor_id === rOther.id,
+    (await likeNotifs())[0]?.likesCount === 2 && (await likeNotifs())[0]?.actorId === rOther.id,
     JSON.stringify(await likeNotifs()),
 );
 
@@ -3144,7 +3144,7 @@ for (const title of ["Guarde este", "E este também", "Este vai sumir"]) {
         token: svAuthor.token,
         body: { communityId: svCid, title, content: "x" },
     });
-    svPosts.push(created.body?.post?.post_id);
+    svPosts.push(created.body?.post?.postId);
 }
 const save = (u, postId) => call("POST", `/posts/${postId}/save`, { token: u.token });
 const savedList = async (u, query = "") => (await call("GET", `/me/saved${query}`, { token: u.token })).body;
@@ -3163,15 +3163,15 @@ await save(svReader, svPosts[2]);
 let readerSaved = await savedList(svReader);
 check(
     "lista de salvos, mais recentes primeiro, com saved_by_me",
-    readerSaved?.data?.map((p) => p.post_id).join() === [svPosts[2], svPosts[1], svPosts[0]].join() &&
-        readerSaved.data.every((p) => p.saved_by_me === true) &&
+    readerSaved?.data?.map((p) => p.postId).join() === [svPosts[2], svPosts[1], svPosts[0]].join() &&
+        readerSaved.data.every((p) => p.savedByMe === true) &&
         readerSaved.pagination?.total === 3,
     JSON.stringify(readerSaved?.pagination),
 );
 check(
     "post traz saved_by_me para quem salvou, e só para ele",
-    (await call("GET", `/posts/${svPosts[0]}`, { token: svReader.token })).body?.post?.saved_by_me === true &&
-        (await call("GET", `/posts/${svPosts[0]}`, { token: svAuthor.token })).body?.post?.saved_by_me === false,
+    (await call("GET", `/posts/${svPosts[0]}`, { token: svReader.token })).body?.post?.savedByMe === true &&
+        (await call("GET", `/posts/${svPosts[0]}`, { token: svAuthor.token })).body?.post?.savedByMe === false,
 );
 check("salvos são de cada um", (await savedList(svAuthor))?.data?.length === 0);
 
@@ -3213,14 +3213,14 @@ const mPost = await call("POST", "/posts", {
         content: `Oi @${mFriendName.toUpperCase()}, veja isto. Contato: fulano@${mThirdName}.com, @naoexiste${stamp} e eu mesmo @${mAuthorName}`,
     },
 });
-const mPostId = mPost.body?.post?.post_id;
+const mPostId = mPost.body?.post?.postId;
 let friendMentions = await mentionsOf(mFriend);
 check(
     "menção no post avisa a pessoa (sem diferenciar maiúsculas)",
     friendMentions.length === 1 &&
-        friendMentions[0].post_id === mPostId &&
-        friendMentions[0].actor_id === mAuthor.id &&
-        friendMentions[0].comment_id === null,
+        friendMentions[0].postId === mPostId &&
+        friendMentions[0].actorId === mAuthor.id &&
+        friendMentions[0].commentId === null,
     JSON.stringify(friendMentions),
 );
 check(
@@ -3250,14 +3250,14 @@ const mRoot = await call("POST", `/posts/${mPostId}/comments`, {
 });
 await call("POST", `/posts/${mPostId}/comments`, {
     token: mThird.token,
-    body: { content: `@${mAuthorName} concordo! @${mFriendName} o que acha?`, parentCommentId: mRoot.body?.comment?.comment_id },
+    body: { content: `@${mAuthorName} concordo! @${mFriendName} o que acha?`, parentCommentId: mRoot.body?.comment?.commentId },
 });
 const authorNotifs = (await call("GET", "/notifications", { token: mAuthor.token })).body?.data ?? [];
 friendMentions = await mentionsOf(mFriend);
 check(
     "menção em comentário avisa com o comentário, sem aviso duplo para o respondido",
     friendMentions.length === 2 &&
-        Boolean(friendMentions[0].comment_id) &&
+        Boolean(friendMentions[0].commentId) &&
         authorNotifs.filter((n) => n.type === "comment_reply").length === 1 &&
         authorNotifs.filter((n) => n.type === "mention").length === 0,
     JSON.stringify(authorNotifs.map((n) => n.type)),
@@ -3268,13 +3268,13 @@ const mThirdComment = await call("POST", `/posts/${mPostId}/comments`, {
     body: { content: "sem menção" },
 });
 await call("PATCH", "/me/settings", { token: mFriend.token, body: { notifyReplies: false } });
-await call("PATCH", `/comments/${mThirdComment.body?.comment?.comment_id}`, {
+await call("PATCH", `/comments/${mThirdComment.body?.comment?.commentId}`, {
     token: mThird.token,
     body: { content: `agora com @${mFriendName}` },
 });
 check("menção respeita a preferência de respostas", (await mentionsOf(mFriend)).length === 2);
 await call("PATCH", "/me/settings", { token: mFriend.token, body: { notifyReplies: true } });
-await call("PATCH", `/comments/${mThirdComment.body?.comment?.comment_id}`, {
+await call("PATCH", `/comments/${mThirdComment.body?.comment?.commentId}`, {
     token: mThird.token,
     body: { content: `agora com @${mFriendName} e @${mAuthorName}` },
 });
@@ -3332,7 +3332,7 @@ check(
 const overLimit = await upload(mAuthor, imageForm(2));
 check("imagens: limite de 4 por post contando as que já existem → 400", overLimit.status === 400, JSON.stringify(overLimit.body));
 
-const firstImage = withImages.body?.post?.images?.[0]?.image_id;
+const firstImage = withImages.body?.post?.images?.[0]?.imageId;
 check(
     "imagens: só o autor remove → 404",
     (await call("DELETE", `/posts/${mPostId}/images/${firstImage}`, { token: mThird.token })).status === 404,
@@ -3391,16 +3391,16 @@ const later = await createEvent(eOwner, {
     location: "https://meet.example.com/cafe",
 });
 const sooner = await createEvent(eMod, { title: "Live com barista", startsAt: inDays(1) });
-const laterId = later.body?.event?.event_id;
-const soonerId = sooner.body?.event?.event_id;
+const laterId = later.body?.event?.eventId;
+const soonerId = sooner.body?.event?.eventId;
 check(
     "dono e moderador criam evento",
     later.status === 201 &&
         sooner.status === 201 &&
         later.body.event.title === "Degustação de cafés" &&
         later.body.event.location === "https://meet.example.com/cafe" &&
-        later.body.event.attendees_count === 0 &&
-        later.body.event.creator_id === eOwner.id,
+        later.body.event.attendeesCount === 0 &&
+        later.body.event.creatorId === eOwner.id,
     JSON.stringify(later.body).slice(0, 300),
 );
 
@@ -3408,7 +3408,7 @@ const memberEventNotifs = await eventNotifs(eMember);
 check(
     "evento novo avisa os membros",
     memberEventNotifs.length === 2 &&
-        memberEventNotifs.some((n) => n.event_id === laterId && n.event_title === "Degustação de cafés"),
+        memberEventNotifs.some((n) => n.eventId === laterId && n.eventTitle === "Degustação de cafés"),
     JSON.stringify(memberEventNotifs),
 );
 check(
@@ -3429,15 +3429,15 @@ const upcoming = await call("GET", `/communities/${eCid}/events`);
 const past = await call("GET", `/communities/${eCid}/events?scope=past`);
 check(
     "próximos eventos em ordem de data; anteriores à parte",
-    upcoming.body?.data?.map((e) => e.event_id).join() === [soonerId, laterId].join() &&
+    upcoming.body?.data?.map((e) => e.eventId).join() === [soonerId, laterId].join() &&
         past.body?.data?.length === 1 &&
         past.body.data[0].title === "Encontro antigo" &&
-        past.body.data[0].is_past === true,
+        past.body.data[0].isPast === true,
     JSON.stringify(upcoming.body?.data?.map((e) => e.title)),
 );
 check(
     "widget pede só o próximo",
-    (await call("GET", `/communities/${eCid}/events?limit=1`)).body?.data?.[0]?.event_id === soonerId,
+    (await call("GET", `/communities/${eCid}/events?limit=1`)).body?.data?.[0]?.eventId === soonerId,
 );
 
 // "Vou"
@@ -3453,10 +3453,10 @@ check(
     "evento mostra a presença de quem vê",
     (await call("GET", `/events/${laterId}`, { token: eMember.token })).body?.event?.attending === true &&
         (await call("GET", `/events/${laterId}`, { token: eMod.token })).body?.event?.attending === false &&
-        (await call("GET", `/events/${laterId}`)).body?.event?.attendees_count === 1,
+        (await call("GET", `/events/${laterId}`)).body?.event?.attendeesCount === 1,
 );
 check("quem não é membro não marca presença → 403", (await attend(eOutsider, laterId)).status === 403);
-check("evento que já terminou não aceita presença → 400", (await attend(eMember, past.body?.data?.[0]?.event_id)).status === 400);
+check("evento que já terminou não aceita presença → 400", (await attend(eMember, past.body?.data?.[0]?.eventId)).status === 400);
 const notGoing = await call("DELETE", `/events/${laterId}/attend`, { token: eMember.token });
 check("desmarcar presença", notGoing.body?.attending === false && notGoing.body.attendeesCount === 0);
 
@@ -3487,7 +3487,7 @@ check(
     "dono cancela: evento some e o aviso também",
     cancelled.status === 204 &&
         (await call("GET", `/events/${laterId}`)).status === 404 &&
-        !(await eventNotifs(eMember)).some((n) => n.event_id === laterId),
+        !(await eventNotifs(eMember)).some((n) => n.eventId === laterId),
 );
 
 console.log("\n[Chat] Histórico, exclusão, visto, tempo real e grupos");
@@ -3516,13 +3516,13 @@ check(
     ch_latest?.data?.map((m) => m.content).join() === "mensagem 4,mensagem 5" && ch_latest.hasMore === true,
     JSON.stringify(ch_latest),
 );
-const ch_older = await ch_messagesOf(chA, dmAB, `?limit=2&beforeId=${ch_latest.data[0].message_id}`);
+const ch_older = await ch_messagesOf(chA, dmAB, `?limit=2&beforeId=${ch_latest.data[0].messageId}`);
 check(
     "histórico com beforeId traz as anteriores, sem repetir",
     ch_older?.data?.map((m) => m.content).join() === "mensagem 2,mensagem 3" && ch_older.hasMore === true,
     JSON.stringify(ch_older?.data?.map((m) => m.content)),
 );
-const ch_oldest = await ch_messagesOf(chA, dmAB, `?limit=5&before=${encodeURIComponent(ch_older.data[0].created_at)}`);
+const ch_oldest = await ch_messagesOf(chA, dmAB, `?limit=5&before=${encodeURIComponent(ch_older.data[0].createdAt)}`);
 check(
     "histórico com before (timestamp) chega ao começo",
     ch_oldest?.data?.map((m) => m.content).join() === "mensagem 1" && ch_oldest.hasMore === false,
@@ -3534,31 +3534,31 @@ check(
 const ch_target = ch_sent[4];
 check(
     "só o autor apaga a mensagem → 404 para o outro",
-    (await call("DELETE", `/conversations/${dmAB}/messages/${ch_target.message_id}`, { token: chB.token })).status === 404,
+    (await call("DELETE", `/conversations/${dmAB}/messages/${ch_target.messageId}`, { token: chB.token })).status === 404,
 );
 check(
     "quem não participa não apaga → 404",
-    (await call("DELETE", `/conversations/${dmAB}/messages/${ch_target.message_id}`, { token: chC.token })).status === 404,
+    (await call("DELETE", `/conversations/${dmAB}/messages/${ch_target.messageId}`, { token: chC.token })).status === 404,
 );
 check(
     "autor apaga a própria mensagem",
-    (await call("DELETE", `/conversations/${dmAB}/messages/${ch_target.message_id}`, { token: chA.token })).status === 204,
+    (await call("DELETE", `/conversations/${dmAB}/messages/${ch_target.messageId}`, { token: chA.token })).status === 204,
 );
-const ch_afterDelete = (await ch_messagesOf(chB, dmAB)).data.find((m) => m.message_id === ch_target.message_id);
+const ch_afterDelete = (await ch_messagesOf(chB, dmAB)).data.find((m) => m.messageId === ch_target.messageId);
 check(
     "mensagem apagada vira placeholder sem conteúdo",
-    ch_afterDelete?.is_deleted === true && ch_afterDelete.content === null,
+    ch_afterDelete?.isDeleted === true && ch_afterDelete.content === null,
     JSON.stringify(ch_afterDelete),
 );
 check(
     "apagar de novo → 404",
-    (await call("DELETE", `/conversations/${dmAB}/messages/${ch_target.message_id}`, { token: chA.token })).status === 404,
+    (await call("DELETE", `/conversations/${dmAB}/messages/${ch_target.messageId}`, { token: chA.token })).status === 404,
 );
 const ch_listAfterDelete = await call("GET", "/conversations", { token: chB.token });
 check(
     "prévia da conversa ignora a mensagem apagada e conta as não lidas",
-    ch_listAfterDelete.body?.data?.[0]?.last_message_content === "mensagem 4" &&
-        ch_listAfterDelete.body.data[0].unread_count === 4 &&
+    ch_listAfterDelete.body?.data?.[0]?.lastMessageContent === "mensagem 4" &&
+        ch_listAfterDelete.body.data[0].unreadCount === 4 &&
         ch_listAfterDelete.body.unreadTotal === 4,
     JSON.stringify(ch_listAfterDelete.body?.data?.[0]),
 );
@@ -3567,12 +3567,12 @@ check(
 
 await call("POST", `/conversations/${dmAB}/read`, { token: chB.token });
 const ch_detail = await call("GET", `/conversations/${dmAB}`, { token: chA.token });
-const ch_bRead = ch_detail.body?.participants?.find((p) => p.user_id === chB.id)?.last_read_at;
+const ch_bRead = ch_detail.body?.participants?.find((p) => p.userId === chB.id)?.lastReadAt;
 check(
     "detalhe da conversa expõe o last_read_at do outro (visto)",
     ch_detail.status === 200 &&
-        ch_detail.body.conversation.is_group === false &&
-        new Date(ch_bRead) >= new Date(ch_sent[3].created_at),
+        ch_detail.body.conversation.isGroup === false &&
+        new Date(ch_bRead) >= new Date(ch_sent[3].createdAt),
     JSON.stringify(ch_detail.body),
 );
 check(
@@ -3593,7 +3593,7 @@ check(
         Boolean(ch_convPage1.body.nextCursor) &&
         ch_convPage2.body?.data?.length === 1 &&
         ch_convPage2.body.nextCursor === null &&
-        ch_convPage2.body.data[0].conversation_id === dmAB,
+        ch_convPage2.body.data[0].conversationId === dmAB,
     JSON.stringify(ch_convPage2.body),
 );
 check("cursor inválido → 400", (await call("GET", "/conversations?cursor=lixo", { token: chA.token })).status === 400);
@@ -3684,7 +3684,7 @@ await streamC.waitFor((e) => e.type === "ready");
 
 const ch_liveStart = Date.now();
 const ch_live = await ch_send(chA, dmAB, "chegou em tempo real?");
-const ch_liveId = ch_live.body?.message?.message_id;
+const ch_liveId = ch_live.body?.message?.messageId;
 const bGotMessage = await streamB.waitFor((e) => e.type === "message:new" && e.data.messageId === ch_liveId);
 const ch_liveMs = Date.now() - ch_liveStart;
 check(
@@ -3738,9 +3738,9 @@ const ch_groupMessages = await ch_messagesOf(chB, ch_groupId);
 check(
     "cria grupo: criador admin, participantes e mensagem de sistema",
     ch_group.status === 201 &&
-        ch_groupDetail.body?.conversation?.is_group === true &&
+        ch_groupDetail.body?.conversation?.isGroup === true &&
         ch_groupDetail.body.conversation.title === "Turma do café" &&
-        ch_groupDetail.body.conversation.my_role === "admin" &&
+        ch_groupDetail.body.conversation.myRole === "admin" &&
         ch_groupDetail.body.participants.length === 3 &&
         ch_groupMessages?.data?.[0]?.kind === "system" &&
         ch_groupMessages.data[0].content === "cha criou o grupo “Turma do café”",
@@ -3814,7 +3814,7 @@ const ch_dDetail = await call("GET", `/conversations/${ch_groupId}`, { token: ch
 const ch_systemTexts = (await ch_messagesOf(chD, ch_groupId)).data.filter((m) => m.kind === "system").map((m) => m.content);
 check(
     "admin sai: o mais antigo que sobrou assume",
-    ch_dDetail.body?.conversation?.my_role === "admin" && ch_dDetail.body.participants.length === 1,
+    ch_dDetail.body?.conversation?.myRole === "admin" && ch_dDetail.body.participants.length === 1,
     JSON.stringify(ch_dDetail.body),
 );
 check(
@@ -3833,13 +3833,13 @@ check(
 const ch_dList = await call("GET", "/conversations", { token: chD.token });
 check(
     "mensagem de sistema não conta como não lida",
-    ch_dList.body?.data?.find((c) => c.conversation_id === ch_groupId)?.unread_count === 0,
+    ch_dList.body?.data?.find((c) => c.conversationId === ch_groupId)?.unreadCount === 0,
     JSON.stringify(ch_dList.body?.data),
 );
 check(
     "mensagem de sistema não pode ser apagada",
     (
-        await call("DELETE", `/conversations/${ch_groupId}/messages/${(await ch_messagesOf(chD, ch_groupId)).data[0].message_id}`, {
+        await call("DELETE", `/conversations/${ch_groupId}/messages/${(await ch_messagesOf(chD, ch_groupId)).data[0].messageId}`, {
             token: chA.token,
         })
     ).status === 404,
@@ -4192,7 +4192,7 @@ const d_delPost = await call("POST", "/posts", {
     token: d_delUser.token,
     body: { communityId: d_delCid, title: "Post de quem vai sair", content: "conteúdo" },
 });
-const d_delPostId = d_delPost.body?.post?.post_id;
+const d_delPostId = d_delPost.body?.post?.postId;
 await call("POST", `/posts/${d_delPostId}/comments`, { token: d_delUser.token, body: { content: "meu comentário" } });
 const d_delConv = await call("POST", "/conversations", { token: d_delUser.token, body: { userId: d_delOwner.id } });
 await call("POST", `/conversations/${d_delConv.body?.conversationId}/messages`, {
@@ -4254,7 +4254,7 @@ const d_postAfter = await call("GET", `/posts/${d_delPostId}`);
 check(
     "perfil some e o conteúdo fica como “Usuário removido”",
     (await call("GET", `/users/${d_delUser.id}`)).status === 404 &&
-        d_postAfter.body?.post?.author_display_name === "Usuário removido" &&
+        d_postAfter.body?.post?.authorDisplayName === "Usuário removido" &&
         (await db.query("SELECT 1 FROM user_social_links WHERE user_id = $1", [d_delUser.id])).rows.length === 0,
     JSON.stringify(d_postAfter.body?.post).slice(0, 200),
 );
@@ -4323,7 +4323,7 @@ check(
 );
 check(
     "posts e mensagens de quem saiu continuam, anônimos",
-    (await call("GET", `/posts/${d_delPostId}`)).body?.post?.author_display_name === "Usuário removido" &&
+    (await call("GET", `/posts/${d_delPostId}`)).body?.post?.authorDisplayName === "Usuário removido" &&
         (await call("GET", `/conversations/${d_delConv.body?.conversationId}/messages`, { token: d_delOwner.token })).body?.data
             ?.length === 2,
 );
@@ -4405,33 +4405,33 @@ const blPostB = await call("POST", "/posts", {
     token: blB.token,
     body: { communityId: blCid, title: "Post do B", content: "x" },
 });
-await call("POST", `/posts/${blPostA.body?.post?.post_id}/comments`, { token: blB.token, body: { content: "comentário do B" } });
-await call("POST", `/posts/${blPostA.body?.post?.post_id}/reactions`, { token: blB.token });
+await call("POST", `/posts/${blPostA.body?.post?.postId}/comments`, { token: blB.token, body: { content: "comentário do B" } });
+await call("POST", `/posts/${blPostA.body?.post?.postId}/reactions`, { token: blB.token });
 check(
     "quem bloqueou não recebe avisos do bloqueado",
-    !(await call("GET", "/notifications", { token: blA.token })).body?.data?.some((n) => n.actor_id === blB.id),
+    !(await call("GET", "/notifications", { token: blA.token })).body?.data?.some((n) => n.actorId === blB.id),
 );
 const e_feedForA = (await call("GET", `/communities/${blCid}/posts`, { token: blA.token })).body?.data ?? [];
 const e_feedForC = (await call("GET", `/communities/${blCid}/posts`, { token: blC.token })).body?.data ?? [];
 check(
     "posts do bloqueado vêm marcados para quem bloqueou (e só para ele)",
-    e_feedForA.find((p) => p.post_id === blPostB.body?.post?.post_id)?.author_blocked_by_me === true &&
-        e_feedForA.find((p) => p.post_id === blPostA.body?.post?.post_id)?.author_blocked_by_me === false &&
-        e_feedForC.find((p) => p.post_id === blPostB.body?.post?.post_id)?.author_blocked_by_me === false,
+    e_feedForA.find((p) => p.postId === blPostB.body?.post?.postId)?.authorBlockedByMe === true &&
+        e_feedForA.find((p) => p.postId === blPostA.body?.post?.postId)?.authorBlockedByMe === false &&
+        e_feedForC.find((p) => p.postId === blPostB.body?.post?.postId)?.authorBlockedByMe === false,
 );
-const e_commentsForA = await call("GET", `/posts/${blPostA.body?.post?.post_id}/comments`, { token: blA.token });
-const e_commentsAnon = await call("GET", `/posts/${blPostA.body?.post?.post_id}/comments`);
+const e_commentsForA = await call("GET", `/posts/${blPostA.body?.post?.postId}/comments`, { token: blA.token });
+const e_commentsAnon = await call("GET", `/posts/${blPostA.body?.post?.postId}/comments`);
 check(
     "comentários do bloqueado vêm marcados para quem bloqueou",
-    e_commentsForA.body?.data?.[0]?.author_blocked_by_me === true &&
-        e_commentsAnon.body?.data?.[0]?.author_blocked_by_me === false,
+    e_commentsForA.body?.data?.[0]?.authorBlockedByMe === true &&
+        e_commentsAnon.body?.data?.[0]?.authorBlockedByMe === false,
 );
 
 const e_blockList = await call("GET", "/me/blocks", { token: blA.token });
 check(
     "lista de bloqueados e perfil com blockedByMe",
     e_blockList.body?.data?.length === 1 &&
-        e_blockList.body.data[0].user_id === blB.id &&
+        e_blockList.body.data[0].userId === blB.id &&
         (await call("GET", `/users/${blB.id}`, { token: blA.token })).body?.user?.blockedByMe === true,
     JSON.stringify(e_blockList.body),
 );
@@ -4474,12 +4474,12 @@ const nsCid = nsCommunity.body?.community?.communityId;
 check("adulto cria comunidade +18", nsCommunity.status === 201 && nsCommunity.body.community.isNsfw === true);
 
 const f_homeList = (await call("GET", "/communities?limit=50", { token: nsAdult.token })).body?.data ?? [];
-check("comunidade +18 fica fora da home (até para adultos)", !f_homeList.some((c) => c.community_id === nsCid));
+check("comunidade +18 fica fora da home (até para adultos)", !f_homeList.some((c) => c.communityId === nsCid));
 check(
     "página da comunidade avisa quem não pode ver",
-    (await call("GET", `/communities/${nsCid}`, { token: nsMinor.token })).body?.community?.nsfw_blocked === true &&
-        (await call("GET", `/communities/${nsCid}`)).body?.community?.nsfw_blocked === true &&
-        (await call("GET", `/communities/${nsCid}`, { token: nsAdult.token })).body?.community?.nsfw_blocked === false,
+    (await call("GET", `/communities/${nsCid}`, { token: nsMinor.token })).body?.community?.nsfwBlocked === true &&
+        (await call("GET", `/communities/${nsCid}`)).body?.community?.nsfwBlocked === true &&
+        (await call("GET", `/communities/${nsCid}`, { token: nsAdult.token })).body?.community?.nsfwBlocked === false,
 );
 check("menor não entra em comunidade +18", (await call("POST", `/communities/${nsCid}/join`, { token: nsMinor.token })).status === 403);
 
@@ -4503,14 +4503,14 @@ const nsPost = await call("POST", "/posts", {
     token: nsAdult.token,
     body: { communityId: nsNormalId, title: "Post adulto", content: "conteúdo +18 secreto", isNsfw: true },
 });
-const nsPostId = nsPost.body?.post?.post_id;
+const nsPostId = nsPost.body?.post?.postId;
 const nsInNsfw = await call("POST", "/posts", {
     token: nsAdult.token,
     body: { communityId: nsCid, title: "Na comunidade +18", content: "também secreto" },
 });
 check(
     "post +18 criado; em comunidade +18 todo post conta como +18",
-    nsPost.status === 201 && nsPost.body.post.is_nsfw === true && nsInNsfw.body?.post?.is_nsfw === true,
+    nsPost.status === 201 && nsPost.body.post.isNsfw === true && nsInNsfw.body?.post?.isNsfw === true,
 );
 
 const f_asMinor = await call("GET", `/posts/${nsPostId}`, { token: nsMinor.token });
@@ -4518,18 +4518,18 @@ const f_asVisitor = await call("GET", `/posts/${nsPostId}`);
 const f_asAdult = await call("GET", `/posts/${nsPostId}`, { token: nsAdult.token });
 check(
     "quem não pode ver recebe só o título, sem o conteúdo",
-    f_asMinor.body?.post?.nsfw_hidden === true &&
+    f_asMinor.body?.post?.nsfwHidden === true &&
         f_asMinor.body.post.content === "" &&
         f_asMinor.body.post.title === "Post adulto" &&
         f_asVisitor.body?.post?.content === "" &&
-        f_asAdult.body?.post?.nsfw_hidden === false &&
+        f_asAdult.body?.post?.nsfwHidden === false &&
         f_asAdult.body.post.content === "conteúdo +18 secreto",
     JSON.stringify(f_asMinor.body?.post).slice(0, 200),
 );
 const f_feedMinor = (await call("GET", `/communities/${nsNormalId}/posts`, { token: nsMinor.token })).body?.data ?? [];
 check(
     "no feed também",
-    f_feedMinor.find((p) => p.post_id === nsPostId)?.content === "" &&
+    f_feedMinor.find((p) => p.postId === nsPostId)?.content === "" &&
         !JSON.stringify(f_feedMinor).includes("conteúdo +18 secreto"),
 );
 check(
@@ -4544,7 +4544,7 @@ check(
 const f_profilePosts = (await call("GET", `/users/${nsAdult.id}/posts`, { token: nsMinor.token })).body?.data ?? [];
 check(
     "aba Posts do perfil esconde o conteúdo +18",
-    f_profilePosts.length >= 2 && f_profilePosts.every((p) => p.nsfw_hidden === true && p.content === ""),
+    f_profilePosts.length >= 2 && f_profilePosts.every((p) => p.nsfwHidden === true && p.content === ""),
     JSON.stringify(f_profilePosts).slice(0, 200),
 );
 
@@ -4554,10 +4554,10 @@ check(
     (await f_searchFor(nsMinor, "secreto", "posts")).body?.results?.posts?.total === 0 &&
         (await f_searchFor(nsAdult, "secreto", "posts")).body?.results?.posts?.total === 2 &&
         !(await f_searchFor(nsMinor, nsCommunityName, "communities")).body?.results?.communities?.data?.some(
-            (c) => c.community_id === nsCid,
+            (c) => c.communityId === nsCid,
         ) &&
         (await f_searchFor(nsAdult, nsCommunityName, "communities")).body?.results?.communities?.data?.some(
-            (c) => c.community_id === nsCid && c.is_nsfw === true,
+            (c) => c.communityId === nsCid && c.isNsfw === true,
         ),
 );
 const f_minorPost = await call("POST", "/posts", {
@@ -4566,7 +4566,7 @@ const f_minorPost = await call("POST", "/posts", {
 });
 check(
     "menor não marca o próprio post como +18",
-    (await call("PATCH", `/posts/${f_minorPost.body?.post?.post_id}`, { token: nsMinor.token, body: { isNsfw: true } }))
+    (await call("PATCH", `/posts/${f_minorPost.body?.post?.postId}`, { token: nsMinor.token, body: { isNsfw: true } }))
         .status === 403,
 );
 

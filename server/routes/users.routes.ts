@@ -4,6 +4,7 @@ import { pool } from "../db.js";
 import { optionalAuth, requireAuth } from "../middleware/auth.js";
 import { loadSocialLinks, profileAccess } from "../lib/profile.js";
 import { nsfwHiddenSql } from "../lib/nsfw.js";
+import { parseWith } from "../middleware/error.js";
 
 const router = Router();
 
@@ -18,7 +19,7 @@ const searchQuery = z.object({
 
 router.get("/users", requireAuth, async (req, res, next) => {
   try {
-    const { search, limit } = searchQuery.parse(req.query);
+    const { search, limit } = parseWith(searchQuery, req.query, "Parâmetros inválidos");
 
     // Perfil privado só aparece para quem JÁ tem conversa com ele: a busca
     // serve para reencontrar contatos, não para descobrir contas privadas.
@@ -61,11 +62,6 @@ router.get("/users", requireAuth, async (req, res, next) => {
 
     res.json({ data: rows });
   } catch (err) {
-    if (err instanceof z.ZodError) {
-      return res
-        .status(400)
-        .json({ error: "Parâmetros inválidos", details: err.flatten() });
-    }
     next(err);
   }
 });
@@ -88,15 +84,10 @@ const pageQuery = z.object({
   limit: z.coerce.number().int().min(1).max(50).default(10),
 });
 
-function paramsError(res: Response, err: z.ZodError) {
-  return res
-    .status(400)
-    .json({ error: "Parâmetros inválidos", details: err.flatten() });
-}
 
 router.get("/users/:userId", optionalAuth, async (req, res, next) => {
   try {
-    const { userId } = userIdParam.parse(req.params);
+    const { userId } = parseWith(userIdParam, req.params, "Parâmetros inválidos");
 
     const access = await profileAccess(userId, req.userId);
     if (!access) {
@@ -198,7 +189,6 @@ router.get("/users/:userId", optionalAuth, async (req, res, next) => {
       },
     });
   } catch (err) {
-    if (err instanceof z.ZodError) return paramsError(res, err);
     next(err);
   }
 });
@@ -218,7 +208,7 @@ const usernameParam = z.object({
 
 router.get("/users/by-username/:username", async (req, res, next) => {
   try {
-    const { username } = usernameParam.parse(req.params);
+    const { username } = parseWith(usernameParam, req.params, "Parâmetros inválidos");
     const { rows } = await pool.query<{ user_id: string }>(
       "SELECT user_id FROM users WHERE lower(username) = lower($1) AND deleted_at IS NULL",
       [username],
@@ -228,7 +218,6 @@ router.get("/users/by-username/:username", async (req, res, next) => {
     }
     res.json({ user: { userId: rows[0].user_id } });
   } catch (err) {
-    if (err instanceof z.ZodError) return paramsError(res, err);
     next(err);
   }
 });
@@ -242,8 +231,8 @@ async function guardListing(
   req: Request,
   res: Response,
 ): Promise<{ userId: string; page: number; limit: number } | null> {
-  const { userId } = userIdParam.parse(req.params);
-  const { page, limit } = pageQuery.parse(req.query);
+  const { userId } = parseWith(userIdParam, req.params, "Parâmetros inválidos");
+  const { page, limit } = parseWith(pageQuery, req.query, "Parâmetros inválidos");
 
   const access = await profileAccess(userId, req.userId);
   if (!access) {
@@ -304,7 +293,6 @@ router.get("/users/:userId/posts", optionalAuth, async (req, res, next) => {
       pagination: { page, limit, total, totalPages: Math.ceil(total / limit) },
     });
   } catch (err) {
-    if (err instanceof z.ZodError) return paramsError(res, err);
     next(err);
   }
 });
@@ -358,7 +346,6 @@ router.get("/users/:userId/comments", optionalAuth, async (req, res, next) => {
       pagination: { page, limit, total, totalPages: Math.ceil(total / limit) },
     });
   } catch (err) {
-    if (err instanceof z.ZodError) return paramsError(res, err);
     next(err);
   }
 });

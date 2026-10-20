@@ -38,6 +38,7 @@ import {
   verifyLink,
   verifyVerifyToken,
 } from "../lib/email-verification.js";
+import { parseWith } from "../middleware/error.js";
 
 const router = Router();
 
@@ -108,7 +109,7 @@ const registerSchema = z.object({
 
 router.post("/register", registerLimitByIp, async (req, res, next) => {
   try {
-    const data = registerSchema.parse(req.body);
+    const data = parseWith(registerSchema, req.body, "Dados inválidos");
 
     const { rows: existing } = await pool.query(
       "SELECT user_id FROM users WHERE email = $1 OR username = $2 LIMIT 1",
@@ -190,11 +191,6 @@ router.post("/register", registerLimitByIp, async (req, res, next) => {
       },
     });
   } catch (err) {
-    if (err instanceof z.ZodError) {
-      return res
-        .status(400)
-        .json({ error: "Dados inválidos", details: err.flatten() });
-    }
     next(err);
   }
 });
@@ -210,7 +206,7 @@ const loginSchema = z.object({
 
 router.post("/login", loginLimitByIp, loginLimitByIdentifier, async (req, res, next) => {
   try {
-    const { identifier, password } = loginSchema.parse(req.body);
+    const { identifier, password } = parseWith(loginSchema, req.body, "Dados inválidos");
 
     // Conta excluída ainda no prazo de reativação também entra na busca: com
     // a senha certa, a resposta oferece reativar (ver abaixo).
@@ -276,11 +272,6 @@ router.post("/login", loginLimitByIp, loginLimitByIdentifier, async (req, res, n
       },
     });
   } catch (err) {
-    if (err instanceof z.ZodError) {
-      return res
-        .status(400)
-        .json({ error: "Dados inválidos", details: err.flatten() });
-    }
     next(err);
   }
 });
@@ -294,7 +285,7 @@ router.post("/login", loginLimitByIp, loginLimitByIdentifier, async (req, res, n
 
 router.post("/reactivate", loginLimitByIp, loginLimitByIdentifier, async (req, res, next) => {
   try {
-    const { identifier, password } = loginSchema.parse(req.body);
+    const { identifier, password } = parseWith(loginSchema, req.body, "Dados inválidos");
     const { rows } = await pool.query(
       `SELECT u.user_id, u.email, u.username, u.password_hash, u.two_factor_enabled
        FROM users u
@@ -330,9 +321,6 @@ router.post("/reactivate", loginLimitByIp, loginLimitByIdentifier, async (req, r
     const token = await createSession(user.user_id, req);
     res.json({ reactivated: true, token });
   } catch (err) {
-    if (err instanceof z.ZodError) {
-      return res.status(400).json({ error: "Dados inválidos", details: err.flatten() });
-    }
     next(err);
   }
 });
@@ -410,9 +398,6 @@ router.post("/login/2fa", mfaLimitByIp, mfaLimitByAccount, async (req, res, next
       ...(check.usedRecoveryCode ? { recoveryCodesLeft: user.recovery_left - 1 } : {}),
     });
   } catch (err) {
-    if (err instanceof z.ZodError) {
-      return res.status(400).json({ error: err.issues[0]?.message ?? "Dados inválidos" });
-    }
     next(err);
   }
 });
@@ -464,9 +449,11 @@ const verifyEmailLimitByIp = rateLimit({
 const INVALID_VERIFY_LINK =
   "Link de verificação inválido ou expirado. Peça um novo nas configurações da conta.";
 
+const verifyEmailSchema = z.object({ token: z.string().min(1).max(2000) });
+
 router.post("/verify-email", verifyEmailLimitByIp, async (req, res, next) => {
   try {
-    const { token } = z.object({ token: z.string().min(1).max(2000) }).parse(req.body);
+    const { token } = parseWith(verifyEmailSchema, req.body, INVALID_VERIFY_LINK);
     const payload = verifyVerifyToken(token);
     if (!payload) return res.status(400).json({ error: INVALID_VERIFY_LINK });
 
@@ -522,7 +509,6 @@ router.post("/verify-email", verifyEmailLimitByIp, async (req, res, next) => {
 
     res.json({ message: "E-mail confirmado!", email: payload.email });
   } catch (err) {
-    if (err instanceof z.ZodError) return res.status(400).json({ error: INVALID_VERIFY_LINK });
     next(err);
   }
 });
@@ -682,9 +668,6 @@ router.post(
 
       res.json({ message: FORGOT_MESSAGE });
     } catch (err) {
-      if (err instanceof z.ZodError) {
-        return res.status(400).json({ error: err.issues[0]?.message ?? "Email inválido" });
-      }
       next(err);
     }
   },
@@ -752,9 +735,6 @@ router.post("/verify-reset-code", verifyLimitByIp, async (req, res, next) => {
 
     res.json({ resetToken: signResetToken(recovery.user_id, recovery.recovery_id) });
   } catch (err) {
-    if (err instanceof z.ZodError) {
-      return res.status(400).json({ error: err.issues[0]?.message ?? "Dados inválidos" });
-    }
     next(err);
   }
 });
@@ -829,9 +809,6 @@ router.post("/reset-password", resetLimitByIp, async (req, res, next) => {
     sendMailInBackground(passwordChangedMail(user.email, user.name));
     res.json({ message: "Senha alterada. Entre com a nova senha." });
   } catch (err) {
-    if (err instanceof z.ZodError) {
-      return res.status(400).json({ error: err.issues[0]?.message ?? "Dados inválidos" });
-    }
     next(err);
   }
 });

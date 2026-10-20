@@ -201,9 +201,6 @@ router.delete(
       sendMailInBackground(accountDeletedMail(user.email, user.name, until));
       res.json({ deleted: true, reactivateUntil: until, reactivationDays: REACTIVATION_DAYS });
     } catch (err) {
-      if (err instanceof z.ZodError) {
-        return res.status(400).json({ error: err.issues[0]?.message ?? "Dados inválidos" });
-      }
       next(err);
     }
   },

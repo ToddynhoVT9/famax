@@ -37,14 +37,6 @@ interface Suggestion {
     badge?: { text: string; colorSeed: string };
 }
 
-interface SearchResponse {
-    results: {
-        communities?: { data: Array<{ community_id: string; name: string; members_count: number; category_name: string | null }> };
-        users?: { data: Array<{ user_id: string; username: string; display_name: string | null }> };
-        posts?: { data: Array<{ post_id: string; title: string; community_name: string }> };
-    };
-}
-
 /** localStorage pode não existir ou lançar (aba anônima, bloqueio): nunca é crítico. */
 function loadType(): SearchType {
     try {
@@ -64,7 +56,19 @@ function saveType(type: SearchType): void {
     }
 }
 
-function toSuggestions(response: SearchResponse): Array<{ group: string; items: Suggestion[] }> {
+/**
+ * O que vira sugestão: o resultado da busca ou só a lista de comunidades
+ * recentes (que não vem da busca) — daí os campos mínimos, e não SearchResponse.
+ */
+interface SuggestionSource {
+    results: {
+        communities?: { data: Array<{ communityId: string; name: string; membersCount: number; categoryName: string | null }> };
+        users?: { data: Array<{ userId: string; username: string; displayName: string | null }> };
+        posts?: { data: Array<{ postId: string; title: string; communityName: string }> };
+    };
+}
+
+function toSuggestions(response: SuggestionSource): Array<{ group: string; items: Suggestion[] }> {
     const groups: Array<{ group: string; items: Suggestion[] }> = [];
     const { communities, users, posts } = response.results;
 
@@ -73,9 +77,9 @@ function toSuggestions(response: SearchResponse): Array<{ group: string; items: 
             group: GROUP_LABELS.communities,
             items: communities.data.map((c) => ({
                 label: c.name,
-                detail: `${c.members_count} ${c.members_count === 1 ? "membro" : "membros"}${c.category_name ? ` · ${c.category_name}` : ""}`,
-                href: communityUrl(c.community_id),
-                badge: { text: c.name.charAt(0).toUpperCase(), colorSeed: c.community_id },
+                detail: `${c.membersCount} ${c.membersCount === 1 ? "membro" : "membros"}${c.categoryName ? ` · ${c.categoryName}` : ""}`,
+                href: communityUrl(c.communityId),
+                badge: { text: c.name.charAt(0).toUpperCase(), colorSeed: c.communityId },
             })),
         });
     }
@@ -83,10 +87,10 @@ function toSuggestions(response: SearchResponse): Array<{ group: string; items: 
         groups.push({
             group: GROUP_LABELS.users,
             items: users.data.map((u) => ({
-                label: u.display_name ?? u.username,
+                label: u.displayName ?? u.username,
                 detail: `@${u.username}`,
-                href: profileUrl(u.user_id),
-                badge: { text: initials(u.display_name ?? u.username), colorSeed: u.user_id },
+                href: profileUrl(u.userId),
+                badge: { text: initials(u.displayName ?? u.username), colorSeed: u.userId },
             })),
         });
     }
@@ -95,8 +99,8 @@ function toSuggestions(response: SearchResponse): Array<{ group: string; items: 
             group: GROUP_LABELS.posts,
             items: posts.data.map((p) => ({
                 label: p.title,
-                detail: `em ${p.community_name}`,
-                href: postUrl(p.post_id),
+                detail: `em ${p.communityName}`,
+                href: postUrl(p.postId),
             })),
         });
     }
@@ -248,9 +252,7 @@ export function initHeaderDropdowns(): void {
         const seq = ++requestSeq;
         renderStatus("Carregando...");
         try {
-            const { data } = await api<{
-                data: Array<{ community_id: string; name: string; members_count: number; category_name: string | null }>;
-            }>("/communities?limit=5");
+            const { data } = await api.communities.list({ limit: 5 });
             if (seq !== requestSeq) return;
             if (data.length === 0) return renderStatus("Nenhuma comunidade ainda.");
             renderGroups(
@@ -273,7 +275,7 @@ export function initHeaderDropdowns(): void {
         renderStatus("Buscando...");
         try {
             const params = new URLSearchParams({ q, type, limit: "5" });
-            const response = await api<SearchResponse>(`/search?${params}`);
+            const response = await api.search({ q, type, limit: 5 });
             if (seq !== requestSeq) return;
 
             const groups = toSuggestions(response);

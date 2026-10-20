@@ -18,11 +18,6 @@ import { banUser, removeComment, removePost } from "../lib/moderation.js";
  */
 const router = Router();
 
-function zodError(res: import("express").Response, err: z.ZodError) {
-  return res
-    .status(400)
-    .json({ error: err.issues[0]?.message ?? "Dados inválidos", details: err.flatten() });
-}
 
 // ===========================================================================
 // POST /api/reports — denunciar post, comentário ou usuário
@@ -105,7 +100,6 @@ router.post(
 
       res.status(201).json({ report: { reportId, status: "pending" } });
     } catch (err) {
-      if (err instanceof z.ZodError) return zodError(res, err);
       // uq_reports_open_per_reporter: já existe uma denúncia aberta dela.
       if ((err as { code?: string }).code === "23505") {
         return res
@@ -216,7 +210,6 @@ router.get(
     try {
       res.json(await listReports("r.community_id = $1", req.communityRole!.communityId, req.query));
     } catch (err) {
-      if (err instanceof z.ZodError) return zodError(res, err);
       next(err);
     }
   },
@@ -230,7 +223,6 @@ router.get("/admin/reports", requireAuth, requireAdmin, async (req, res, next) =
       await listReports("r.target_type = 'user' AND $1::uuid IS NULL", null, req.query),
     );
   } catch (err) {
-    if (err instanceof z.ZodError) return zodError(res, err);
     next(err);
   }
 });
@@ -340,7 +332,6 @@ router.patch(
       ]);
       res.json({ report: updated[0] });
     } catch (err) {
-      if (err instanceof z.ZodError) return zodError(res, err);
       next(err);
     }
   },

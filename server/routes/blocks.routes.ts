@@ -3,6 +3,7 @@ import { z } from "zod";
 import { pool } from "../db.js";
 import { requireAuth } from "../middleware/auth.js";
 import { rateLimit } from "../lib/rate-limit.js";
+import { parseWith } from "../middleware/error.js";
 
 /**
  * Bloquear e desbloquear (efeitos em lib/blocks.ts e na migration 026).
@@ -30,7 +31,7 @@ router.post(
   async (req, res, next) => {
     const client = await pool.connect();
     try {
-      const { userId } = userIdParam.parse(req.params);
+      const { userId } = parseWith(userIdParam, req.params, "ID de usuário inválido");
       if (userId === req.userId) {
         return res.status(400).json({ error: "Você não pode bloquear a si mesmo" });
       }
@@ -57,7 +58,6 @@ router.post(
       res.json({ blocked: true });
     } catch (err) {
       await client.query("ROLLBACK").catch(() => {});
-      if (err instanceof z.ZodError) return res.status(400).json({ error: "ID de usuário inválido" });
       next(err);
     } finally {
       client.release();
@@ -67,11 +67,10 @@ router.post(
 
 router.delete("/users/:userId/block", requireAuth, async (req, res, next) => {
   try {
-    const { userId } = userIdParam.parse(req.params);
+    const { userId } = parseWith(userIdParam, req.params, "ID de usuário inválido");
     await pool.query("DELETE FROM user_blocks WHERE blocker_id = $1 AND blocked_id = $2", [req.userId, userId]);
     res.json({ blocked: false });
   } catch (err) {
-    if (err instanceof z.ZodError) return res.status(400).json({ error: "ID de usuário inválido" });
     next(err);
   }
 });

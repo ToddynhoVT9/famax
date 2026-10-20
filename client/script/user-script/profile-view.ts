@@ -25,6 +25,8 @@ import { markdownToText } from "../shared/markdown.js";
 import { openChatWith } from "../shared/chat-bus.js";
 import { skeleton } from "../shared/skeleton.js";
 import { bindTabKeys } from "../shared/tabs.js";
+import type { Page } from "../../../shared/api-types.js";
+import type { ProfileComment, ProfilePost, PublicProfile } from "../../../shared/api-types.js";
 
 // Visitante pode ver o perfil público de alguém; o próprio perfil exige conta.
 const requestedId = queryParam("id");
@@ -35,54 +37,6 @@ initLayout();
 // ===========================================================================
 // Tipos
 // ===========================================================================
-
-interface PublicProfile {
-    userId: string;
-    username: string;
-    displayName: string | null;
-    avatarUrl: string | null;
-    isPrivate: boolean;
-    isOwner: boolean;
-    /** Quem vê segue este perfil (sempre false sem sessão). */
-    followedByMe?: boolean;
-    /** Quem vê bloqueou este perfil. */
-    blockedByMe?: boolean;
-    // Ausentes quando o perfil é privado e quem vê não é o dono.
-    nickname?: string | null;
-    bannerUrl?: string | null;
-    bio?: string | null;
-    createdAt?: string;
-    stats?: { posts: number; comments: number; communities: number; followers: number; following: number };
-    socialLinks?: SocialLink[];
-}
-
-interface ProfilePost {
-    post_id: string;
-    title: string;
-    content: string;
-    likes_count: number;
-    comments_count: number;
-    created_at: string;
-    community_id: string;
-    community_name: string;
-    /** +18 e quem vê não pode ver: veio sem conteúdo. */
-    nsfw_hidden?: boolean;
-}
-
-interface ProfileComment {
-    comment_id: string;
-    content: string;
-    created_at: string;
-    post_id: string;
-    post_title: string;
-    community_id: string;
-    community_name: string;
-}
-
-interface Page<T> {
-    data: T[];
-    pagination: { page: number; totalPages: number; total: number };
-}
 
 // ===========================================================================
 // Elementos
@@ -278,20 +232,20 @@ function renderPostItem(post: ProfilePost): HTMLElement {
 
     const title = document.createElement("a");
     title.className = "profile-item-title";
-    title.href = postUrl(post.post_id);
+    title.href = postUrl(post.postId);
     title.textContent = post.title;
 
     const snippet = document.createElement("p");
     snippet.className = "profile-item-snippet";
-    snippet.textContent = post.nsfw_hidden
+    snippet.textContent = post.nsfwHidden
         ? "Conteúdo para maiores de 18."
         : truncate(markdownToText(post.content), 220);
 
     const stats = document.createElement("div");
     stats.className = "profile-item-stats";
-    stats.textContent = `👍 ${post.likes_count}  💬 ${post.comments_count}`;
+    stats.textContent = `👍 ${post.likesCount}  💬 ${post.commentsCount}`;
 
-    item.append(itemMeta(post.community_id, post.community_name, post.created_at), title, snippet, stats);
+    item.append(itemMeta(post.communityId, post.communityName, post.createdAt), title, snippet, stats);
     return item;
 }
 
@@ -302,15 +256,15 @@ function renderCommentItem(comment: ProfileComment): HTMLElement {
     const context = document.createElement("div");
     context.className = "profile-item-context";
     const postLink = document.createElement("a");
-    postLink.href = postUrl(comment.post_id, comment.comment_id);
-    postLink.textContent = comment.post_title;
+    postLink.href = postUrl(comment.postId, comment.commentId);
+    postLink.textContent = comment.postTitle;
     context.append("Em resposta a ", postLink);
 
     const content = document.createElement("p");
     content.className = "profile-item-snippet";
     content.textContent = truncate(markdownToText(comment.content), 300);
 
-    item.append(itemMeta(comment.community_id, comment.community_name, comment.created_at), context, content);
+    item.append(itemMeta(comment.communityId, comment.communityName, comment.createdAt), context, content);
     return item;
 }
 
@@ -346,14 +300,11 @@ async function loadTab(tab: Tab, reset: boolean): Promise<void> {
     const nextPage = currentPage + 1;
     try {
         // Salvos têm o formato de post (o mesmo desenho da aba Posts).
-        const path =
-            tab === "saved"
-                ? `/me/saved?page=${nextPage}&limit=10`
-                : `/users/${encodeURIComponent(profileUserId)}/${tab}?page=${nextPage}&limit=10`;
+        const query = { page: nextPage, limit: 10 };
         const result =
             tab === "comments"
-                ? await api<Page<ProfileComment>>(path)
-                : await api<Page<ProfilePost>>(path);
+                ? await api.users.comments(profileUserId, query)
+                : await (tab === "saved" ? api.me.saved(query) : api.users.posts(profileUserId, query));
         if (seq !== requestSeq) return;
 
         if (currentPage === 0) feedList.replaceChildren(); // tira o esqueleto
@@ -409,9 +360,7 @@ async function init(): Promise<void> {
     let userId = requestedId;
     if (!userId && requestedUsername) {
         try {
-            const { user } = await api<{ user: { userId: string } }>(
-                `/users/by-username/${encodeURIComponent(requestedUsername)}`,
-            );
+            const { user } = await api.users.byUsername(requestedUsername);
             userId = user.userId;
         } catch {
             showFatal(`Ninguém com o usuário @${requestedUsername}`);
@@ -430,7 +379,7 @@ async function init(): Promise<void> {
     profileUserId = userId;
 
     try {
-        const { user } = await api<{ user: PublicProfile }>(`/users/${encodeURIComponent(userId)}`);
+        const { user } = await api.users.get(userId);
         isOwnProfile = user.isOwner;
         renderProfile(user);
     } catch (err) {
@@ -516,7 +465,7 @@ function setupReportMenu(profile: PublicProfile): void {
             if (!ok) return;
         }
         try {
-            await api(`/users/${encodeURIComponent(profile.userId)}/block`, { method: blocked ? "DELETE" : "POST" });
+            await api.users.setBlocked(profile.userId, !blocked);
             blocked = !blocked;
             renderBlock();
             toast(blocked ? `${name} foi bloqueado(a).` : `${name} foi desbloqueado(a).`);

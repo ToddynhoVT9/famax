@@ -53,16 +53,6 @@ void getMe()
     })
     .catch(() => {});
 
-interface EditableCommunity {
-    name: string;
-    description: string | null;
-    rules: string | null;
-    cover_image_url: string | null;
-    category_id: string;
-    my_role: string | null;
-    is_nsfw: boolean;
-}
-
 if (
     form instanceof HTMLFormElement &&
     nameInput instanceof HTMLInputElement &&
@@ -87,11 +77,9 @@ if (
 
     // --- Categorias -------------------------------------------------------
 
-    type Category = { category_id: string; name: string };
-
     const loadCategories = async (): Promise<void> => {
         try {
-            const { data } = await api<{ data: Category[] }>("/categories");
+            const { data } = await api.categories.list();
 
             if (data.length === 0) {
                 categorySelect.innerHTML =
@@ -105,7 +93,7 @@ if (
             categorySelect.innerHTML = '<option value="">Selecione a categoria</option>';
             for (const category of data) {
                 const option = document.createElement("option");
-                option.value = category.category_id;
+                option.value = category.categoryId;
                 // textContent, não innerHTML: o nome vem do banco.
                 option.textContent = category.name;
                 categorySelect.appendChild(option);
@@ -197,10 +185,8 @@ if (
         document.title = "FAMAX - Editar Comunidade";
 
         try {
-            const { community } = await api<{ community: EditableCommunity }>(
-                `/communities/${encodeURIComponent(editId)}`,
-            );
-            if (community.my_role !== "owner") {
+            const { community } = await api.communities.get(editId);
+            if (community.myRole !== "owner") {
                 showError("Só o dono pode editar esta comunidade.");
                 submitBtn.disabled = true;
                 return;
@@ -208,20 +194,20 @@ if (
 
             editingName = community.name;
             nameInput.value = community.name;
-            if (nsfwInput) nsfwInput.checked = community.is_nsfw;
+            if (nsfwInput) nsfwInput.checked = community.isNsfw;
             // Já marcada: o dono vê a opção mesmo sem conteúdo adulto, para
             // poder desmarcar.
-            if (nsfwField && community.is_nsfw) nsfwField.hidden = false;
+            if (nsfwField && community.isNsfw) nsfwField.hidden = false;
             descriptionInput.value = community.description ?? "";
             if (rulesInput instanceof HTMLTextAreaElement) {
                 rulesInput.value = community.rules ?? "";
                 if (rulesField) rulesField.hidden = false;
             }
             categoryReady.then(() => {
-                categorySelect.value = community.category_id;
+                categorySelect.value = community.categoryId;
             });
-            if (community.cover_image_url) {
-                showCurrentCover(community.cover_image_url);
+            if (community.coverImageUrl) {
+                showCurrentCover(community.coverImageUrl);
                 if (removeCoverField) removeCoverField.hidden = false;
             }
             if (dangerZone) dangerZone.hidden = false;
@@ -246,10 +232,7 @@ if (
 
         deleteBtn.disabled = true;
         try {
-            await api(`/communities/${encodeURIComponent(editId)}`, {
-                method: "DELETE",
-                body: JSON.stringify({ confirmName: editingName }),
-            });
+            await api.communities.remove(editId, editingName);
             window.location.replace(pages.home);
         } catch (err) {
             showError(err instanceof Error ? err.message : "Não foi possível excluir.");
@@ -301,14 +284,12 @@ if (
 
         try {
             if (editId) {
-                await api(`/communities/${encodeURIComponent(editId)}`, { method: "PATCH", body });
+                await api.communities.update(editId, body);
                 window.location.href = communityUrl(editId);
                 return;
             }
 
-            const { community } = await api<{
-                community: { communityId: string };
-            }>("/communities", { method: "POST", body });
+            const { community } = await api.communities.create(body);
 
             // Leva direto para o que acabou de ser criado — o protótipo voltava
             // para a home, onde o usuário não via o resultado.

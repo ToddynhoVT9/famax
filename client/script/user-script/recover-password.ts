@@ -88,10 +88,7 @@ function startResendCountdown(): void {
 async function requestCode(): Promise<boolean> {
     // A resposta é a mesma exista a conta ou não — o texto do passo 2 também
     // não pode afirmar que o e-mail foi enviado.
-    await api("/auth/forgot-password", {
-        method: "POST",
-        body: JSON.stringify({ email }),
-    });
+    await api.auth.forgotPassword(email);
 
     if (codeSentText) {
         const strong = document.createElement("strong");
@@ -174,10 +171,7 @@ codeStep?.addEventListener("submit", async (event) => {
     verifyCodeButton.disabled = true;
     showError(codeError, null);
     try {
-        const result = await api<{ resetToken: string }>("/auth/verify-reset-code", {
-            method: "POST",
-            body: JSON.stringify({ email, code }),
-        });
+        const result = await api.auth.verifyResetCode(email, code);
         resetToken = result.resetToken;
         window.clearInterval(resendTimer);
         showStep(3);
@@ -235,10 +229,7 @@ passwordStep?.addEventListener("submit", async (event) => {
     resetPasswordButton.disabled = true;
     showError(passwordError, null);
     try {
-        await api("/auth/reset-password", {
-            method: "POST",
-            body: JSON.stringify({ resetToken, newPassword: newPasswordInput.value }),
-        });
+        await api.auth.resetPassword(resetToken, newPasswordInput.value);
         // O reset encerrou todas as sessões, inclusive uma deste navegador.
         clearToken();
         window.location.replace(`${pages.login}?reset=ok`);

@@ -1,4 +1,4 @@
-import { Router, type Response } from "express";
+import { Router } from "express";
 import { z } from "zod";
 import { randomUUID } from "node:crypto";
 import { pool } from "../db.js";
@@ -21,11 +21,6 @@ const eventIdParam = z.object({
   eventId: z.string().uuid("ID de evento inválido"),
 });
 
-function zodError(res: Response, err: z.ZodError) {
-  return res
-    .status(400)
-    .json({ error: err.issues[0]?.message ?? "Dados inválidos", details: err.flatten() });
-}
 
 /**
  * Formato único de evento. $1 é quem vê (ou null): attending diz se a
@@ -119,7 +114,6 @@ router.get("/communities/:communityId/events", optionalAuth, async (req, res, ne
       pagination: { page, limit, total, totalPages: Math.ceil(total / limit) },
     });
   } catch (err) {
-    if (err instanceof z.ZodError) return zodError(res, err);
     next(err);
   }
 });
@@ -135,7 +129,6 @@ router.get("/events/:eventId", optionalAuth, async (req, res, next) => {
     if (!event) return res.status(404).json({ error: "Evento não encontrado" });
     res.json({ event });
   } catch (err) {
-    if (err instanceof z.ZodError) return zodError(res, err);
     next(err);
   }
 });
@@ -221,7 +214,6 @@ router.post(
 
       res.status(201).json({ event: await loadEvent(eventId, req.userId) });
     } catch (err) {
-      if (err instanceof z.ZodError) return zodError(res, err);
       next(err);
     }
   },
@@ -300,7 +292,6 @@ router.patch("/events/:eventId", requireAuth, async (req, res, next) => {
 
     res.json({ event: await loadEvent(eventId, req.userId) });
   } catch (err) {
-    if (err instanceof z.ZodError) return zodError(res, err);
     next(err);
   }
 });
@@ -316,7 +307,6 @@ router.delete("/events/:eventId", requireAuth, async (req, res, next) => {
     await pool.query("UPDATE community_events SET deleted_at = NOW() WHERE event_id = $1", [eventId]);
     res.status(204).end();
   } catch (err) {
-    if (err instanceof z.ZodError) return zodError(res, err);
     next(err);
   }
 });
@@ -373,7 +363,6 @@ router.post(
       );
       res.json({ attending: true, attendeesCount: await attendeesCount(eventId) });
     } catch (err) {
-      if (err instanceof z.ZodError) return zodError(res, err);
       next(err);
     }
   },
@@ -388,7 +377,6 @@ router.delete("/events/:eventId/attend", requireAuth, async (req, res, next) => 
     ]);
     res.json({ attending: false, attendeesCount: await attendeesCount(eventId) });
   } catch (err) {
-    if (err instanceof z.ZodError) return zodError(res, err);
     next(err);
   }
 });

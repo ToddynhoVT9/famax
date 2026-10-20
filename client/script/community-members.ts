@@ -16,15 +16,7 @@ import {
     ROLE_LABEL,
     type CommunityRole,
 } from "./shared/moderation.js";
-
-interface Member {
-    user_id: string;
-    username: string;
-    display_name: string | null;
-    avatar_url: string | null;
-    role: CommunityRole;
-    joined_at: string;
-}
+import type { CommunityMember as Member } from "../../shared/api-types.js";
 
 export interface MembersViewOptions {
     communityId: string;
@@ -46,7 +38,6 @@ function el<K extends keyof HTMLElementTagNameMap>(tag: K, className = "", text?
 
 export function createMembersView(root: HTMLElement, options: MembersViewOptions) {
     const { communityId } = options;
-    const base = `/communities/${encodeURIComponent(communityId)}`;
 
     let roleFilter: "" | "moderator" = "";
     let page = 0;
@@ -84,31 +75,31 @@ export function createMembersView(root: HTMLElement, options: MembersViewOptions
     }
 
     function renderMember(member: Member): HTMLLIElement {
-        const name = member.display_name?.trim() || member.username;
+        const name = member.displayName?.trim() || member.username;
         const viewer = options.viewerRole();
-        const self = member.user_id === getCurrentUserId();
+        const self = member.userId === getCurrentUserId();
 
         const item = el("li", "tf-member");
-        item.dataset.userId = member.user_id;
+        item.dataset.userId = member.userId;
         item.dataset.name = name;
 
         const avatar = el("a", "tf-member-avatar");
-        avatar.href = profileUrl(member.user_id);
+        avatar.href = profileUrl(member.userId);
         avatar.setAttribute("aria-hidden", "true");
         avatar.tabIndex = -1;
-        if (member.avatar_url) {
+        if (member.avatarUrl) {
             const img = el("img");
-            img.src = member.avatar_url;
+            img.src = member.avatarUrl;
             img.alt = "";
             avatar.append(img);
         } else {
-            avatar.classList.add(avatarColor(member.user_id));
+            avatar.classList.add(avatarColor(member.userId));
             avatar.textContent = initials(name);
         }
 
         const info = el("div", "tf-member-info");
         const nameLink = el("a", "tf-member-name", name);
-        nameLink.href = profileUrl(member.user_id);
+        nameLink.href = profileUrl(member.userId);
         info.append(nameLink);
         if (member.role !== "member") {
             info.append(el("span", `role-badge role-badge--${member.role}`, ROLE_LABEL[member.role]));
@@ -117,7 +108,7 @@ export function createMembersView(root: HTMLElement, options: MembersViewOptions
             el(
                 "span",
                 "tf-member-meta",
-                `@${member.username} · entrou em ${new Date(member.joined_at).toLocaleDateString("pt-BR")}`,
+                `@${member.username} · entrou em ${new Date(member.joinedAt).toLocaleDateString("pt-BR")}`,
             ),
         );
 
@@ -152,10 +143,7 @@ export function createMembersView(root: HTMLElement, options: MembersViewOptions
         const params = new URLSearchParams({ page: String(page + 1), limit: String(PER_PAGE) });
         if (roleFilter) params.set("role", roleFilter);
         try {
-            const result = await api<{
-                data: Member[];
-                pagination: { total: number; totalPages: number };
-            }>(`${base}/members?${params}`);
+            const result = await api.communities.members(communityId, { page: page + 1, limit: PER_PAGE, role: roleFilter });
             if (current !== seq) return;
 
             page += 1;
@@ -183,10 +171,7 @@ export function createMembersView(root: HTMLElement, options: MembersViewOptions
 
     async function setRole(userId: string, name: string, role: "moderator" | "member"): Promise<void> {
         try {
-            await api(`${base}/members/${encodeURIComponent(userId)}`, {
-                method: "PATCH",
-                body: JSON.stringify({ role }),
-            });
+            await api.communities.setMemberRole(communityId, userId, role);
             toast(role === "moderator" ? `${name} agora é moderador.` : `${name} deixou de ser moderador.`);
             await load(true);
         } catch (err) {
@@ -205,10 +190,7 @@ export function createMembersView(root: HTMLElement, options: MembersViewOptions
         });
         if (!ok) return;
         try {
-            await api(`${base}/transfer`, {
-                method: "POST",
-                body: JSON.stringify({ userId, confirmName: communityName }),
-            });
+            await api.communities.transferOwnership(communityId, userId, communityName);
             toast(`A comunidade agora é de ${name}.`);
             await options.onCommunityChanged();
             await load(true);

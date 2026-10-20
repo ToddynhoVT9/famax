@@ -33,8 +33,9 @@
     --color-surface-4: #444444;
     --color-surface-5: #555555;
     --color-surface-6: #666666;
-    --color-control: #6b6b6b;
-    --color-control-hover: #777777;
+    /* Fundo dos campos: escuro o bastante para o placeholder (#ddd) passar de 4.5:1. */
+    --color-control: #555555;
+    --color-control-hover: #5e5e5e;
     --color-text: #ffffff;
     --color-text-soft: #dddddd;
     --color-text-muted: #bbbbbb;
@@ -94,7 +95,10 @@
     --color-highlight-border: #e8c96a;
     --color-gold: #8a6508;
     --color-bronze: #a0522d;
-    --color-focus: #4d9fff;
+    /* Foco em duas cores (anel azul + halo branco): nenhuma cor sozinha passa de
+       3:1 ao mesmo tempo sobre o fundo escuro, o cartão branco e o header cinza. */
+    --color-focus: #0b57d0;
+    --color-focus-halo: #ffffff;
 
     /* Avatares (iniciais brancas: todos com 4.5:1 ou mais) */
     --avatar-blue: #0067cc;
@@ -219,6 +223,7 @@ a {
 :focus-visible {
     outline: 3px solid var(--color-focus);
     outline-offset: 2px;
+    box-shadow: 0 0 0 2px var(--color-focus-halo);
 }
 
 /* Texto só para leitor de tela (ex.: rótulo de um ícone). */

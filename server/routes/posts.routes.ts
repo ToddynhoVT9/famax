@@ -148,11 +148,6 @@ async function loadPost(postId: string, viewerId: string | undefined) {
   return rows[0];
 }
 
-function zodError(res: import("express").Response, err: z.ZodError, label: string) {
-  return res
-    .status(400)
-    .json({ error: err.issues[0]?.message ?? label, details: err.flatten() });
-}
 
 // ===========================================================================
 // GET /api/communities/:communityId/posts
@@ -212,7 +207,6 @@ router.get(
         },
       });
     } catch (err) {
-      if (err instanceof z.ZodError) return zodError(res, err, "Parâmetros inválidos");
       next(err);
     }
   },
@@ -261,7 +255,6 @@ router.get("/feed/following", requireAuth, async (req, res, next) => {
       pagination: { page, limit, total, totalPages: Math.ceil(total / limit) },
     });
   } catch (err) {
-    if (err instanceof z.ZodError) return zodError(res, err, "Parâmetros inválidos");
     next(err);
   }
 });
@@ -286,7 +279,6 @@ router.get("/posts/:postId", optionalAuth, async (req, res, next) => {
     }
     res.json({ post: rows[0] });
   } catch (err) {
-    if (err instanceof z.ZodError) return zodError(res, err, "ID de post inválido");
     next(err);
   }
 });
@@ -410,7 +402,6 @@ router.post(
       // sem precisar de um segundo fetch nem remontar o objeto no cliente.
       res.status(201).json({ post: await loadPost(postId, req.userId) });
     } catch (err) {
-      if (err instanceof z.ZodError) return zodError(res, err, "Dados inválidos");
       if ((err as { code?: string }).code === "23503") {
         return res
           .status(400)
@@ -504,7 +495,6 @@ router.patch("/posts/:postId", requireAuth, async (req, res, next) => {
 
     res.json({ post: await loadPost(postId, req.userId) });
   } catch (err) {
-    if (err instanceof z.ZodError) return zodError(res, err, "Dados inválidos");
     next(err);
   }
 });
@@ -529,7 +519,6 @@ router.delete("/posts/:postId", requireAuth, async (req, res, next) => {
 
     res.status(204).end();
   } catch (err) {
-    if (err instanceof z.ZodError) return zodError(res, err, "ID de post inválido");
     next(err);
   }
 });
@@ -627,7 +616,6 @@ router.post(
 
       res.status(201).json({ post: await loadPost(postId, req.userId) });
     } catch (err) {
-      if (err instanceof z.ZodError) return zodError(res, err, "ID de post inválido");
       next(err);
     }
   },
@@ -651,7 +639,6 @@ router.delete("/posts/:postId/images/:imageId", requireAuth, async (req, res, ne
     await deleteImageByUrl(rows[0].url, config.SUPABASE_USER_MEDIA_BUCKET);
     res.json({ post: await loadPost(postId, req.userId) });
   } catch (err) {
-    if (err instanceof z.ZodError) return zodError(res, err, "Parâmetros inválidos");
     next(err);
   }
 });
@@ -691,7 +678,6 @@ router.post(
       }
       res.json({ saved: true });
     } catch (err) {
-      if (err instanceof z.ZodError) return zodError(res, err, "ID de post inválido");
       next(err);
     }
   },
@@ -706,7 +692,6 @@ router.delete("/posts/:postId/save", requireAuth, async (req, res, next) => {
     ]);
     res.json({ saved: false });
   } catch (err) {
-    if (err instanceof z.ZodError) return zodError(res, err, "ID de post inválido");
     next(err);
   }
 });
@@ -748,7 +733,6 @@ router.get("/me/saved", requireAuth, async (req, res, next) => {
       pagination: { page, limit, total, totalPages: Math.ceil(total / limit) },
     });
   } catch (err) {
-    if (err instanceof z.ZodError) return zodError(res, err, "Parâmetros inválidos");
     next(err);
   }
 });
@@ -817,7 +801,6 @@ router.post("/posts/:postId/pin", requireAuth, async (req, res, next) => {
 
     res.json({ post: await loadPost(postId, req.userId) });
   } catch (err) {
-    if (err instanceof z.ZodError) return zodError(res, err, "ID de post inválido");
     next(err);
   }
 });
@@ -833,7 +816,6 @@ router.delete("/posts/:postId/pin", requireAuth, async (req, res, next) => {
     await pool.query("UPDATE posts SET pinned_at = NULL WHERE post_id = $1", [postId]);
     res.json({ post: await loadPost(postId, req.userId) });
   } catch (err) {
-    if (err instanceof z.ZodError) return zodError(res, err, "ID de post inválido");
     next(err);
   }
 });
@@ -881,7 +863,6 @@ router.put("/posts/:postId/resolution", requireAuth, async (req, res, next) => {
     ]);
     res.json({ post: await loadPost(postId, req.userId) });
   } catch (err) {
-    if (err instanceof z.ZodError) return zodError(res, err, "Dados inválidos");
     next(err);
   }
 });
@@ -899,7 +880,6 @@ router.delete("/posts/:postId/resolution", requireAuth, async (req, res, next) =
     }
     res.json({ post: await loadPost(postId, req.userId) });
   } catch (err) {
-    if (err instanceof z.ZodError) return zodError(res, err, "ID de post inválido");
     next(err);
   }
 });

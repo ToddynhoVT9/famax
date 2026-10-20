@@ -38,10 +38,7 @@ async function verify(): Promise<void> {
         return;
     }
     try {
-        const { email } = await api<{ email: string }>("/auth/verify-email", {
-            method: "POST",
-            body: JSON.stringify({ token }),
-        });
+        const { email } = await api.auth.verifyEmail(token);
         finish(
             "E-mail confirmado!",
             `${email} está confirmado. Agora você pode criar comunidades e mandar mensagens.`,

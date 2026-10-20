@@ -15,6 +15,7 @@ import {
   uploadCommunityCover,
 } from "../lib/storage.js";
 import { config } from "../config.js";
+import { parseWith } from "../middleware/error.js";
 
 const router = Router();
 
@@ -71,9 +72,7 @@ const listCommunitiesQuery = z.object({
 
 router.get("/communities", async (req, res, next) => {
   try {
-    const { search, categoryId, page, limit } = listCommunitiesQuery.parse(
-      req.query,
-    );
+    const { search, categoryId, page, limit } = parseWith(listCommunitiesQuery, req.query, "Parâmetros inválidos");
     const offset = (page - 1) * limit;
 
     // communities tem soft delete (deleted_at no schema base) — sem este filtro
@@ -115,11 +114,6 @@ router.get("/communities", async (req, res, next) => {
 
     res.json({ data: rows, pagination: { page, limit } });
   } catch (err) {
-    if (err instanceof z.ZodError) {
-      return res
-        .status(400)
-        .json({ error: "Parâmetros inválidos", details: err.flatten() });
-    }
     next(err);
   }
 });
@@ -174,7 +168,7 @@ router.post(
   upload.single("cover"),
   async (req, res, next) => {
     try {
-      const data = createCommunitySchema.parse(req.body);
+      const data = parseWith(createCommunitySchema, req.body, "Dados inválidos");
       const communityId = randomUUID();
       const nsfw = data.isNsfw === "true";
       if (nsfw && !(await isAdult(req.userId))) {
@@ -244,11 +238,6 @@ router.post(
         },
       });
     } catch (err) {
-      if (err instanceof z.ZodError) {
-        return res
-          .status(400)
-          .json({ error: "Dados inválidos", details: err.flatten() });
-      }
 
       const code = (err as { code?: string }).code;
       if (code === "23505") {
@@ -280,7 +269,7 @@ const communityIdParam = z.object({
 // e a página não precisa de uma segunda chamada só para desenhar o botão.
 router.get("/communities/:communityId", optionalAuth, async (req, res, next) => {
   try {
-    const { communityId } = communityIdParam.parse(req.params);
+    const { communityId } = parseWith(communityIdParam, req.params, "ID de comunidade inválido");
 
     const { rows } = await pool.query(
       `SELECT
@@ -329,9 +318,6 @@ router.get("/communities/:communityId", optionalAuth, async (req, res, next) => 
 
     res.json({ community: rows[0], categories });
   } catch (err) {
-    if (err instanceof z.ZodError) {
-      return res.status(400).json({ error: "ID de comunidade inválido" });
-    }
     next(err);
   }
 });
@@ -345,7 +331,7 @@ router.get(
   requireAuth,
   async (req, res, next) => {
     try {
-      const { communityId } = communityIdParam.parse(req.params);
+      const { communityId } = parseWith(communityIdParam, req.params, "ID de comunidade inválido");
       const { rows } = await pool.query(
         `SELECT role FROM community_members
          WHERE community_id = $1 AND user_id = $2`,
@@ -353,9 +339,6 @@ router.get(
       );
       res.json({ isMember: rows.length > 0, role: rows[0]?.role ?? null });
     } catch (err) {
-      if (err instanceof z.ZodError) {
-        return res.status(400).json({ error: "ID de comunidade inválido" });
-      }
       next(err);
     }
   },
@@ -370,7 +353,7 @@ router.post(
   requireAuth,
   async (req, res, next) => {
     try {
-      const { communityId } = communityIdParam.parse(req.params);
+      const { communityId } = parseWith(communityIdParam, req.params, "ID de comunidade inválido");
 
       const { rows: exists } = await pool.query<{ is_nsfw: boolean }>(
         "SELECT is_nsfw FROM communities WHERE community_id = $1 AND deleted_at IS NULL",
@@ -404,9 +387,6 @@ router.post(
 
       res.status(200).json({ joined: true });
     } catch (err) {
-      if (err instanceof z.ZodError) {
-        return res.status(400).json({ error: "ID de comunidade inválido" });
-      }
       next(err);
     }
   },
@@ -424,7 +404,7 @@ router.post(
   requireAuth,
   async (req, res, next) => {
     try {
-      const { communityId } = communityIdParam.parse(req.params);
+      const { communityId } = parseWith(communityIdParam, req.params, "ID de comunidade inválido");
 
       const { rows } = await pool.query<{ role: string }>(
         `SELECT cm.role
@@ -450,9 +430,6 @@ router.post(
 
       res.json({ left: true });
     } catch (err) {
-      if (err instanceof z.ZodError) {
-        return res.status(400).json({ error: "ID de comunidade inválido" });
-      }
       next(err);
     }
   },
@@ -575,11 +552,6 @@ router.patch(
       );
       res.json({ community: rows[0] });
     } catch (err) {
-      if (err instanceof z.ZodError) {
-        return res
-          .status(400)
-          .json({ error: err.issues[0]?.message ?? "Dados inválidos", details: err.flatten() });
-      }
       const code = (err as { code?: string }).code;
       if (code === "23505") {
         return res.status(409).json({ error: "Já existe uma comunidade com esse nome" });
@@ -626,11 +598,6 @@ router.delete(
       );
       res.status(204).end();
     } catch (err) {
-      if (err instanceof z.ZodError) {
-        return res
-          .status(400)
-          .json({ error: err.issues[0]?.message ?? "Dados inválidos" });
-      }
       next(err);
     }
   },

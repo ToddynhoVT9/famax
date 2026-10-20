@@ -2,6 +2,7 @@ import type { Response } from "express";
 import pg from "pg";
 import { config } from "../config.js";
 import { pool } from "../db.js";
+import { toCamel } from "./case.js";
 
 /**
  * Tempo real: o hub que entrega eventos por usuário às conexões SSE abertas
@@ -88,7 +89,8 @@ export function connectionCount(): number {
 }
 
 export function writeEvent(res: Response, type: string, data: unknown): void {
-  res.write(`event: ${type}\ndata: ${JSON.stringify(data)}\n\n`);
+  // Mesmo formato das respostas da API (camelCase, ver lib/case.ts).
+  res.write(`event: ${type}\ndata: ${JSON.stringify(toCamel(data))}\n\n`);
 }
 
 function deliverLocal(envelope: Envelope): void {

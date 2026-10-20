@@ -7,8 +7,8 @@
  * teclado; o clique simples continua sendo "curtir / desfazer".
  */
 import { escapeHtml } from "./dom.js";
-
-export type ReactionType = "like" | "love" | "haha" | "wow" | "sad";
+import type { ReactionCounts, ReactionType } from "../../../shared/api-types.js";
+export type { ReactionCounts, ReactionType };
 
 export const REACTIONS: Array<{ type: ReactionType; emoji: string; label: string }> = [
     { type: "like", emoji: "👍", label: "Curtir" },
@@ -31,8 +31,6 @@ export function reactionEmoji(type: ReactionType | null): string {
 export function reactionLabel(type: ReactionType | null): string {
     return BY_TYPE.get(type ?? "like")?.label ?? "Curtir";
 }
-
-export type ReactionCounts = Partial<Record<ReactionType, number>>;
 
 /**
  * Estado depois de um clique, calculado no cliente para a resposta otimista

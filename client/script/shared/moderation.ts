@@ -12,8 +12,8 @@ import { api } from "./api.js";
 import { escapeHtml } from "./dom.js";
 import { toast } from "./dialog.js";
 import { trapFocus } from "./focus-trap.js";
-
-export type CommunityRole = "owner" | "moderator" | "member";
+import type { CommunityRole } from "../../../shared/api-types.js";
+export type { CommunityRole };
 
 const RANK: Record<CommunityRole, number> = { owner: 3, moderator: 2, member: 1 };
 
@@ -201,10 +201,7 @@ export async function openReportDialog(targetType: ReportTarget, targetId: strin
         },
         async submit(value) {
             const { reason } = value as { reason: string };
-            await api("/reports", {
-                method: "POST",
-                body: JSON.stringify({ targetType, targetId, reason }),
-            });
+            await api.reports.create({ targetType, targetId, reason });
         },
     });
     if (sent) toast("Denúncia enviada. Obrigado por ajudar a manter a comunidade.");
@@ -266,10 +263,7 @@ export async function openBanDialog(
         },
         async submit(value) {
             if (send) return send(value as BanChoice);
-            await api(
-                `/communities/${encodeURIComponent(communityId)}/bans/${encodeURIComponent(userId)}`,
-                { method: "POST", body: JSON.stringify(value) },
-            );
+            await api.communities.ban(communityId, userId, value as BanChoice);
         },
     });
     if (sent) toast(`${name} foi banido da comunidade.`);

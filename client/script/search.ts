@@ -9,46 +9,9 @@ import { api } from "./shared/api.js";
 import { initLayout } from "./shared/layout.js";
 import { communityUrl, postUrl, profileUrl, searchUrl, type SearchType } from "./shared/pages.js";
 import { avatarColor, initials, timeAgo, truncate } from "./shared/dom.js";
+import type { SearchCommunity as CommunityResult, SearchPost as PostResult, SearchResponse, SearchSection as Section, UserSummary as UserResult } from "../../shared/api-types.js";
 
 initLayout();
-
-interface CommunityResult {
-    community_id: string;
-    name: string;
-    description: string | null;
-    category_name: string | null;
-    members_count: number;
-}
-interface UserResult {
-    user_id: string;
-    username: string;
-    display_name: string | null;
-}
-interface PostResult {
-    post_id: string;
-    title: string;
-    snippet: string;
-    created_at: string;
-    community_id: string;
-    community_name: string;
-    author_username: string;
-    author_display_name: string | null;
-    likes_count: number;
-    comments_count: number;
-}
-interface Section<T> {
-    data: T[];
-    total: number;
-    page: number;
-    totalPages: number;
-}
-interface SearchResponse {
-    results: {
-        communities?: Section<CommunityResult>;
-        users?: Section<UserResult>;
-        posts?: Section<PostResult>;
-    };
-}
 
 const PER_PAGE = 10;
 const TYPES: SearchType[] = ["all", "communities", "users", "posts"];
@@ -89,46 +52,46 @@ function badge(text: string, seed: string): HTMLElement {
 
 function communityItem(c: CommunityResult): HTMLElement {
     const a = el("a", "result-item");
-    a.href = communityUrl(c.community_id);
+    a.href = communityUrl(c.communityId);
     const body = el("span", "result-body");
     body.append(
         el("span", "result-title", c.name),
         el(
             "span",
             "result-meta",
-            [c.category_name, `${c.members_count} ${c.members_count === 1 ? "membro" : "membros"}`]
+            [c.categoryName, `${c.membersCount} ${c.membersCount === 1 ? "membro" : "membros"}`]
                 .filter(Boolean)
                 .join(" · "),
         ),
     );
     if (c.description) body.append(el("span", "result-snippet", truncate(c.description, 160)));
-    a.append(badge(c.name.charAt(0).toUpperCase(), c.community_id), body);
+    a.append(badge(c.name.charAt(0).toUpperCase(), c.communityId), body);
     return a;
 }
 
 function userItem(u: UserResult): HTMLElement {
     const a = el("a", "result-item");
-    a.href = profileUrl(u.user_id);
-    const name = u.display_name ?? u.username;
+    a.href = profileUrl(u.userId);
+    const name = u.displayName ?? u.username;
     const body = el("span", "result-body");
     body.append(el("span", "result-title", name), el("span", "result-meta", `@${u.username}`));
-    a.append(badge(initials(name), u.user_id), body);
+    a.append(badge(initials(name), u.userId), body);
     return a;
 }
 
 function postItem(p: PostResult): HTMLElement {
     const a = el("a", "result-item result-item--post");
-    a.href = postUrl(p.post_id);
+    a.href = postUrl(p.postId);
     const body = el("span", "result-body");
     body.append(
         el(
             "span",
             "result-meta",
-            `${p.community_name} · ${p.author_display_name ?? p.author_username} · ${timeAgo(p.created_at)}`,
+            `${p.communityName} · ${p.authorDisplayName ?? p.authorUsername} · ${timeAgo(p.createdAt)}`,
         ),
         el("span", "result-title", p.title),
         el("span", "result-snippet", truncate(p.snippet.replace(/\s+/g, " "), 200)),
-        el("span", "result-meta", `👍 ${p.likes_count}  💬 ${p.comments_count}`),
+        el("span", "result-meta", `👍 ${p.likesCount}  💬 ${p.commentsCount}`),
     );
     a.append(body);
     return a;
@@ -223,7 +186,7 @@ async function load(): Promise<void> {
 
     try {
         const query = new URLSearchParams({ q, type, page: String(page), limit: String(PER_PAGE) });
-        const { results: data } = await api<SearchResponse>(`/search?${query}`);
+        const { results: data } = await api.search({ q, type, page, limit: PER_PAGE });
         if (current !== seq) return;
 
         if (type === "all") {

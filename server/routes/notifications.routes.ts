@@ -2,6 +2,7 @@ import { Router } from "express";
 import { z } from "zod";
 import { pool } from "../db.js";
 import { requireAuth } from "../middleware/auth.js";
+import { parseWith } from "../middleware/error.js";
 
 /**
  * Leitura das notificações do usuário logado. Quem cria é lib/notify.ts,
@@ -67,7 +68,7 @@ const listQuery = z.object({
 
 router.get("/notifications", requireAuth, async (req, res, next) => {
   try {
-    const { cursor, limit } = listQuery.parse(req.query);
+    const { cursor, limit } = parseWith(listQuery, req.query, "Parâmetros inválidos");
     const after = cursor ? decodeCursor(cursor) : null;
     if (cursor && !after) {
       return res.status(400).json({ error: "Cursor inválido" });
@@ -120,9 +121,6 @@ router.get("/notifications", requireAuth, async (req, res, next) => {
       unread: await unreadCount(req.userId!),
     });
   } catch (err) {
-    if (err instanceof z.ZodError) {
-      return res.status(400).json({ error: "Parâmetros inválidos", details: err.flatten() });
-    }
     next(err);
   }
 });
@@ -161,11 +159,6 @@ router.post("/notifications/read", requireAuth, async (req, res, next) => {
 
     res.json({ unread: await unreadCount(req.userId!) });
   } catch (err) {
-    if (err instanceof z.ZodError) {
-      return res
-        .status(400)
-        .json({ error: err.issues[0]?.message ?? "Dados inválidos", details: err.flatten() });
-    }
     next(err);
   }
 });

@@ -13,6 +13,7 @@ import { queryParam } from "./shared/dom.js";
 import { confirmDialog, toast } from "./shared/dialog.js";
 import { banUntil, isStaff, type CommunityRole } from "./shared/moderation.js";
 import { createReportQueue } from "./shared/report-queue.js";
+import type { CommunityBan as Ban } from "../../shared/api-types.js";
 
 requireLogin();
 
@@ -27,16 +28,6 @@ initLayout({
           ]
         : [],
 });
-
-interface Ban {
-    user_id: string;
-    username: string;
-    display_name: string | null;
-    reason: string | null;
-    expires_at: string | null;
-    created_at: string;
-    banned_by_username: string | null;
-}
 
 const $ = <T extends HTMLElement = HTMLElement>(id: string) =>
     document.getElementById(id) as T | null;
@@ -65,23 +56,23 @@ function el<K extends keyof HTMLElementTagNameMap>(tag: K, className = "", text?
 async function loadBans(): Promise<void> {
     if (!communityId || !bansList) return;
     try {
-        const { data } = await api<{ data: Ban[] }>(`/communities/${encodeURIComponent(communityId)}/bans`);
+        const { data } = await api.communities.bans(communityId);
         if (data.length === 0) {
             bansList.replaceChildren(el("li", "tf-feed-status", "Ninguém banido no momento."));
             return;
         }
         bansList.replaceChildren(
             ...data.map((ban) => {
-                const name = ban.display_name?.trim() || ban.username;
+                const name = ban.displayName?.trim() || ban.username;
                 const item = el("li", "mod-ban");
-                item.dataset.userId = ban.user_id;
+                item.dataset.userId = ban.userId;
                 item.dataset.name = name;
 
                 const info = el("div", "mod-ban-info");
                 const link = el("a", "mod-ban-name", name);
-                link.href = profileUrl(ban.user_id);
-                const meta = [`@${ban.username}`, banUntil(ban.expires_at)];
-                if (ban.banned_by_username) meta.push(`por @${ban.banned_by_username}`);
+                link.href = profileUrl(ban.userId);
+                const meta = [`@${ban.username}`, banUntil(ban.expiresAt)];
+                if (ban.bannedByUsername) meta.push(`por @${ban.bannedByUsername}`);
                 info.append(link, el("span", "mod-ban-meta", meta.join(" · ")));
                 if (ban.reason) info.append(el("span", "mod-ban-reason", ban.reason));
 
@@ -113,10 +104,7 @@ bansList?.addEventListener("click", async (event) => {
 
     button.disabled = true;
     try {
-        await api(
-            `/communities/${encodeURIComponent(communityId)}/bans/${encodeURIComponent(item.dataset.userId)}`,
-            { method: "DELETE" },
-        );
+        await api.communities.unban(communityId, item.dataset.userId);
         toast(`${item.dataset.name} foi desbanido.`);
         await loadBans();
     } catch (err) {
@@ -135,11 +123,9 @@ async function init(): Promise<void> {
         return;
     }
 
-    let community: { name: string; my_role: CommunityRole | null };
+    let community: { name: string; myRole: CommunityRole | null };
     try {
-        ({ community } = await api<{ community: { name: string; my_role: CommunityRole | null } }>(
-            `/communities/${encodeURIComponent(communityId)}`,
-        ));
+        ({ community } = await api.communities.get(communityId));
     } catch (err) {
         setStatus(err instanceof Error ? err.message : "Comunidade não encontrada.");
         return;
@@ -154,7 +140,7 @@ async function init(): Promise<void> {
     if (title) title.textContent = `Moderação · ${community.name}`;
     document.title = `FAMAX - Moderação · ${community.name}`;
 
-    if (!isStaff(community.my_role)) {
+    if (!isStaff(community.myRole)) {
         setStatus("Esta página é só para o dono e os moderadores da comunidade.");
         return;
     }
@@ -166,8 +152,8 @@ async function init(): Promise<void> {
     const queueRoot = $("reportQueue");
     if (queueRoot) {
         const queue = createReportQueue(queueRoot, {
-            endpoint: `/communities/${encodeURIComponent(communityId)}/reports`,
-            viewerRole: community.my_role!,
+            source: { communityId },
+            viewerRole: community.myRole!,
             onBan: () => void loadBans(),
         });
         void queue.reload();

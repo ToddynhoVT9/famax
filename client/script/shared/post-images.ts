@@ -7,11 +7,8 @@
  * por innerHTML cru.
  */
 import { escapeHtml } from "./dom.js";
-
-export interface PostImage {
-    image_id: string;
-    url: string;
-}
+import type { PostImage } from "../../../shared/api-types.js";
+export type { PostImage };
 
 export const MAX_POST_IMAGES = 4;
 

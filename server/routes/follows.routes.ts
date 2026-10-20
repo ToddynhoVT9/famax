@@ -1,4 +1,4 @@
-import { Router, type Response } from "express";
+import { Router } from "express";
 import type { PoolClient } from "pg";
 import { z } from "zod";
 import { randomUUID } from "node:crypto";
@@ -20,11 +20,6 @@ const listQuery = z.object({
   limit: z.coerce.number().int().min(1).max(50).default(20),
 });
 
-function zodError(res: Response, err: z.ZodError) {
-  return res
-    .status(400)
-    .json({ error: err.issues[0]?.message ?? "Parâmetros inválidos", details: err.flatten() });
-}
 
 /**
  * Seguidores de uma conta viva (conta excluída não conta). Recebe o client da
@@ -95,7 +90,6 @@ router.post(
       res.json({ following: true, followersCount: count });
     } catch (err) {
       await client.query("ROLLBACK").catch(() => {});
-      if (err instanceof z.ZodError) return zodError(res, err);
       next(err);
     } finally {
       client.release();
@@ -124,7 +118,6 @@ router.delete("/users/:userId/follow", requireAuth, async (req, res, next) => {
     res.json({ following: false, followersCount: count });
   } catch (err) {
     await client.query("ROLLBACK").catch(() => {});
-    if (err instanceof z.ZodError) return zodError(res, err);
     next(err);
   } finally {
     client.release();
@@ -208,7 +201,6 @@ for (const direction of ["followers", "following"] as const) {
         nextCursor: hasMore && last ? encodeCursor(last.created_at_text, last.follow_id) : null,
       });
     } catch (err) {
-      if (err instanceof z.ZodError) return zodError(res, err);
       next(err);
     }
   });

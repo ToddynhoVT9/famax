@@ -9,6 +9,7 @@ import { rateLimit } from "../lib/rate-limit.js";
 import { publish } from "../lib/realtime.js";
 import { BLOCKED_MESSAGE, isBlockedBetween } from "../lib/blocks.js";
 import { requireVerifiedEmail } from "../middleware/verified-email.js";
+import { parseWith } from "../middleware/error.js";
 
 const router = Router();
 
@@ -29,11 +30,6 @@ declare module "express-serve-static-core" {
 
 type Db = Pick<PoolClient, "query">;
 
-function zodError(res: Response, err: z.ZodError) {
-  return res
-    .status(400)
-    .json({ error: err.issues[0]?.message ?? "Dados inválidos", details: err.flatten() });
-}
 
 /**
  * Confirma que o usuário participa da conversa antes de qualquer leitura.
@@ -234,7 +230,6 @@ router.get("/", async (req, res, next) => {
       unreadTotal: total[0].n,
     });
   } catch (err) {
-    if (err instanceof z.ZodError) return zodError(res, err);
     next(err);
   }
 });
@@ -249,7 +244,7 @@ const openConversationSchema = z.object({
 
 router.post("/", async (req, res, next) => {
   try {
-    const { userId: otherUserId } = openConversationSchema.parse(req.body);
+    const { userId: otherUserId } = parseWith(openConversationSchema, req.body, "Dados inválidos");
     const meId = req.userId!;
 
     if (otherUserId === meId) {
@@ -328,11 +323,6 @@ router.post("/", async (req, res, next) => {
       client.release();
     }
   } catch (err) {
-    if (err instanceof z.ZodError) {
-      return res
-        .status(400)
-        .json({ error: "Dados inválidos", details: err.flatten() });
-    }
     next(err);
   }
 });
@@ -415,7 +405,6 @@ router.post(
         client.release();
       }
     } catch (err) {
-      if (err instanceof z.ZodError) return zodError(res, err);
       next(err);
     }
   },
@@ -488,7 +477,6 @@ router.patch("/:conversationId", requireParticipant, async (req, res, next) => {
     }
     res.json({ title });
   } catch (err) {
-    if (err instanceof z.ZodError) return zodError(res, err);
     next(err);
   }
 });
@@ -558,7 +546,6 @@ router.post(
         client.release();
       }
     } catch (err) {
-      if (err instanceof z.ZodError) return zodError(res, err);
       next(err);
     }
   },
@@ -715,7 +702,6 @@ router.get(
       const hasMore = rows.length > limit;
       res.json({ data: hasMore ? rows.slice(1) : rows, hasMore });
     } catch (err) {
-      if (err instanceof z.ZodError) return zodError(res, err);
       next(err);
     }
   },
@@ -747,7 +733,7 @@ router.post(
     const client = await pool.connect();
     try {
       const { conversationId, isGroup } = req.chat!;
-      const { content } = sendMessageSchema.parse(req.body);
+      const { content } = parseWith(sendMessageSchema, req.body, "Dados inválidos");
       const messageId = randomUUID();
 
       const participants = await participantIds(client, conversationId);
@@ -783,11 +769,6 @@ router.post(
       res.status(201).json({ message: rows[0] });
     } catch (err) {
       await client.query("ROLLBACK").catch(() => {});
-      if (err instanceof z.ZodError) {
-        return res
-          .status(400)
-          .json({ error: "Dados inválidos", details: err.flatten() });
-      }
       next(err);
     } finally {
       client.release();

@@ -1,4 +1,7 @@
 import { isAuthPage, loginUrlReturningHere, pages } from "./pages.js";
+import { buildEndpoints } from "./api-endpoints.js";
+import type { Me, SocialLink } from "../../../shared/api-types.js";
+export type { Me, SocialLink };
 
 const API_BASE = "/api";
 const TOKEN_KEY = "famax_token";
@@ -72,7 +75,8 @@ export class ApiError extends Error {
   }
 }
 
-export async function api<T = unknown>(
+/** Chamada crua: caminho e opções. A aplicação usa os métodos de `api` (abaixo). */
+async function request<T = unknown>(
   path: string,
   options: RequestInit = {},
 ): Promise<T> {
@@ -109,43 +113,15 @@ export async function api<T = unknown>(
   return response.json();
 }
 
+/**
+ * `api(path, options)` faz a chamada crua; `api.posts.get(id)` e afins são o
+ * cliente tipado (api-endpoints.ts). Um objeto só, para os dois usos.
+ */
+export const api = Object.assign(request, buildEndpoints(request));
+
 // ---------------------------------------------------------------------------
 // Usuário logado
 // ---------------------------------------------------------------------------
-
-export type Me = {
-  userId: string;
-  email: string;
-  username: string;
-  displayName: string | null;
-  avatarUrl: string | null;
-  bannerUrl: string | null;
-  bio: string | null;
-  nickname: string | null;
-  birthDate: string | null;
-  gender: string | null;
-  isPrivate: boolean;
-  isAdult: boolean;
-  twoFactorEnabled: boolean;
-  /** Códigos de recuperação da 2FA ainda não usados. */
-  recoveryCodesLeft: number;
-  /** Admin do site: vê a fila de denúncias de usuários. */
-  isAdmin: boolean;
-  /** Preferências de notificação (configurações). */
-  notifyLikes: boolean;
-  notifyComments: boolean;
-  notifyReplies: boolean;
-  notifyFollows: boolean;
-  notifyEvents: boolean;
-  /** E-mail confirmado pelo link (prompt 12). */
-  emailVerified: boolean;
-  /** Troca de e-mail aguardando confirmação do endereço novo. */
-  pendingEmail: string | null;
-  createdAt: string;
-  socialLinks: SocialLink[];
-};
-
-export type SocialLink = { platform: string; url: string };
 
 let meCache: Promise<Me> | null = null;
 
@@ -155,10 +131,10 @@ let meCache: Promise<Me> | null = null;
  */
 export function getMe(): Promise<Me> {
   if (!meCache) {
-    const request = api<{ user: Me }>("/me").then((body) => body.user);
-    meCache = request;
-    request.catch(() => {
-      if (meCache === request) meCache = null;
+    const pending = api.me.get().then((body) => body.user);
+    meCache = pending;
+    pending.catch(() => {
+      if (meCache === pending) meCache = null;
     });
   }
   return meCache;

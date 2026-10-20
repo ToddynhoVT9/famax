@@ -63,11 +63,6 @@ router.get(
 
       res.json({ q, type, results });
     } catch (err) {
-      if (err instanceof z.ZodError) {
-        return res
-          .status(400)
-          .json({ error: err.issues[0]?.message ?? "Busca inválida", details: err.flatten() });
-      }
       next(err);
     }
   },

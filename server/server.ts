@@ -25,6 +25,7 @@ import streamRoutes from "./routes/stream.routes.js";
 import twoFactorRoutes from "./routes/two-factor.routes.js";
 import accountRoutes from "./routes/account.routes.js";
 import blocksRoutes from "./routes/blocks.routes.js";
+import { toCamel } from "./lib/case.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const publicDir = path.join(__dirname, "public");
@@ -37,6 +38,14 @@ app.set("trust proxy", config.TRUST_PROXY);
 
 app.use(cors({ origin: true, credentials: true }));
 app.use(express.json({ limit: "1mb" }));
+
+// Toda resposta JSON da API sai em camelCase (o banco é snake_case). Ver
+// lib/case.ts; o SSE converte no writeEvent.
+app.use("/api", (_req, res, next) => {
+  const json = res.json.bind(res);
+  res.json = (body?: unknown) => json(toCamel(body));
+  next();
+});
 
 /**
  * Estado do banco.

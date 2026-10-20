@@ -1,5 +1,6 @@
 import type { Request, Response, NextFunction } from "express";
 import { MulterError } from "multer";
+import { z } from "zod";
 import { config } from "../config.js";
 
 export class AppError extends Error {
@@ -9,6 +10,30 @@ export class AppError extends Error {
   ) {
     super(message);
   }
+}
+
+/**
+ * Falha de validação com mensagem fixa (ex.: "ID de comunidade inválido"), no
+ * lugar da primeira regra violada. Vem de parseWith; o errorHandler responde.
+ */
+export class ValidationError extends Error {
+  constructor(
+    message: string,
+    public zodError: z.ZodError,
+  ) {
+    super(message);
+  }
+}
+
+/**
+ * schema.parse com a mensagem de erro escolhida pela rota. Sem ela (parse
+ * puro), o errorHandler responde com a primeira regra violada — que é o que
+ * quase toda rota quer; esta é para as que mostram uma frase só.
+ */
+export function parseWith<T extends z.ZodTypeAny>(schema: T, data: unknown, message: string): z.infer<T> {
+  const result = schema.safeParse(data);
+  if (!result.success) throw new ValidationError(message, result.error);
+  return result.data;
 }
 
 // Códigos que o multer emite ao analisar os nomes/valores dos campos de texto
@@ -42,6 +67,18 @@ export function errorHandler(
 ) {
   if (err instanceof AppError) {
     return res.status(err.statusCode).json({ error: err.message });
+  }
+
+  // Validação (zod): antes cada rota repetia este if no próprio catch. O
+  // formato é sempre { error, details } — `error` é a frase para o front
+  // mostrar, `details` o detalhamento por campo.
+  if (err instanceof ValidationError) {
+    return res.status(400).json({ error: err.message, details: err.zodError.flatten() });
+  }
+  if (err instanceof z.ZodError) {
+    return res
+      .status(400)
+      .json({ error: err.issues[0]?.message ?? "Dados inválidos", details: err.flatten() });
   }
 
   // Multer rejeita o upload dentro do próprio middleware, então o erro nunca

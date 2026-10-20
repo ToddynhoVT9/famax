@@ -143,9 +143,6 @@ router.post(
       });
     } catch (err) {
       await client.query("ROLLBACK").catch(() => {});
-      if (err instanceof z.ZodError) {
-        return res.status(400).json({ error: err.issues[0]?.message ?? "Dados inválidos" });
-      }
       // Corrida rara: duas abas criando a primeira reação ao mesmo tempo (o
       // FOR UPDATE não trava uma linha que ainda não existe).
       if ((err as { code?: string }).code === "23505") {

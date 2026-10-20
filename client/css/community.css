@@ -179,11 +179,6 @@
     border-color: var(--color-paper-border);
 }
 
-.tf-stat:focus-visible {
-    outline: 3px solid var(--color-focus);
-    outline-offset: 2px;
-}
-
 .tf-stat:disabled {
     opacity: 0.5;
     cursor: default;
@@ -2043,4 +2038,10 @@ button.tf-tab:focus-visible {
     font-weight: 700;
     text-decoration: underline;
     cursor: pointer;
+}
+
+/* Edição de comentário dentro do cartão branco (ver nota no chat-widget.css). */
+.tf-edit-input {
+    background-color: var(--color-paper);
+    color: var(--color-ink);
 }

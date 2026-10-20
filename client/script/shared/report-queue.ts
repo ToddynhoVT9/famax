@@ -11,34 +11,14 @@ import { postUrl, profileUrl } from "./pages.js";
 import { timeAgo, truncate } from "./dom.js";
 import { confirmDialog, toast } from "./dialog.js";
 import { canModerate, openBanDialog, ROLE_LABEL, type CommunityRole } from "./moderation.js";
-
-export interface Report {
-    report_id: string;
-    target_type: "post" | "comment" | "user";
-    target_id: string;
-    reason: string;
-    status: "pending" | "reviewing" | "resolved" | "dismissed";
-    resolution: "none" | "remove_content" | "ban_author" | "dismiss" | null;
-    created_at: string;
-    resolved_at: string | null;
-    community_id: string | null;
-    reporter_username: string;
-    resolved_by_username: string | null;
-    post_id: string | null;
-    post_title: string | null;
-    content: string | null;
-    target_deleted: boolean;
-    author_id: string | null;
-    author_username: string | null;
-    author_display_name: string | null;
-    author_role: CommunityRole | null;
-}
+import type { Report } from "../../../shared/api-types.js";
+export type { Report };
 
 type StatusFilter = "open" | "pending" | "reviewing" | "resolved" | "dismissed" | "all";
 
 export interface ReportQueueOptions {
-    /** Ex.: /communities/:id/reports ou /admin/reports. */
-    endpoint: string;
+    /** De onde vem a fila: uma comunidade (moderação) ou o site inteiro (admin). */
+    source: { communityId: string } | "admin";
     /** Papel de quem modera (admin age como dono). Decide o que mostrar. */
     viewerRole: CommunityRole;
     /** Ao banir alguém (a lista de banidos da página pode atualizar). */
@@ -68,7 +48,7 @@ const RESOLUTION_LABEL: Record<string, string> = {
     dismiss: "descartada",
 };
 
-const TARGET_LABEL: Record<Report["target_type"], string> = {
+const TARGET_LABEL: Record<Report["targetType"], string> = {
     post: "Discussão",
     comment: "Comentário",
     user: "Usuário",
@@ -118,23 +98,23 @@ export function createReportQueue(root: HTMLElement, options: ReportQueueOptions
 
     function renderTarget(report: Report): HTMLElement {
         const box = el("div", "report-target");
-        const author = report.author_display_name?.trim() || report.author_username || "Usuário";
+        const author = report.authorDisplayName?.trim() || report.authorUsername || "Usuário";
 
-        if (report.target_type === "user") {
-            const link = el("a", "report-target-title", `${author} (@${report.author_username ?? "?"})`);
-            if (report.author_id) link.href = profileUrl(report.author_id);
+        if (report.targetType === "user") {
+            const link = el("a", "report-target-title", `${author} (@${report.authorUsername ?? "?"})`);
+            if (report.authorId) link.href = profileUrl(report.authorId);
             box.append(link);
-            if (report.target_deleted) box.append(el("span", "report-removed", "Conta excluída"));
+            if (report.targetDeleted) box.append(el("span", "report-removed", "Conta excluída"));
             return box;
         }
 
-        if (report.post_title) {
+        if (report.postTitle) {
             const title = el(
                 "a",
                 "report-target-title",
-                report.target_type === "comment" ? `Em: ${report.post_title}` : report.post_title,
+                report.targetType === "comment" ? `Em: ${report.postTitle}` : report.postTitle,
             );
-            if (report.post_id) title.href = postUrl(report.post_id);
+            if (report.postId) title.href = postUrl(report.postId);
             box.append(title);
         }
         if (report.content) {
@@ -143,25 +123,25 @@ export function createReportQueue(root: HTMLElement, options: ReportQueueOptions
 
         const by = el("p", "report-target-author");
         const authorLink = el("a", "", author);
-        if (report.author_id) authorLink.href = profileUrl(report.author_id);
+        if (report.authorId) authorLink.href = profileUrl(report.authorId);
         by.append("por ", authorLink);
-        if (report.author_role === "owner" || report.author_role === "moderator") {
-            by.append(" ", el("span", `role-badge role-badge--${report.author_role}`, ROLE_LABEL[report.author_role]));
+        if (report.authorRole === "owner" || report.authorRole === "moderator") {
+            by.append(" ", el("span", `role-badge role-badge--${report.authorRole}`, ROLE_LABEL[report.authorRole]));
         }
         box.append(by);
-        if (report.target_deleted) box.append(el("span", "report-removed", "Já removido"));
+        if (report.targetDeleted) box.append(el("span", "report-removed", "Já removido"));
         return box;
     }
 
     function renderReport(report: Report): HTMLElement {
         const card = el("article", "report-card");
-        card.dataset.reportId = report.report_id;
+        card.dataset.reportId = report.reportId;
 
         const head = el("div", "report-head");
         head.append(
-            el("span", "report-type", TARGET_LABEL[report.target_type]),
+            el("span", "report-type", TARGET_LABEL[report.targetType]),
             el("span", `report-status report-status--${report.status}`, STATUS_LABEL[report.status]),
-            el("span", "report-meta", `denunciado por @${report.reporter_username} · ${timeAgo(report.created_at)}`),
+            el("span", "report-meta", `denunciado por @${report.reporterUsername} · ${timeAgo(report.createdAt)}`),
         );
 
         const reason = el("blockquote", "report-reason", report.reason);
@@ -172,24 +152,24 @@ export function createReportQueue(root: HTMLElement, options: ReportQueueOptions
             const actions = el("div", "report-actions");
             if (report.status === "pending") actions.append(button("Em análise", "review"));
             actions.append(button("Descartar", "dismiss"));
-            if (report.target_type === "user") {
+            if (report.targetType === "user") {
                 actions.append(button("Resolver", "resolve", "primary"));
             } else {
-                const canAct = canModerate(options.viewerRole, report.author_role);
-                if (!report.target_deleted && canAct) actions.append(button("Remover conteúdo", "remove", "danger"));
-                if (canAct && report.author_id) actions.append(button("Banir autor", "ban", "danger"));
+                const canAct = canModerate(options.viewerRole, report.authorRole);
+                if (!report.targetDeleted && canAct) actions.append(button("Remover conteúdo", "remove", "danger"));
+                if (canAct && report.authorId) actions.append(button("Banir autor", "ban", "danger"));
                 if (!canAct) {
                     // Conteúdo do dono ou de outro moderador: só quem está acima decide.
                     actions.append(el("span", "report-hint", "Moderadores não removem conteúdo do dono nem de outro moderador."));
                 }
-                if (report.target_deleted) actions.append(button("Marcar como resolvida", "resolve", "primary"));
+                if (report.targetDeleted) actions.append(button("Marcar como resolvida", "resolve", "primary"));
             }
             card.append(actions);
         } else {
             const closed = [`${STATUS_LABEL[report.status]}`];
             if (report.resolution && report.status === "resolved") closed.push(RESOLUTION_LABEL[report.resolution] ?? report.resolution);
-            if (report.resolved_by_username) closed.push(`por @${report.resolved_by_username}`);
-            if (report.resolved_at) closed.push(timeAgo(report.resolved_at));
+            if (report.resolvedByUsername) closed.push(`por @${report.resolvedByUsername}`);
+            if (report.resolvedAt) closed.push(timeAgo(report.resolvedAt));
             card.append(el("p", "report-closed", closed.join(" · ")));
         }
         return card;
@@ -209,14 +189,12 @@ export function createReportQueue(root: HTMLElement, options: ReportQueueOptions
 
         const params = new URLSearchParams({ status, page: String(page + 1), limit: String(PER_PAGE) });
         try {
-            const result = await api<{ data: Report[]; pagination: { total: number; totalPages: number } }>(
-                `${options.endpoint}?${params}`,
-            );
+            const result = await api.reports.queue(options.source, { status, page: page + 1, limit: PER_PAGE });
             if (current !== seq) return;
             page += 1;
             if (reset) list.replaceChildren();
             for (const report of result.data) {
-                reports.set(report.report_id, report);
+                reports.set(report.reportId, report);
                 list.append(renderReport(report));
             }
             const n = result.pagination.total;
@@ -240,47 +218,44 @@ export function createReportQueue(root: HTMLElement, options: ReportQueueOptions
     // ----- Ações ------------------------------------------------------------
 
     async function patch(reportId: string, body: Record<string, unknown>): Promise<void> {
-        await api(`/reports/${encodeURIComponent(reportId)}`, {
-            method: "PATCH",
-            body: JSON.stringify(body),
-        });
+        await api.reports.update(reportId, body);
     }
 
     async function act(card: HTMLElement, action: string): Promise<void> {
         const report = reports.get(card.dataset.reportId ?? "");
         if (!report) return;
-        const author = report.author_display_name?.trim() || report.author_username || "o autor";
+        const author = report.authorDisplayName?.trim() || report.authorUsername || "o autor";
 
         try {
             switch (action) {
                 case "review":
-                    await patch(report.report_id, { status: "reviewing" });
+                    await patch(report.reportId, { status: "reviewing" });
                     toast("Denúncia marcada como em análise.");
                     break;
                 case "dismiss":
-                    await patch(report.report_id, { status: "dismissed" });
+                    await patch(report.reportId, { status: "dismissed" });
                     toast("Denúncia descartada.");
                     break;
                 case "resolve":
-                    await patch(report.report_id, { status: "resolved" });
+                    await patch(report.reportId, { status: "resolved" });
                     toast("Denúncia resolvida.");
                     break;
                 case "remove": {
                     const ok = await confirmDialog({
                         title: "Remover conteúdo?",
-                        message: `O ${TARGET_LABEL[report.target_type].toLowerCase()} some da comunidade e as outras denúncias abertas sobre ele também são encerradas.`,
+                        message: `O ${TARGET_LABEL[report.targetType].toLowerCase()} some da comunidade e as outras denúncias abertas sobre ele também são encerradas.`,
                         confirmLabel: "Remover",
                         danger: true,
                     });
                     if (!ok) return;
-                    await patch(report.report_id, { status: "resolved", action: "remove_content" });
+                    await patch(report.reportId, { status: "resolved", action: "remove_content" });
                     toast("Conteúdo removido.");
                     break;
                 }
                 case "ban": {
-                    if (!report.community_id || !report.author_id) return;
-                    const banned = await openBanDialog(report.community_id, report.author_id, author, (choice) =>
-                        patch(report.report_id, {
+                    if (!report.communityId || !report.authorId) return;
+                    const banned = await openBanDialog(report.communityId, report.authorId, author, (choice) =>
+                        patch(report.reportId, {
                             status: "resolved",
                             action: "ban_author",
                             banDays: choice.durationDays,

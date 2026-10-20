@@ -11,19 +11,8 @@ import { profileUrl } from "./pages.js";
 import { avatarColor, initials } from "./dom.js";
 import { toast } from "./dialog.js";
 import { trapFocus } from "./focus-trap.js";
-
-export interface FollowState {
-    following: boolean;
-    followersCount: number;
-}
-
-interface FollowListItem {
-    user_id: string;
-    username: string;
-    display_name: string | null;
-    avatar_url: string | null;
-    followed_by_me: boolean;
-}
+import type { FollowListItem, FollowState } from "../../../shared/api-types.js";
+export type { FollowState };
 
 function el<K extends keyof HTMLElementTagNameMap>(tag: K, className = "", text?: string) {
     const node = document.createElement(tag);
@@ -33,9 +22,7 @@ function el<K extends keyof HTMLElementTagNameMap>(tag: K, className = "", text?
 }
 
 export function setFollowing(userId: string, follow: boolean): Promise<FollowState> {
-    return api<FollowState>(`/users/${encodeURIComponent(userId)}/follow`, {
-        method: follow ? "POST" : "DELETE",
-    });
+    return api.users.setFollowing(userId, follow);
 }
 
 /**
@@ -83,20 +70,20 @@ export function bindFollowButton(
 }
 
 function renderListItem(item: FollowListItem): HTMLLIElement {
-    const name = item.display_name?.trim() || item.username;
+    const name = item.displayName?.trim() || item.username;
     const li = el("li", "follow-list-item");
 
     const link = el("a", "follow-list-user");
-    link.href = profileUrl(item.user_id);
+    link.href = profileUrl(item.userId);
     const avatar = el("span", "follow-list-avatar");
-    if (item.avatar_url) {
+    if (item.avatarUrl) {
         const img = el("img");
-        img.src = item.avatar_url;
+        img.src = item.avatarUrl;
         img.alt = "";
         img.loading = "lazy";
         avatar.append(img);
     } else {
-        avatar.classList.add(avatarColor(item.user_id));
+        avatar.classList.add(avatarColor(item.userId));
         avatar.textContent = initials(name);
     }
     const names = el("span", "follow-list-names");
@@ -105,10 +92,10 @@ function renderListItem(item: FollowListItem): HTMLLIElement {
     li.append(link);
 
     // Botão ao lado de cada pessoa, menos a própria conta (e só com sessão).
-    if (getToken() && item.user_id !== getCurrentUserId()) {
+    if (getToken() && item.userId !== getCurrentUserId()) {
         const button = el("button", "follow-btn follow-btn--small");
         button.type = "button";
-        bindFollowButton(button, item.user_id, item.followed_by_me);
+        bindFollowButton(button, item.userId, item.followedByMe);
         li.append(button);
     }
     return li;
@@ -153,9 +140,7 @@ export function openFollowList(userId: string, kind: "followers" | "following", 
         try {
             const params = new URLSearchParams({ limit: "20" });
             if (cursor) params.set("cursor", cursor);
-            const page = await api<{ data: FollowListItem[]; nextCursor: string | null }>(
-                `/users/${encodeURIComponent(userId)}/${kind}?${params}`,
-            );
+            const page = await api.users.followList(userId, kind, { limit: 20, cursor });
             list.append(...page.data.map(renderListItem));
             cursor = page.nextCursor;
             more.hidden = !cursor;

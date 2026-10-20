@@ -775,3 +775,18 @@
         overflow: hidden;
     }
 }
+
+/* Campos sobre o painel branco: fundo e cor explícitos. Sem isto, com o tema
+   escuro (color-scheme: dark) o navegador pinta o campo de escuro. */
+.chat-input-row input,
+.chat-search input,
+.chat-group-input {
+    background-color: var(--color-paper);
+    color: var(--color-ink);
+}
+
+.chat-input-row input::placeholder,
+.chat-search input::placeholder,
+.chat-group-input::placeholder {
+    color: var(--color-ink-muted);
+}

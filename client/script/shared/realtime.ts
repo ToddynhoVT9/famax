@@ -65,7 +65,7 @@ async function connect(): Promise<void> {
 
     let ticket: string;
     try {
-        ({ ticket } = await api<{ ticket: string }>("/stream/ticket", { method: "POST" }));
+        ({ ticket } = await api.stream.ticket());
     } catch {
         // 401 o api() já trata (manda ao login); outro erro: tenta de novo depois.
         scheduleReconnect();

@@ -36,6 +36,9 @@ import { isRealtimeOpen, onRealtime, onRealtimeStatus } from "./realtime.js";
 import { OPEN_CHAT_EVENT, type OpenChatDetail } from "./chat-bus.js";
 import { skeleton } from "./skeleton.js";
 import "./char-counter.js";
+import { trapFocus } from "./focus-trap.js";
+import type { Conversation, Message as ApiMessage, Participant } from "../../../shared/api-types.js";
+import type { UserSummary as UserResult } from "../../../shared/api-types.js";
 
 /** Polling de reserva (stream fora): widget aberto / fechado. */
 const POLL_OPEN_MS = 5_000;
@@ -45,27 +48,10 @@ const TYPING_SEND_MS = 3_000;
 const TYPING_SHOW_MS = 4_000;
 const HISTORY_PAGE = 30;
 
-interface Conversation {
-    conversation_id: string;
-    is_group: boolean;
-    title: string | null;
-    last_message_at: string;
-    other_user_id: string | null;
-    other_username: string | null;
-    other_display_name: string | null;
-    other_avatar_url: string | null;
-    participants_count: number;
-    last_message_content: string | null;
-    unread_count: number;
-}
-
-interface Participant {
-    user_id: string;
-    username: string;
-    display_name: string | null;
-    avatar_url: string | null;
-    role: "admin" | "member";
-    last_read_at: string;
+/** Mensagem como vem da API + o estado local de envio. */
+interface Message extends ApiMessage {
+    /** Só no cliente: enviando / falhou. */
+    _state?: "pending" | "failed";
 }
 
 interface ActiveConversation {
@@ -74,27 +60,6 @@ interface ActiveConversation {
     title: string | null;
     myRole: "admin" | "member";
     participants: Participant[];
-}
-
-interface Message {
-    message_id: string;
-    conversation_id: string;
-    sender_id: string;
-    kind: "text" | "system";
-    content: string | null;
-    is_deleted: boolean;
-    created_at: string;
-    sender_username: string | null;
-    sender_display_name: string | null;
-    sender_avatar_url: string | null;
-    /** Só no cliente: enviando / falhou. */
-    _state?: "pending" | "failed";
-}
-
-interface UserResult {
-    user_id: string;
-    username: string;
-    display_name: string | null;
 }
 
 const currentUserId = getCurrentUserId();
@@ -206,9 +171,9 @@ function initChatWidget(): void {
     // =====================================================================
 
     const conversationName = (c: Conversation): string =>
-        c.is_group
+        c.isGroup
             ? c.title?.trim() || "Grupo"
-            : c.other_display_name?.trim() || c.other_username || "Conversa";
+            : c.otherDisplayName?.trim() || c.otherUsername || "Conversa";
 
     function avatarHtml(id: string | null, name: string, url: string | null, className: string): string {
         if (url) {
@@ -228,15 +193,15 @@ function initChatWidget(): void {
                 .map((conversation) => {
                     const name = conversationName(conversation);
                     const unread =
-                        conversation.unread_count > 0
-                            ? `<span class="contact-unread">${conversation.unread_count > 99 ? "99+" : conversation.unread_count}</span>`
+                        conversation.unreadCount > 0
+                            ? `<span class="contact-unread">${conversation.unreadCount > 99 ? "99+" : conversation.unreadCount}</span>`
                             : "";
-                    const avatar = conversation.is_group
+                    const avatar = conversation.isGroup
                         ? `<span class="contact-avatar contact-avatar--group" aria-hidden="true">👥</span>`
-                        : avatarHtml(conversation.other_user_id, name, conversation.other_avatar_url, "contact-avatar");
+                        : avatarHtml(conversation.otherUserId, name, conversation.otherAvatarUrl, "contact-avatar");
                     return `
-                    <button type="button" class="contact-item ${conversation.conversation_id === active?.id ? "active" : ""}"
-                            data-conversation="${escapeHtml(conversation.conversation_id)}" title="${escapeHtml(name)}">
+                    <button type="button" class="contact-item ${conversation.conversationId === active?.id ? "active" : ""}"
+                            data-conversation="${escapeHtml(conversation.conversationId)}" title="${escapeHtml(name)}">
                         ${unread}
                         ${avatar}
                         <span class="contact-name">${escapeHtml(name)}</span>
@@ -253,13 +218,13 @@ function initChatWidget(): void {
             convHeader.hidden = true;
             return;
         }
-        const conversation = conversations.find((c) => c.conversation_id === active!.id);
-        const others = active.participants.filter((p) => p.user_id !== currentUserId);
+        const conversation = conversations.find((c) => c.conversationId === active!.id);
+        const others = active.participants.filter((p) => p.userId !== currentUserId);
         const name = active.isGroup
             ? active.title?.trim() || "Grupo"
             : conversation
               ? conversationName(conversation)
-              : others[0]?.display_name?.trim() || others[0]?.username || "Conversa";
+              : others[0]?.displayName?.trim() || others[0]?.username || "Conversa";
         convTitle.textContent = active.isGroup ? `${name} · ${active.participants.length} pessoas` : name;
         groupBtn.hidden = !active.isGroup;
         convHeader.hidden = false;
@@ -268,9 +233,9 @@ function initChatWidget(): void {
     /** Quantos outros participantes já leram até esta mensagem. */
     function seenCount(message: Message): number {
         if (!active) return 0;
-        const at = new Date(message.created_at).getTime();
+        const at = new Date(message.createdAt).getTime();
         return active.participants.filter(
-            (p) => p.user_id !== currentUserId && new Date(p.last_read_at).getTime() >= at,
+            (p) => p.userId !== currentUserId && new Date(p.lastReadAt).getTime() >= at,
         ).length;
     }
 
@@ -278,14 +243,14 @@ function initChatWidget(): void {
         if (message.kind === "system") {
             return `<div class="message-system">${escapeHtml(message.content ?? "")}</div>`;
         }
-        const mine = message.sender_id === currentUserId;
-        const id = escapeHtml(message.message_id);
+        const mine = message.senderId === currentUserId;
+        const id = escapeHtml(message.messageId);
 
         let body: string;
         let meta: string;
-        if (message.is_deleted) {
+        if (message.isDeleted) {
             body = '<em class="message-deleted">mensagem apagada</em>';
-            meta = escapeHtml(shortTime(message.created_at));
+            meta = escapeHtml(shortTime(message.createdAt));
         } else {
             body = escapeHtml(message.content ?? "");
             if (message._state === "failed") {
@@ -295,7 +260,7 @@ function initChatWidget(): void {
             } else if (message._state === "pending") {
                 meta = "enviando...";
             } else {
-                meta = escapeHtml(shortTime(message.created_at));
+                meta = escapeHtml(shortTime(message.createdAt));
                 if (mine) {
                     // O "·" vai dentro do botão: some junto com ele (só aparece no hover).
                     meta += ` <button type="button" class="message-action" data-action="delete" data-id="${id}" aria-label="Apagar mensagem">· apagar</button>`;
@@ -304,16 +269,16 @@ function initChatWidget(): void {
         }
 
         const state = message._state ? ` ${message._state}` : "";
-        const bubble = `<div class="message-bubble ${mine ? "me" : "other"}${state}${message.is_deleted ? " is-deleted" : ""}">${body}<span class="message-time">${meta}</span></div>`;
+        const bubble = `<div class="message-bubble ${mine ? "me" : "other"}${state}${message.isDeleted ? " is-deleted" : ""}">${body}<span class="message-time">${meta}</span></div>`;
         const seen = seenLabel ? `<div class="message-seen">${escapeHtml(seenLabel)}</div>` : "";
 
         // Grupo: avatar e nome de quem mandou (só no começo de uma sequência).
         if (!mine && active?.isGroup) {
-            const name = message.sender_display_name?.trim() || message.sender_username || "Alguém";
-            const firstOfRun = previous?.sender_id !== message.sender_id || previous?.kind === "system";
+            const name = message.senderDisplayName?.trim() || message.senderUsername || "Alguém";
+            const firstOfRun = previous?.senderId !== message.senderId || previous?.kind === "system";
             return `
                 <div class="message-row other${firstOfRun ? "" : " is-continued"}">
-                    ${firstOfRun ? avatarHtml(message.sender_id, name, message.sender_avatar_url, "message-avatar") : '<span class="message-avatar-space"></span>'}
+                    ${firstOfRun ? avatarHtml(message.senderId, name, message.senderAvatarUrl, "message-avatar") : '<span class="message-avatar-space"></span>'}
                     <div class="message-stack">
                         ${firstOfRun ? `<span class="message-sender">${escapeHtml(name)}</span>` : ""}
                         ${bubble}
@@ -347,7 +312,7 @@ function initChatWidget(): void {
         let seenLabel: string | null = null;
         for (let i = messages.length - 1; i >= 0; i--) {
             const m = messages[i];
-            if (m.sender_id !== currentUserId || m.kind !== "text" || m._state || m.is_deleted) continue;
+            if (m.senderId !== currentUserId || m.kind !== "text" || m._state || m.isDeleted) continue;
             const count = seenCount(m);
             if (count > 0) {
                 seenIndex = i;
@@ -405,9 +370,7 @@ function initChatWidget(): void {
         try {
             const params = new URLSearchParams({ limit: "30" });
             if (more && conversationsCursor) params.set("cursor", conversationsCursor);
-            const page = await api<{ data: Conversation[]; nextCursor: string | null; unreadTotal: number }>(
-                `/conversations?${params}`,
-            );
+            const page = await api.conversations.list({ limit: 30, cursor: more ? conversationsCursor : null });
             conversations = more ? conversations.concat(page.data) : page.data;
             conversationsCursor = page.nextCursor;
             unreadTotal = page.unreadTotal;
@@ -421,16 +384,13 @@ function initChatWidget(): void {
 
     async function loadDetails(conversationId: string): Promise<boolean> {
         try {
-            const { conversation, participants } = await api<{
-                conversation: { conversation_id: string; is_group: boolean; title: string | null; my_role: "admin" | "member" };
-                participants: Participant[];
-            }>(`/conversations/${encodeURIComponent(conversationId)}`);
+            const { conversation, participants } = await api.conversations.get(conversationId);
             if (active?.id !== conversationId) return true;
             active = {
                 id: conversationId,
-                isGroup: conversation.is_group,
+                isGroup: conversation.isGroup,
                 title: conversation.title,
-                myRole: conversation.my_role,
+                myRole: conversation.myRole,
                 participants,
             };
             renderHeader();
@@ -467,9 +427,7 @@ function initChatWidget(): void {
 
         try {
             const [page] = await Promise.all([
-                api<{ data: Message[]; hasMore: boolean }>(
-                    `/conversations/${encodeURIComponent(conversationId)}/messages?limit=${HISTORY_PAGE}`,
-                ),
+                api.conversations.messages(conversationId, { limit: HISTORY_PAGE }),
                 loadDetails(conversationId),
             ]);
             if (active?.id !== conversationId) return;
@@ -494,12 +452,10 @@ function initChatWidget(): void {
         if (!conversationId || !first || !hasOlder || loadingOlder) return;
         loadingOlder = true;
         try {
-            const page = await api<{ data: Message[]; hasMore: boolean }>(
-                `/conversations/${encodeURIComponent(conversationId)}/messages?limit=${HISTORY_PAGE}&beforeId=${encodeURIComponent(first.message_id)}`,
-            );
+            const page = await api.conversations.messages(conversationId, { limit: HISTORY_PAGE, beforeId: first.messageId });
             if (active?.id !== conversationId) return;
-            const known = new Set(messages.map((m) => m.message_id));
-            messages = page.data.filter((m) => !known.has(m.message_id)).concat(messages);
+            const known = new Set(messages.map((m) => m.messageId));
+            messages = page.data.filter((m) => !known.has(m.messageId)).concat(messages);
             hasOlder = page.hasMore;
             historyArmed = false;
             renderMessages("keep");
@@ -514,11 +470,11 @@ function initChatWidget(): void {
         // Só conta como lida se a pessoa está vendo a conversa.
         if (!isOpen() || document.hidden) return;
         try {
-            await api(`/conversations/${encodeURIComponent(conversationId)}/read`, { method: "POST" });
-            const conversation = conversations.find((c) => c.conversation_id === conversationId);
-            if (conversation && conversation.unread_count > 0) {
-                unreadTotal = Math.max(0, unreadTotal - conversation.unread_count);
-                conversation.unread_count = 0;
+            await api.conversations.markRead(conversationId);
+            const conversation = conversations.find((c) => c.conversationId === conversationId);
+            if (conversation && conversation.unreadCount > 0) {
+                unreadTotal = Math.max(0, unreadTotal - conversation.unreadCount);
+                conversation.unreadCount = 0;
                 renderContacts();
                 renderBadge();
             }
@@ -534,20 +490,18 @@ function initChatWidget(): void {
         const confirmed = messages.filter((m) => !m._state);
         const last = confirmed[confirmed.length - 1];
         try {
-            const query = last ? `after=${encodeURIComponent(last.created_at)}` : `limit=${HISTORY_PAGE}`;
-            const { data } = await api<{ data: Message[] }>(
-                `/conversations/${encodeURIComponent(conversationId)}/messages?${query}`,
-            );
+            const query = last ? `after=${encodeURIComponent(last.createdAt)}` : `limit=${HISTORY_PAGE}`;
+            const { data } = await api.conversations.messages(conversationId, last ? { after: last.createdAt } : { limit: HISTORY_PAGE });
             if (active?.id !== conversationId) return;
             // Descarta o que já está na tela: o eco da própria mensagem
             // confirmada chegaria duplicado.
-            const known = new Set(messages.map((m) => m.message_id));
-            const fresh = data.filter((m) => !known.has(m.message_id));
+            const known = new Set(messages.map((m) => m.messageId));
+            const fresh = data.filter((m) => !known.has(m.messageId));
             if (fresh.length === 0) return;
             const pending = messages.filter((m) => m._state);
             messages = confirmed.concat(fresh, pending);
             // Quem mandou a mensagem parou de digitar.
-            for (const m of fresh) typing.delete(m.sender_id);
+            for (const m of fresh) typing.delete(m.senderId);
             renderTyping();
             renderMessages();
             await markRead(conversationId);
@@ -566,9 +520,9 @@ function initChatWidget(): void {
     });
     onRealtime("message:deleted", (data) => {
         if (data.conversationId === active?.id) {
-            const message = messages.find((m) => m.message_id === data.messageId);
+            const message = messages.find((m) => m.messageId === data.messageId);
             if (message) {
-                message.is_deleted = true;
+                message.isDeleted = true;
                 message.content = null;
                 renderMessages();
             }
@@ -582,9 +536,9 @@ function initChatWidget(): void {
             return;
         }
         if (!active || data.conversationId !== active.id) return;
-        const participant = active.participants.find((p) => p.user_id === data.userId);
+        const participant = active.participants.find((p) => p.userId === data.userId);
         if (participant && typeof data.lastReadAt === "string") {
-            participant.last_read_at = data.lastReadAt;
+            participant.lastReadAt = data.lastReadAt;
             renderMessages();
         }
     });
@@ -648,18 +602,15 @@ function initChatWidget(): void {
     // =====================================================================
 
     async function deliver(message: Message): Promise<void> {
-        const conversationId = message.conversation_id;
+        const conversationId = message.conversationId;
         message._state = "pending";
         renderMessages("bottom");
         try {
-            const { message: saved } = await api<{ message: Message }>(
-                `/conversations/${encodeURIComponent(conversationId)}/messages`,
-                { method: "POST", body: JSON.stringify({ content: message.content }) },
-            );
+            const { message: saved } = await api.conversations.send(conversationId, message.content ?? "");
             if (active?.id !== conversationId) return;
-            const index = messages.findIndex((m) => m.message_id === message.message_id);
+            const index = messages.findIndex((m) => m.messageId === message.messageId);
             // O evento SSE pode ter trazido a mesma mensagem antes da resposta.
-            const already = messages.some((m) => m.message_id === saved.message_id);
+            const already = messages.some((m) => m.messageId === saved.messageId);
             if (index !== -1) {
                 if (already) messages.splice(index, 1);
                 else messages[index] = saved;
@@ -682,16 +633,16 @@ function initChatWidget(): void {
         // Render otimista: aparece na hora, marcada como enviando, e é
         // substituída pela versão confirmada do servidor.
         const optimistic: Message = {
-            message_id: `temp-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
-            conversation_id: active.id,
-            sender_id: currentUserId!,
+            messageId: `temp-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+            conversationId: active.id,
+            senderId: currentUserId!,
             kind: "text",
             content,
-            is_deleted: false,
-            created_at: new Date().toISOString(),
-            sender_username: null,
-            sender_display_name: null,
-            sender_avatar_url: null,
+            isDeleted: false,
+            createdAt: new Date().toISOString(),
+            senderUsername: null,
+            senderDisplayName: null,
+            senderAvatarUrl: null,
         };
         messages.push(optimistic);
         input.value = "";
@@ -703,13 +654,13 @@ function initChatWidget(): void {
         const now = Date.now();
         if (now - lastTypingSent < TYPING_SEND_MS) return;
         lastTypingSent = now;
-        void api(`/conversations/${encodeURIComponent(active.id)}/typing`, { method: "POST" }).catch(() => {});
+        void api.conversations.typing(active.id).catch(() => {});
     });
 
     messagesEl.addEventListener("click", async (event: MouseEvent) => {
         const button = (event.target as Element).closest<HTMLButtonElement>("[data-action]");
         const id = button?.dataset.id;
-        const message = id ? messages.find((m) => m.message_id === id) : undefined;
+        const message = id ? messages.find((m) => m.messageId === id) : undefined;
         if (!button || !message || !active) return;
         event.stopPropagation();
 
@@ -730,11 +681,8 @@ function initChatWidget(): void {
                 });
                 if (!ok) return;
                 try {
-                    await api(
-                        `/conversations/${encodeURIComponent(message.conversation_id)}/messages/${encodeURIComponent(message.message_id)}`,
-                        { method: "DELETE" },
-                    );
-                    message.is_deleted = true;
+                    await api.conversations.deleteMessage(message.conversationId, message.messageId);
+                    message.isDeleted = true;
                     message.content = null;
                     renderMessages();
                     void loadConversations();
@@ -756,7 +704,7 @@ function initChatWidget(): void {
     // =====================================================================
 
     function participantName(p: Participant): string {
-        return p.display_name?.trim() || p.username;
+        return p.displayName?.trim() || p.username;
     }
 
     function renderGroupPanel(): void {
@@ -794,10 +742,7 @@ function initChatWidget(): void {
                 if (!value || value === active?.title) return;
                 save.disabled = true;
                 try {
-                    await api(`/conversations/${encodeURIComponent(conversationId)}`, {
-                        method: "PATCH",
-                        body: JSON.stringify({ title: value }),
-                    });
+                    await api.conversations.rename(conversationId, value);
                     toast("Grupo renomeado.");
                 } catch (err) {
                     toast(errorText(err, "Não foi possível renomear."), "error");
@@ -811,10 +756,10 @@ function initChatWidget(): void {
         const list = el("ul", "chat-group-members");
         for (const p of active.participants) {
             const item = el("li", "chat-group-member");
-            const label = el("span", "", participantName(p) + (p.user_id === currentUserId ? " (você)" : ""));
+            const label = el("span", "", participantName(p) + (p.userId === currentUserId ? " (você)" : ""));
             item.append(label);
             if (p.role === "admin") item.append(el("span", "chat-group-role", "admin"));
-            if (isAdmin && p.user_id !== currentUserId) {
+            if (isAdmin && p.userId !== currentUserId) {
                 const remove = el("button", "message-action", "remover");
                 remove.type = "button";
                 remove.addEventListener("click", async () => {
@@ -826,10 +771,7 @@ function initChatWidget(): void {
                     });
                     if (!ok) return;
                     try {
-                        await api(
-                            `/conversations/${encodeURIComponent(conversationId)}/participants/${encodeURIComponent(p.user_id)}`,
-                            { method: "DELETE" },
-                        );
+                        await api.conversations.removeParticipant(conversationId, p.userId);
                     } catch (err) {
                         toast(errorText(err, "Não foi possível remover."), "error");
                     }
@@ -856,20 +798,17 @@ function initChatWidget(): void {
                 }
                 timer = window.setTimeout(async () => {
                     const found = await searchUsers(term);
-                    const inGroup = new Set(active?.participants.map((p) => p.user_id));
+                    const inGroup = new Set(active?.participants.map((p) => p.userId));
                     results.replaceChildren(
                         ...found
-                            .filter((u) => !inGroup.has(u.user_id))
+                            .filter((u) => !inGroup.has(u.userId))
                             .map((u) => {
-                                const button = el("button", "chat-search-item", u.display_name?.trim() || u.username);
+                                const button = el("button", "chat-search-item", u.displayName?.trim() || u.username);
                                 button.type = "button";
                                 button.addEventListener("click", async () => {
                                     button.disabled = true;
                                     try {
-                                        await api(`/conversations/${encodeURIComponent(conversationId)}/participants`, {
-                                            method: "POST",
-                                            body: JSON.stringify({ userIds: [u.user_id] }),
-                                        });
+                                        await api.conversations.addParticipants(conversationId, [u.userId]);
                                         addInput.value = "";
                                         results.replaceChildren();
                                     } catch (err) {
@@ -898,10 +837,7 @@ function initChatWidget(): void {
             });
             if (!ok) return;
             try {
-                await api(
-                    `/conversations/${encodeURIComponent(conversationId)}/participants/${encodeURIComponent(currentUserId!)}`,
-                    { method: "DELETE" },
-                );
+                await api.conversations.removeParticipant(conversationId, currentUserId!);
                 leaveActive("Você saiu do grupo.");
                 void loadConversations();
             } catch (err) {
@@ -924,7 +860,7 @@ function initChatWidget(): void {
 
     async function searchUsers(term: string): Promise<UserResult[]> {
         try {
-            const { data } = await api<{ data: UserResult[] }>(`/users?search=${encodeURIComponent(term)}`);
+            const { data } = await api.users.search(term);
             return data;
         } catch {
             return [];
@@ -947,12 +883,12 @@ function initChatWidget(): void {
     function renderGroupChips(): void {
         groupChips.replaceChildren(
             ...groupSelection.map((u) => {
-                const chip = el("button", "chat-chip", `${u.display_name?.trim() || u.username} ✕`);
+                const chip = el("button", "chat-chip", `${u.displayName?.trim() || u.username} ✕`);
                 chip.type = "button";
-                chip.setAttribute("aria-label", `Tirar ${u.display_name?.trim() || u.username}`);
+                chip.setAttribute("aria-label", `Tirar ${u.displayName?.trim() || u.username}`);
                 chip.addEventListener("click", (event) => {
                     event.stopPropagation();
-                    groupSelection = groupSelection.filter((s) => s.user_id !== u.user_id);
+                    groupSelection = groupSelection.filter((s) => s.userId !== u.userId);
                     renderGroupChips();
                 });
                 return chip;
@@ -996,9 +932,9 @@ function initChatWidget(): void {
                     ? data
                           .map(
                               (user) => `
-                        <button type="button" class="chat-search-item" data-user="${escapeHtml(user.user_id)}"
-                                data-name="${escapeHtml(user.display_name?.trim() || user.username)}" data-username="${escapeHtml(user.username)}">
-                            ${escapeHtml(user.display_name?.trim() || user.username)}
+                        <button type="button" class="chat-search-item" data-user="${escapeHtml(user.userId)}"
+                                data-name="${escapeHtml(user.displayName?.trim() || user.username)}" data-username="${escapeHtml(user.username)}">
+                            ${escapeHtml(user.displayName?.trim() || user.username)}
                             <span class="chat-search-empty">@${escapeHtml(user.username)}</span>
                         </button>`,
                           )
@@ -1014,11 +950,11 @@ function initChatWidget(): void {
         if (!button || !userId) return;
 
         if (searchMode === "group") {
-            if (!groupSelection.some((u) => u.user_id === userId)) {
+            if (!groupSelection.some((u) => u.userId === userId)) {
                 groupSelection.push({
-                    user_id: userId,
+                    userId: userId,
                     username: button.dataset.username ?? "",
-                    display_name: button.dataset.name ?? null,
+                    displayName: button.dataset.name ?? null,
                 });
                 renderGroupChips();
             }
@@ -1046,10 +982,7 @@ function initChatWidget(): void {
         }
         groupCreate.disabled = true;
         try {
-            const { conversationId } = await api<{ conversationId: string }>("/conversations/groups", {
-                method: "POST",
-                body: JSON.stringify({ title, userIds: groupSelection.map((u) => u.user_id) }),
-            });
+            const { conversationId } = await api.conversations.createGroup(title, groupSelection.map((u) => u.userId));
             widget.classList.remove("searching");
             await loadConversations();
             await openConversation(conversationId);
@@ -1061,10 +994,7 @@ function initChatWidget(): void {
 
     /** Abre (ou cria) a conversa 1:1 com alguém e mostra o widget nela. */
     async function openWithUser(userId: string): Promise<void> {
-        const { conversationId } = await api<{ conversationId: string }>("/conversations", {
-            method: "POST",
-            body: JSON.stringify({ userId }),
-        });
+        const { conversationId } = await api.conversations.open(userId);
         widget.classList.remove("searching");
         widget.classList.add("open");
         await loadConversations();
@@ -1109,7 +1039,7 @@ function initChatWidget(): void {
             void loadConversations().then(() => {
                 // Abre direto na primeira conversa, como o protótipo fazia.
                 if (!active && conversations.length > 0) {
-                    void openConversation(conversations[0].conversation_id);
+                    void openConversation(conversations[0].conversationId);
                 } else {
                     renderMessages();
                     if (active) void markRead(active.id);
@@ -1133,12 +1063,33 @@ function initChatWidget(): void {
         closeBtn.click();
     });
 
+    // Em tela cheia (celular) o painel cobre a página: vira modal, com o foco
+    // preso dentro — senão o Tab andaria pela página escondida atrás dele.
+    const fullScreen = window.matchMedia("(max-width: 640px)");
+    const panel = must<HTMLElement>("chatPanel");
+    let releasePanel: (() => void) | null = null;
+    const syncPanelTrap = (): void => {
+        const trap = isOpen() && fullScreen.matches;
+        if (trap && !releasePanel) {
+            panel.setAttribute("aria-modal", "true");
+            const inside = panel.contains(document.activeElement) ? (document.activeElement as HTMLElement) : closeBtn;
+            releasePanel = trapFocus(panel, { onEscape: () => closeBtn.click(), initialFocus: inside });
+        } else if (!trap && releasePanel) {
+            panel.removeAttribute("aria-modal");
+            const release = releasePanel;
+            releasePanel = null;
+            release();
+        }
+    };
+    fullScreen.addEventListener("change", syncPanelTrap);
+
     // aria-expanded do botão acompanha a classe "open", venha de onde vier.
     new MutationObserver(() => {
         const open = isOpen();
         toggle.setAttribute("aria-expanded", String(open));
         toggle.setAttribute("aria-label", open ? "Fechar chat" : "Abrir chat");
         document.body.classList.toggle("chat-is-open", open);
+        syncPanelTrap();
     }).observe(widget, { attributes: true, attributeFilter: ["class"] });
 
     document.addEventListener("click", (event: MouseEvent) => {

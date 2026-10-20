@@ -73,11 +73,6 @@ router.get("/communities/:communityId/leaderboard", async (req, res, next) => {
       data: rows.map((row, index) => ({ ...row, rank: index + 1 })),
     });
   } catch (err) {
-    if (err instanceof z.ZodError) {
-      return res
-        .status(400)
-        .json({ error: err.issues[0]?.message ?? "Parâmetros inválidos", details: err.flatten() });
-    }
     next(err);
   }
 });

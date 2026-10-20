@@ -11,6 +11,7 @@ import { removeComment } from "../lib/moderation.js";
 import { notify } from "../lib/notify.js";
 import { addPoints, POINTS } from "../lib/points.js";
 import { notifyMentions } from "../lib/mentions.js";
+import { parseWith } from "../middleware/error.js";
 
 const router = Router();
 
@@ -125,8 +126,8 @@ function decodeCursor(cursor: string): { createdAt: string; commentId: string } 
 
 router.get("/posts/:postId/comments", optionalAuth, async (req, res, next) => {
   try {
-    const { postId } = postIdParam.parse(req.params);
-    const { cursor, limit } = listQuery.parse(req.query);
+    const { postId } = parseWith(postIdParam, req.params, "Parâmetros inválidos");
+    const { cursor, limit } = parseWith(listQuery, req.query, "Parâmetros inválidos");
 
     const { rows: post } = await pool.query(
       "SELECT 1 FROM posts WHERE post_id = $1 AND deleted_at IS NULL",
@@ -208,11 +209,6 @@ router.get("/posts/:postId/comments", optionalAuth, async (req, res, next) => {
       nextCursor: hasMore && last ? encodeCursor(last.created_at_text, last.comment_id) : null,
     });
   } catch (err) {
-    if (err instanceof z.ZodError) {
-      return res
-        .status(400)
-        .json({ error: "Parâmetros inválidos", details: err.flatten() });
-    }
     next(err);
   }
 });
@@ -328,11 +324,6 @@ router.post(
       res.status(201).json({ comment: present(rows[0]) });
     } catch (err) {
       await client.query("ROLLBACK").catch(() => {});
-      if (err instanceof z.ZodError) {
-        return res
-          .status(400)
-          .json({ error: err.issues[0]?.message ?? "Dados inválidos", details: err.flatten() });
-      }
       next(err);
     } finally {
       client.release();
@@ -401,11 +392,6 @@ router.patch("/comments/:commentId", requireAuth, async (req, res, next) => {
     );
     res.json({ comment: present(rows[0], replies[0].n) });
   } catch (err) {
-    if (err instanceof z.ZodError) {
-      return res
-        .status(400)
-        .json({ error: err.issues[0]?.message ?? "Dados inválidos", details: err.flatten() });
-    }
     next(err);
   }
 });
@@ -420,7 +406,7 @@ router.patch("/comments/:commentId", requireAuth, async (req, res, next) => {
 
 router.delete("/comments/:commentId", requireAuth, async (req, res, next) => {
   try {
-    const { commentId } = commentIdParam.parse(req.params);
+    const { commentId } = parseWith(commentIdParam, req.params, "ID de comentário inválido");
 
     const result = await removeComment(commentId, { userId: req.userId! });
     if (!result.ok) {
@@ -429,9 +415,6 @@ router.delete("/comments/:commentId", requireAuth, async (req, res, next) => {
 
     res.status(204).end();
   } catch (err) {
-    if (err instanceof z.ZodError) {
-      return res.status(400).json({ error: "ID de comentário inválido" });
-    }
     next(err);
   }
 });

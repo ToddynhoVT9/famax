@@ -143,8 +143,10 @@
 
 .modal-input {
     width: 100%;
-    background-color: var(--color-control);
-    border: none;
+    /* Mais escuro que a caixa do modal (surface-5), com borda: no tema
+       escuro o fundo de campo comum (control) é da mesma cor da caixa. */
+    background-color: var(--color-surface-3);
+    border: 1px solid var(--color-border-strong);
     border-radius: 6px;
     padding: 12px 14px;
     color: var(--color-text);
@@ -154,7 +156,7 @@
 }
 
 .modal-input:focus {
-    background-color: var(--color-control-hover);
+    background-color: var(--color-surface-2);
     outline: 2px solid var(--color-text);
 }
 

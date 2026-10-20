@@ -1,4 +1,5 @@
 import { Router, type Request } from "express";
+import type { Me } from "../../shared/api-types.js";
 import bcrypt from "bcrypt";
 import multer from "multer";
 import { z } from "zod";
@@ -33,12 +34,6 @@ import {
 
 const router = Router();
 
-function zodError(res: import("express").Response, err: z.ZodError) {
-  // A primeira mensagem vai em `error` para o front mostrar direto; o
-  // detalhamento completo continua em `details`.
-  const first = err.issues[0]?.message ?? "Dados inválidos";
-  return res.status(400).json({ error: first, details: err.flatten() });
-}
 
 // ===========================================================================
 // GET /api/me — usuário logado, com perfil e configurações
@@ -48,7 +43,7 @@ function zodError(res: import("express").Response, err: z.ZodError) {
 // devolvem este mesmo formato, para o front só trocar o objeto.
 // ===========================================================================
 
-async function loadMe(userId: string) {
+async function loadMe(userId: string): Promise<Me | null> {
   // birth_date vai como texto: o pg converte DATE em Date à meia-noite do
   // fuso do servidor, e o JSON (UTC) podia mostrar o dia anterior.
   const { rows } = await pool.query(
@@ -237,7 +232,6 @@ router.patch("/me/profile", requireAuth, async (req, res, next) => {
 
     await sendMe(req, res);
   } catch (err) {
-    if (err instanceof z.ZodError) return zodError(res, err);
     next(err);
   }
 });
@@ -311,7 +305,6 @@ router.patch("/me/settings", requireAuth, async (req, res, next) => {
 
     await sendMe(req, res);
   } catch (err) {
-    if (err instanceof z.ZodError) return zodError(res, err);
     next(err);
   }
 });
@@ -380,7 +373,6 @@ router.post(
 
       res.status(204).end();
     } catch (err) {
-      if (err instanceof z.ZodError) return zodError(res, err);
       next(err);
     }
   },
@@ -445,7 +437,6 @@ router.patch(
 
       await sendMe(req, res);
     } catch (err) {
-      if (err instanceof z.ZodError) return zodError(res, err);
       next(err);
     }
   },
@@ -604,7 +595,6 @@ router.put("/me/social-links", requireAuth, async (req, res, next) => {
 
     await sendMe(req, res);
   } catch (err) {
-    if (err instanceof z.ZodError) return zodError(res, err);
     next(err);
   }
 });

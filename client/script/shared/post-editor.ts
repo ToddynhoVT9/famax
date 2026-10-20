@@ -21,14 +21,11 @@ import { attachCharCounter } from "./char-counter.js";
 import { trapFocus } from "./focus-trap.js";
 import type { Post } from "./post-thread.js";
 import { MAX_POST_IMAGES, type PostImage } from "./post-images.js";
+import type { PostCategory } from "../../../shared/api-types.js";
+export type { PostCategory };
 
 const MAX_IMAGE_BYTES = 2 * 1024 * 1024;
 const IMAGE_TYPES = ["image/png", "image/jpeg", "image/webp"];
-
-export interface PostCategory {
-    community_category_id: string;
-    name: string;
-}
 
 export interface PostEditorOptions {
     communityId: string;
@@ -121,9 +118,9 @@ export function openPostEditor(options: PostEditorOptions): Promise<Post | null>
         categoryLabel.htmlFor = categorySelect.id;
         categorySelect.append(new Option("Sem categoria", ""));
         for (const category of options.categories) {
-            categorySelect.append(new Option(category.name, category.community_category_id));
+            categorySelect.append(new Option(category.name, category.communityCategoryId));
         }
-        categorySelect.value = post?.community_category_id ?? "";
+        categorySelect.value = post?.communityCategoryId ?? "";
 
         const contentLabel = el("label", "modal-label modal-label--spaced", "Conteúdo");
         const contentInput = el("textarea", "modal-textarea");
@@ -142,9 +139,9 @@ export function openPostEditor(options: PostEditorOptions): Promise<Post | null>
         const nsfwLabel = el("label", "modal-checkbox");
         const nsfwInput = el("input");
         nsfwInput.type = "checkbox";
-        nsfwInput.checked = post?.post_is_nsfw ?? false;
+        nsfwInput.checked = post?.postIsNsfw ?? false;
         nsfwLabel.append(nsfwInput, " Conteúdo adulto (+18): só quem tem conteúdo adulto liberado vê");
-        nsfwLabel.hidden = !post?.post_is_nsfw;
+        nsfwLabel.hidden = !post?.postIsNsfw;
         void getMe()
             .then((me) => {
                 if (me.isAdult) nsfwLabel.hidden = false;
@@ -187,8 +184,8 @@ export function openPostEditor(options: PostEditorOptions): Promise<Post | null>
 
         function renderImages(): void {
             imagesList.replaceChildren(
-                ...existing.filter((image) => !removed.has(image.image_id)).map((image) =>
-                    thumb(image.url, () => removed.add(image.image_id)),
+                ...existing.filter((image) => !removed.has(image.imageId)).map((image) =>
+                    thumb(image.url, () => removed.add(image.imageId)),
                 ),
                 ...added.map((entry, index) =>
                     thumb(entry.preview, () => {
@@ -247,7 +244,7 @@ export function openPostEditor(options: PostEditorOptions): Promise<Post | null>
         if (draft) {
             titleInput.value = draft.title;
             contentInput.value = draft.content;
-            if (options.categories.some((c) => c.community_category_id === draft.categoryId)) {
+            if (options.categories.some((c) => c.communityCategoryId === draft.categoryId)) {
                 categorySelect.value = draft.categoryId;
             }
             nsfwInput.checked = draft.nsfw;
@@ -359,19 +356,13 @@ export function openPostEditor(options: PostEditorOptions): Promise<Post | null>
             let current = saved;
             try {
                 for (const imageId of removed) {
-                    const result = await api<{ post: Post }>(
-                        `/posts/${encodeURIComponent(saved.post_id)}/images/${encodeURIComponent(imageId)}`,
-                        { method: "DELETE" },
-                    );
+                    const result = await api.posts.removeImage(saved.postId, imageId);
                     current = result.post;
                 }
                 if (added.length > 0) {
                     const body = new FormData();
                     for (const entry of added) body.append("images", entry.file);
-                    const result = await api<{ post: Post }>(`/posts/${encodeURIComponent(saved.post_id)}/images`, {
-                        method: "POST",
-                        body,
-                    });
+                    const result = await api.posts.addImages(saved.postId, body);
                     current = result.post;
                 }
             } catch (err) {
@@ -396,25 +387,8 @@ export function openPostEditor(options: PostEditorOptions): Promise<Post | null>
             showError(null);
             try {
                 const result = post
-                    ? await api<{ post: Post }>(`/posts/${encodeURIComponent(post.post_id)}`, {
-                          method: "PATCH",
-                          body: JSON.stringify({
-                              title: titleValue,
-                              content,
-                              communityCategoryId: categoryId,
-                              ...(nsfwLabel.hidden ? {} : { isNsfw: nsfwInput.checked }),
-                          }),
-                      })
-                    : await api<{ post: Post }>("/posts", {
-                          method: "POST",
-                          body: JSON.stringify({
-                              communityId: options.communityId,
-                              communityCategoryId: categoryId,
-                              title: titleValue,
-                              content,
-                              isNsfw: !nsfwLabel.hidden && nsfwInput.checked,
-                          }),
-                      });
+                    ? await api.posts.update(post.postId, { title: titleValue, content, communityCategoryId: categoryId, ...(nsfwLabel.hidden ? {} : { isNsfw: nsfwInput.checked }) })
+                    : await api.posts.create({ communityId: options.communityId, communityCategoryId: categoryId, title: titleValue, content, isNsfw: !nsfwLabel.hidden && nsfwInput.checked });
                 if (!post) writeDraft(options.communityId, null);
                 finish(await syncImages(result.post));
             } catch (err) {

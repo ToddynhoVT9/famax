@@ -28,23 +28,7 @@ import { banUntil, isStaff } from "./shared/moderation.js";
 import { createMembersView } from "./community-members.js";
 import { createLeaderboard } from "./community-leaderboard.js";
 import { createEventsView, loadUpcomingWidget } from "./community-events.js";
-
-interface Community {
-    community_id: string;
-    name: string;
-    description: string | null;
-    rules: string | null;
-    cover_image_url: string | null;
-    owner_id: string;
-    category_name: string | null;
-    members_count: number;
-    my_role: "owner" | "moderator" | "member" | null;
-    is_banned: boolean;
-    my_ban_expires_at: string | null;
-    /** Comunidade +18, e se quem vê não pode ver. */
-    is_nsfw: boolean;
-    nsfw_blocked: boolean;
-}
+import type { Community } from "../../shared/api-types.js";
 
 type Tab = "all" | "unanswered" | "categories";
 type Sort = "new" | "hot" | "top" | "comments";
@@ -146,9 +130,9 @@ function renderHero(): void {
     const meta = $("communityMeta");
     if (meta) {
         meta.textContent = [
-            c.is_nsfw ? "+18" : null,
-            c.category_name,
-            `${c.members_count} ${c.members_count === 1 ? "membro" : "membros"}`,
+            c.isNsfw ? "+18" : null,
+            c.categoryName,
+            `${c.membersCount} ${c.membersCount === 1 ? "membro" : "membros"}`,
         ]
             .filter(Boolean)
             .join(" • ");
@@ -165,13 +149,13 @@ function renderHero(): void {
     const initial = $("communityInitial");
     if (banner) {
         banner.className = "tf-community-banner";
-        if (c.cover_image_url) {
-            banner.style.backgroundImage = `url(${JSON.stringify(c.cover_image_url)})`;
+        if (c.coverImageUrl) {
+            banner.style.backgroundImage = `url(${JSON.stringify(c.coverImageUrl)})`;
             banner.classList.add("has-image");
             if (initial) initial.textContent = "";
         } else {
             banner.style.backgroundImage = "";
-            banner.classList.add(avatarColor(c.community_id));
+            banner.classList.add(avatarColor(c.communityId));
             if (initial) initial.textContent = c.name.trim().charAt(0).toUpperCase();
         }
     }
@@ -187,8 +171,8 @@ function renderNsfwBanner(c: Community): void {
     document.getElementById("nsfwBanner")?.remove();
     // Sem acesso não há como publicar: o "Compartilhe-os" levaria a um 403.
     const greeting = $("btnCreatePost")?.closest<HTMLElement>(".tf-widget");
-    if (greeting) greeting.hidden = c.nsfw_blocked;
-    if (!c.nsfw_blocked) return;
+    if (greeting) greeting.hidden = c.nsfwBlocked;
+    if (!c.nsfwBlocked) return;
     const banner = document.createElement("p");
     banner.id = "nsfwBanner";
     banner.className = "tf-nsfw-banner";
@@ -214,22 +198,22 @@ function renderActions(): void {
     };
 
     // Dono e moderadores: atalho para a fila de denúncias.
-    if (isStaff(community.my_role)) {
+    if (isStaff(community.myRole)) {
         const moderation = document.createElement("a");
         moderation.className = "tf-btn-join tf-btn-secondary";
-        moderation.href = moderationUrl(community.community_id);
+        moderation.href = moderationUrl(community.communityId);
         moderation.textContent = "Moderação";
         actions.append(moderation);
     }
 
     // Dono: editar (sair não existe para ele — ver leave no backend).
-    if (community.my_role === "owner") {
+    if (community.myRole === "owner") {
         const badge = document.createElement("span");
         badge.className = "tf-owner-badge";
         badge.textContent = "Você é o dono";
         const edit = document.createElement("a");
         edit.className = "tf-btn-join";
-        edit.href = communityEditUrl(community.community_id);
+        edit.href = communityEditUrl(community.communityId);
         edit.textContent = "Editar comunidade";
         actions.prepend(badge);
         actions.append(edit);
@@ -237,16 +221,16 @@ function renderActions(): void {
     }
 
     // Banido: no lugar do "Participar", o aviso com o prazo.
-    if (community.is_banned) {
+    if (community.isBanned) {
         const banned = document.createElement("span");
         banned.className = "tf-banned-badge";
-        banned.textContent = `Você está banido desta comunidade (${banUntil(community.my_ban_expires_at)})`;
+        banned.textContent = `Você está banido desta comunidade (${banUntil(community.myBanExpiresAt)})`;
         actions.append(banned);
         return;
     }
 
     // Membro: "Participando ✓" abre um menu com "Sair".
-    if (community.my_role) {
+    if (community.myRole) {
         const wrapper = document.createElement("div");
         wrapper.className = "tf-member-menu";
         const toggle = button("Participando ✓", "tf-btn-join tf-btn-joined");
@@ -278,7 +262,7 @@ function renderActions(): void {
     }
 
     // +18 sem conteúdo adulto liberado: não há como entrar (a API recusa).
-    if (community.nsfw_blocked && getToken()) return;
+    if (community.nsfwBlocked && getToken()) return;
 
     // Visitante ou não-membro: participar (visitante vai ao login).
     const join = button("Participar");
@@ -289,9 +273,7 @@ function renderActions(): void {
 async function loadCommunity(): Promise<void> {
     if (!communityId) return;
     try {
-        const result = await api<{ community: Community; categories: PostCategory[] }>(
-            `/communities/${encodeURIComponent(communityId)}`,
-        );
+        const result = await api.communities.get(communityId);
         community = result.community;
         categories = result.categories;
         renderHero();
@@ -308,7 +290,7 @@ async function joinCommunity(button?: HTMLButtonElement): Promise<boolean> {
     if (!communityId || !ensureLoggedIn()) return false;
     if (button) button.disabled = true;
     try {
-        await api(`/communities/${encodeURIComponent(communityId)}/join`, { method: "POST" });
+        await api.communities.join(communityId);
         await loadCommunity(); // atualiza papel e contagem de membros
         void refreshMyCommunities();
         toast("Agora você participa desta comunidade.");
@@ -331,7 +313,7 @@ async function leaveCommunity(): Promise<void> {
     if (!ok) return;
 
     try {
-        await api(`/communities/${encodeURIComponent(communityId)}/leave`, { method: "POST" });
+        await api.communities.leave(communityId);
         await loadCommunity();
         void refreshMyCommunities();
         toast("Você saiu da comunidade.");
@@ -402,7 +384,7 @@ function renderChips(): void {
     };
     chipsEl.replaceChildren(
         chip("Todas", null),
-        ...categories.map((c) => chip(c.name, c.community_category_id)),
+        ...categories.map((c) => chip(c.name, c.communityCategoryId)),
     );
 }
 
@@ -474,7 +456,7 @@ const membersView =
     communityId && membersRoot
         ? createMembersView(membersRoot, {
               communityId,
-              viewerRole: () => community?.my_role ?? null,
+              viewerRole: () => community?.myRole ?? null,
               communityName: () => community?.name ?? "",
               onCommunityChanged: loadCommunity,
           })
@@ -490,7 +472,7 @@ const eventsView =
     communityId && eventsRoot
         ? createEventsView(eventsRoot, {
               communityId,
-              viewerRole: () => community?.my_role ?? null,
+              viewerRole: () => community?.myRole ?? null,
               onChanged: refreshUpcoming,
           })
         : null;
@@ -513,8 +495,8 @@ function renderRules(): void {
     text.textContent = community.rules?.trim() || "Esta comunidade ainda não tem regras escritas.";
     text.classList.toggle("is-empty", !community.rules?.trim());
     if (edit) {
-        edit.hidden = community.my_role !== "owner";
-        edit.href = communityEditUrl(community.community_id);
+        edit.hidden = community.myRole !== "owner";
+        edit.href = communityEditUrl(community.communityId);
     }
 }
 
@@ -579,14 +561,16 @@ async function loadPosts(reset: boolean): Promise<void> {
     }
     loadMoreBtn.disabled = true;
 
-    const params = new URLSearchParams({ page: String(page + 1), limit: String(POSTS_PER_PAGE), sort });
-    if (tab === "unanswered") params.set("unanswered", "true");
-    if (tab === "categories" && categoryFilter) params.set("categoryId", categoryFilter);
+    const query = {
+        page: page + 1,
+        limit: POSTS_PER_PAGE,
+        sort,
+        unanswered: tab === "unanswered" ? true : undefined,
+        categoryId: tab === "categories" ? categoryFilter : null,
+    };
 
     try {
-        const result = await api<{ data: Post[]; pagination: { totalPages: number } }>(
-            `/communities/${encodeURIComponent(communityId)}/posts?${params}`,
-        );
+        const result = await api.communities.posts(communityId, query);
         if (seq !== feedSeq) return;
 
         page += 1;
@@ -617,7 +601,7 @@ loadMoreBtn?.addEventListener("click", () => void loadPosts(false));
 
 /** O post novo aparece na lista atual se ela o incluiria. */
 function matchesCurrentFilter(post: Post): boolean {
-    if (tab === "categories" && categoryFilter) return post.community_category_id === categoryFilter;
+    if (tab === "categories" && categoryFilter) return post.communityCategoryId === categoryFilter;
     return true; // "Conversas" e "Ajudar os outros" (post novo tem 0 respostas)
 }
 
@@ -632,7 +616,7 @@ async function editPost(post: Post): Promise<void> {
 
 $("btnCreatePost")?.addEventListener("click", async () => {
     if (!communityId || !thread || !postsList || !ensureLoggedIn()) return;
-    if (!community?.my_role) {
+    if (!community?.myRole) {
         // Só membros publicam: oferece entrar em vez de deixar o erro 403.
         const ok = await confirmDialog({
             title: "Participar para publicar?",

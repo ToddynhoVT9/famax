@@ -80,20 +80,7 @@ if (
     registerButton.disabled = true;
 
     try {
-      const { token } = await api<{ token: string; user: unknown }>(
-        "/auth/register",
-        {
-          method: "POST",
-          body: JSON.stringify({
-            email,
-            username,
-            password,
-            displayName,
-            termsAccepted: true,
-            isPrivate: privateCheckbox.checked,
-          }),
-        },
-      );
+      const { token } = await api.auth.register({ email, username, password, displayName, termsAccepted: true, isPrivate: privateCheckbox.checked });
       setToken(token);
       // Já sai logado do cadastro: vai direto para a home, como no login.
       window.location.href = pages.home;

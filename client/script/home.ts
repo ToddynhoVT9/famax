@@ -18,23 +18,9 @@ import { avatarColor, escapeHtml, truncate } from "./shared/dom.js";
 import { toast } from "./shared/dialog.js";
 import { createPostThread, type Post } from "./shared/post-thread.js";
 import { emptyState, skeleton } from "./shared/skeleton.js";
+import type { Category, CommunityCard } from "../../shared/api-types.js";
 
 initLayout();
-
-interface CommunityCard {
-    community_id: string;
-    name: string;
-    description: string | null;
-    cover_image_url: string | null;
-    category_id: string | null;
-    category_name: string | null;
-    members_count: number;
-}
-
-interface Category {
-    category_id: string;
-    name: string;
-}
 
 const feed = document.getElementById("homeFeed");
 const chipsEl = document.getElementById("homeChips");
@@ -43,17 +29,17 @@ let categoryFilter = new URLSearchParams(window.location.search).get("categoryId
 let feedSeq = 0;
 
 function renderCard(community: CommunityCard): string {
-    const href = escapeHtml(communityUrl(community.community_id));
-    const members = `${community.members_count} ${community.members_count === 1 ? "membro" : "membros"}`;
+    const href = escapeHtml(communityUrl(community.communityId));
+    const members = `${community.membersCount} ${community.membersCount === 1 ? "membro" : "membros"}`;
     const description = community.description
         ? `<span class="card-description">${escapeHtml(truncate(community.description, 90))}</span>`
         : "";
 
     // A capa entra como background-image porque .card já define tamanho e
     // cantos. Sem capa: gradiente na cor estável da comunidade + a inicial.
-    const cover = community.cover_image_url
-        ? `<div class="card-cover" style="background-image:url('${escapeHtml(community.cover_image_url)}')"></div>`
-        : `<div class="card-cover card-cover--placeholder ${avatarColor(community.community_id)}">
+    const cover = community.coverImageUrl
+        ? `<div class="card-cover" style="background-image:url('${escapeHtml(community.coverImageUrl)}')"></div>`
+        : `<div class="card-cover card-cover--placeholder ${avatarColor(community.communityId)}">
                <span class="card-initial" aria-hidden="true">${escapeHtml(community.name.trim().charAt(0).toUpperCase())}</span>
            </div>`;
 
@@ -93,7 +79,7 @@ async function loadFeed(): Promise<void> {
     try {
         const params = new URLSearchParams({ limit: "50" });
         if (categoryFilter) params.set("categoryId", categoryFilter);
-        const { data } = await api<{ data: CommunityCard[] }>(`/communities?${params}`);
+        const { data } = await api.communities.list({ limit: 50, categoryId: categoryFilter });
         if (seq !== feedSeq) return;
 
         if (data.length === 0) {
@@ -112,7 +98,7 @@ async function loadFeed(): Promise<void> {
         // Agrupa preservando a ordem de chegada das categorias.
         const groups = new Map<string, CommunityCard[]>();
         for (const community of data) {
-            const key = community.category_name ?? "Outros";
+            const key = community.categoryName ?? "Outros";
             const list = groups.get(key);
             if (list) list.push(community);
             else groups.set(key, [community]);
@@ -154,13 +140,13 @@ function renderChips(categories: Category[]): void {
     };
     chipsEl.replaceChildren(
         chip("Todas", null),
-        ...categories.map((c) => chip(c.name, c.category_id)),
+        ...categories.map((c) => chip(c.name, c.categoryId)),
     );
 }
 
 async function loadCategories(): Promise<void> {
     try {
-        const { data } = await api<{ data: Category[] }>("/categories");
+        const { data } = await api.categories.list();
         renderChips(data);
     } catch {
         // Sem chips a home continua funcionando, só sem o filtro.
@@ -217,9 +203,7 @@ async function loadFollowing(reset: boolean): Promise<void> {
     }
     followingMore.disabled = true;
     try {
-        const result = await api<{ data: Post[]; pagination: { totalPages: number } }>(
-            `/feed/following?page=${followingPage + 1}&limit=${FOLLOWING_PER_PAGE}`,
-        );
+        const result = await api.feed.following({ page: followingPage + 1, limit: FOLLOWING_PER_PAGE });
         followingPage += 1;
         if (reset) followingList.innerHTML = "";
         followingThread.add(result.data);
