@@ -40,6 +40,7 @@ export default defineConfig({
         moderation: resolvePath("./client/html/community/moderation.html"),
         adminReports: resolvePath("./client/html/admin/reports.html"),
         notifications: resolvePath("./client/html/notifications.html"),
+        verifyEmail: resolvePath("./client/html/user-pages/verify-email.html"),
       },
     },
   },

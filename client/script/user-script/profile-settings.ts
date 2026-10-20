@@ -14,6 +14,7 @@ import { requireLogin } from "../shared/auth-guard.js";
 import { initLayout, updateHeaderUser } from "../shared/layout.js";
 import { avatarColor, initials } from "../shared/dom.js";
 import { MAX_SOCIAL_LINKS, SOCIAL_PLATFORM_LABELS } from "../shared/social.js";
+import { initAccountSecurity } from "./account-security.js";
 
 requireLogin();
 initLayout();
@@ -53,6 +54,9 @@ function apply(next: Me): void {
     updateHeaderUser(next);
     render(next);
 }
+
+const securityCards = $("securityCards");
+const security = securityCards ? initAccountSecurity(securityCards, { apply }) : null;
 
 // ===========================================================================
 // Render
@@ -137,6 +141,7 @@ function render(user: Me): void {
         const n = user.socialLinks.length;
         socialCount.textContent = n === 0 ? "nenhuma" : n === 1 ? "1 link" : `${n} links`;
     }
+    security?.render(user);
 }
 
 // ===========================================================================

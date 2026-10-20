@@ -2,7 +2,9 @@ import { Router } from "express";
 import { z } from "zod";
 import { randomUUID } from "node:crypto";
 import { pool } from "../db.js";
-import { requireAuth } from "../middleware/auth.js";
+import { optionalAuth, requireAuth } from "../middleware/auth.js";
+import { blockedByViewer } from "../lib/blocks.js";
+import { NSFW_FORBIDDEN, postHiddenFor } from "../lib/nsfw.js";
 import { requirePostMembership } from "../middleware/membership.js";
 import { rateLimit } from "../lib/rate-limit.js";
 import { removeComment } from "../lib/moderation.js";
@@ -71,7 +73,7 @@ type CommentRow = {
  * Formato público de um comentário. Apagado vira "[comentário removido]" sem
  * autor nem texto: aparece só para a conversa embaixo dele não ficar órfã.
  */
-function present(row: CommentRow, repliesCount = 0) {
+function present(row: CommentRow, repliesCount = 0, blocked: Set<string> = new Set()) {
   const deleted = row.deleted_at !== null;
   return {
     comment_id: row.comment_id,
@@ -87,6 +89,8 @@ function present(row: CommentRow, repliesCount = 0) {
     author_display_name: deleted ? null : row.author_display_name,
     author_avatar_url: deleted ? null : row.author_avatar_url,
     author_role: deleted ? null : row.author_role,
+    // Quem vê bloqueou o autor: o front recolhe o comentário ("mostrar").
+    author_blocked_by_me: !deleted && blocked.has(row.author_id),
   };
 }
 
@@ -119,7 +123,7 @@ function decodeCursor(cursor: string): { createdAt: string; commentId: string } 
 // repetiriam ou pulariam itens.
 // ===========================================================================
 
-router.get("/posts/:postId/comments", async (req, res, next) => {
+router.get("/posts/:postId/comments", optionalAuth, async (req, res, next) => {
   try {
     const { postId } = postIdParam.parse(req.params);
     const { cursor, limit } = listQuery.parse(req.query);
@@ -130,6 +134,9 @@ router.get("/posts/:postId/comments", async (req, res, next) => {
     );
     if (post.length === 0) {
       return res.status(404).json({ error: "Post não encontrado" });
+    }
+    if (await postHiddenFor(postId, req.userId)) {
+      return res.status(403).json({ error: NSFW_FORBIDDEN, code: "NSFW" });
     }
 
     const after = cursor ? decodeCursor(cursor) : null;
@@ -193,10 +200,11 @@ router.get("/posts/:postId/comments", async (req, res, next) => {
       }
     }
 
+    const blocked = await blockedByViewer(req.userId);
     res.json({
       data: rows
         .filter((row) => kept.has(row.comment_id))
-        .map((row) => present(row, keptChildren.get(row.comment_id) ?? 0)),
+        .map((row) => present(row, keptChildren.get(row.comment_id) ?? 0, blocked)),
       nextCursor: hasMore && last ? encodeCursor(last.created_at_text, last.comment_id) : null,
     });
   } catch (err) {
@@ -229,6 +237,10 @@ router.post(
       const { postId } = postIdParam.parse(req.params);
       const data = createCommentSchema.parse(req.body);
       const commentId = randomUUID();
+
+      if (await postHiddenFor(postId, req.userId, client)) {
+        return res.status(403).json({ error: NSFW_FORBIDDEN, code: "NSFW" });
+      }
 
       // A resposta precisa pertencer ao mesmo post — sem esta checagem dá para
       // pendurar um comentário do post A como resposta de um comentário do B.

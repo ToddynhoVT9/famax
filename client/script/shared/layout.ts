@@ -205,6 +205,40 @@ export function updateHeaderUser(me: Me): void {
     if (userAreaEl) renderUserArea(userAreaEl, me);
 }
 
+/**
+ * Faixa no topo do conteúdo enquanto o e-mail não foi confirmado: sem ele não
+ * dá para criar comunidade nem mandar mensagem (middleware/verified-email.ts).
+ * Some na página de verificação, que já trata do assunto.
+ */
+function renderVerifyBanner(me: Me): void {
+    const main = document.getElementById("main-content");
+    document.getElementById("verifyBanner")?.remove();
+    if (!main || me.emailVerified || window.location.pathname === pages.verifyEmail) return;
+
+    const banner = el("div", "verify-banner");
+    banner.id = "verifyBanner";
+    banner.setAttribute("role", "status");
+    const text = el("span", "verify-banner-text");
+    text.append("Confirme seu e-mail ", el("strong", "", me.email), " para criar comunidades e mandar mensagens.");
+    const resend = el("button", "verify-banner-btn", "Reenviar link");
+    resend.type = "button";
+    const settings = el("a", "verify-banner-link", "Trocar e-mail");
+    settings.href = pages.settings;
+    banner.append(text, resend, settings);
+
+    resend.addEventListener("click", async () => {
+        resend.disabled = true;
+        try {
+            const { message } = await api<{ message: string }>("/auth/resend-verification", { method: "POST" });
+            text.textContent = message;
+        } catch (err) {
+            text.textContent = err instanceof Error ? err.message : "Não foi possível reenviar.";
+            resend.disabled = false;
+        }
+    });
+    main.prepend(banner);
+}
+
 function renderHeader(header: HTMLElement): void {
     header.innerHTML = HEADER_HTML;
 
@@ -227,7 +261,10 @@ function renderHeader(header: HTMLElement): void {
     area.setAttribute("aria-busy", "true");
 
     getMe()
-        .then((me) => renderUserArea(area, me))
+        .then((me) => {
+            renderUserArea(area, me);
+            renderVerifyBanner(me);
+        })
         .catch(() => {
             // 401: o api() já limpou o token (e redireciona se a página exige
             // login). Erro de rede: melhor mostrar "Entrar" do que um vazio.

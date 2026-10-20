@@ -61,3 +61,38 @@
 .btn-login:hover {
     background-color: #888888;
 }
+
+/* ----- Passos do login (verificação em duas etapas) ----- */
+/* Mesmo arranjo do .form-group: os campos de cada passo em coluna. */
+.login-step {
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+.login-step[hidden] {
+    display: none;
+}
+
+.login-step-text,
+.login-step-hint {
+    margin: 0 0 10px;
+    text-align: center;
+    color: #dddddd;
+}
+
+.login-step-hint {
+    font-size: 0.85rem;
+    color: #aaaaaa;
+}
+
+.login-link-btn {
+    margin-top: 10px;
+    background: none;
+    border: none;
+    color: #dddddd;
+    text-decoration: underline;
+    cursor: pointer;
+    font: inherit;
+}

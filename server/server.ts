@@ -22,6 +22,9 @@ import leaderboardRoutes from "./routes/leaderboard.routes.js";
 import followsRoutes from "./routes/follows.routes.js";
 import eventsRoutes from "./routes/events.routes.js";
 import streamRoutes from "./routes/stream.routes.js";
+import twoFactorRoutes from "./routes/two-factor.routes.js";
+import accountRoutes from "./routes/account.routes.js";
+import blocksRoutes from "./routes/blocks.routes.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const publicDir = path.join(__dirname, "public");
@@ -100,6 +103,9 @@ app.use("/api", leaderboardRoutes);
 app.use("/api", followsRoutes);
 app.use("/api", eventsRoutes);
 app.use("/api", streamRoutes);
+app.use("/api", twoFactorRoutes);
+app.use("/api", accountRoutes);
+app.use("/api", blocksRoutes);
 app.use("/api/conversations", chatRoutes);
 
 // FRONTEND ESTÁTICO
@@ -199,6 +205,11 @@ async function initDatabase() {
   // cai para o barramento em memória (ver lib/realtime.ts).
   const { startRealtimeBus } = await import("./lib/realtime.js");
   await startRealtimeBus();
+
+  // Exclusão definitiva das contas cujo prazo de reativação acabou (agora e
+  // a cada 6 h; ver lib/account.ts).
+  const { scheduleAccountPurge } = await import("./lib/account.js");
+  scheduleAccountPurge();
 
   // Mantém o dbState honesto depois do boot: sem isto, um banco externo que
   // caísse deixava a aplicação liberando rotas que respondiam 500 em vez do

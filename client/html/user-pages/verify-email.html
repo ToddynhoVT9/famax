@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FAMAX - Confirmar e-mail</title>
+    <!-- O token vem no fragmento (#token=): não vai para o servidor nem para o Referer. -->
+    <meta name="referrer" content="no-referrer">
+    <link rel="stylesheet" href="../../css/global.css">
+    <link rel="stylesheet" href="../../css/auth/auth-common.css">
+    <link rel="stylesheet" href="../../css/auth/recover-password.css">
+</head>
+<body>
+    <div class="header">
+        <h1>FAMAX</h1>
+        <div class="subtitle">Logo</div>
+    </div>
+
+    <main class="recovery-container" aria-live="polite">
+        <h2 class="recovery-title" id="verifyTitle">Confirmando seu e-mail...</h2>
+        <p class="recovery-text" id="verifyText">Só um instante.</p>
+        <a class="btn-generate" id="verifyContinue" href="../home.html" hidden>Continuar</a>
+    </main>
+
+    <script type="module" src="../../script/user-script/verify-email.ts"></script>
+</body>
+</html>

@@ -19,6 +19,7 @@ import { communityUrl, pages, postUrl } from "../shared/pages.js";
 import { avatarColor, initials, queryParam, timeAgo, truncate } from "../shared/dom.js";
 import { SOCIAL_PLATFORM_LABELS, isSafeLink } from "../shared/social.js";
 import { openReportDialog } from "../shared/moderation.js";
+import { confirmDialog, toast } from "../shared/dialog.js";
 import { bindFollowButton, openFollowList } from "../shared/follow.js";
 import { markdownToText } from "../shared/markdown.js";
 import { openChatWith } from "../shared/chat-bus.js";
@@ -42,6 +43,8 @@ interface PublicProfile {
     isOwner: boolean;
     /** Quem vê segue este perfil (sempre false sem sessão). */
     followedByMe?: boolean;
+    /** Quem vê bloqueou este perfil. */
+    blockedByMe?: boolean;
     // Ausentes quando o perfil é privado e quem vê não é o dono.
     nickname?: string | null;
     bannerUrl?: string | null;
@@ -60,6 +63,8 @@ interface ProfilePost {
     created_at: string;
     community_id: string;
     community_name: string;
+    /** +18 e quem vê não pode ver: veio sem conteúdo. */
+    nsfw_hidden?: boolean;
 }
 
 interface ProfileComment {
@@ -276,7 +281,9 @@ function renderPostItem(post: ProfilePost): HTMLElement {
 
     const snippet = document.createElement("p");
     snippet.className = "profile-item-snippet";
-    snippet.textContent = truncate(markdownToText(post.content), 220);
+    snippet.textContent = post.nsfw_hidden
+        ? "Conteúdo para maiores de 18."
+        : truncate(markdownToText(post.content), 220);
 
     const stats = document.createElement("div");
     stats.className = "profile-item-stats";
@@ -480,5 +487,37 @@ function setupReportMenu(profile: PublicProfile): void {
     report.addEventListener("click", () => {
         setOpen(false);
         void openReportDialog("user", profile.userId);
+    });
+
+    // Bloquear / desbloquear. Bloquear desfaz os follows entre os dois, então
+    // o botão Seguir e o contador são recarregados com o perfil.
+    const block = document.getElementById("btnBlockUser");
+    let blocked = profile.blockedByMe ?? false;
+    const name = profile.displayName ?? profile.username;
+    const renderBlock = (): void => {
+        if (block) block.textContent = blocked ? "Desbloquear" : "Bloquear";
+    };
+    renderBlock();
+    block?.addEventListener("click", async () => {
+        setOpen(false);
+        if (!blocked) {
+            const ok = await confirmDialog({
+                title: `Bloquear ${name}?`,
+                message:
+                    "Vocês não poderão trocar mensagens nem se seguir, os posts e comentários dessa pessoa aparecem recolhidos para você e ela some das suas buscas. Ela não é avisada.",
+                confirmLabel: "Bloquear",
+                danger: true,
+            });
+            if (!ok) return;
+        }
+        try {
+            await api(`/users/${encodeURIComponent(profile.userId)}/block`, { method: blocked ? "DELETE" : "POST" });
+            blocked = !blocked;
+            renderBlock();
+            toast(blocked ? `${name} foi bloqueado(a).` : `${name} foi desbloqueado(a).`);
+            if (blocked) window.setTimeout(() => window.location.reload(), 800);
+        } catch (err) {
+            toast(err instanceof Error ? err.message : "Não foi possível bloquear.", "error");
+        }
     });
 }

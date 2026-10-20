@@ -17,6 +17,7 @@ import { rateLimit } from "../lib/rate-limit.js";
 import { removePost } from "../lib/moderation.js";
 import { addPoints, POINTS } from "../lib/points.js";
 import { notifyMentions } from "../lib/mentions.js";
+import { NSFW_FORBIDDEN, isAdult, nsfwHiddenSql } from "../lib/nsfw.js";
 
 const router = Router();
 
@@ -86,7 +87,11 @@ const POST_SELECT = `
   SELECT
     p.post_id,
     p.title,
-    p.content,
+    -- +18 para quem não pode ver: sem conteúdo nem imagens, só o título.
+    CASE WHEN nsfw.hidden THEN '' ELSE p.content END AS content,
+    (p.is_nsfw OR cm.is_nsfw) AS is_nsfw,
+    nsfw.hidden AS nsfw_hidden,
+    p.is_nsfw AS post_is_nsfw,
     p.likes_count,
     p.comments_count,
     p.created_at,
@@ -118,13 +123,17 @@ const POST_SELECT = `
     EXISTS (
       SELECT 1 FROM saved_posts s WHERE s.post_id = p.post_id AND s.user_id = $1
     ) AS saved_by_me,
-    (SELECT COALESCE(
+    EXISTS (
+      SELECT 1 FROM user_blocks b WHERE b.blocker_id = $1 AND b.blocked_id = p.author_id
+    ) AS author_blocked_by_me,
+    CASE WHEN nsfw.hidden THEN '[]'::jsonb ELSE (SELECT COALESCE(
        jsonb_agg(jsonb_build_object('image_id', pi.image_id, 'url', pi.url)
                  ORDER BY pi.position, pi.created_at),
        '[]'::jsonb)
-     FROM post_images pi WHERE pi.post_id = p.post_id) AS images
+     FROM post_images pi WHERE pi.post_id = p.post_id) END AS images
   FROM posts p
   INNER JOIN communities cm    ON cm.community_id = p.community_id
+  CROSS JOIN LATERAL (SELECT ${nsfwHiddenSql("$1")} AS hidden) nsfw
   INNER JOIN users u           ON u.user_id  = p.author_id
   LEFT  JOIN user_profiles up  ON up.user_id = p.author_id
   LEFT  JOIN community_categories cc
@@ -303,7 +312,22 @@ const createPostSchema = z.object({
   communityCategoryId: z.string().uuid().nullish(),
   title: titleSchema,
   content: contentSchema,
+  // Post +18 numa comunidade comum (exige is_adult de quem publica).
+  isNsfw: z.boolean().default(false),
 });
+
+/**
+ * Publicar conteúdo +18 — post marcado ou em comunidade +18 — exige
+ * is_adult. Devolve a mensagem de erro, ou null.
+ */
+async function nsfwPublishError(userId: string, communityId: string, isNsfw: boolean): Promise<string | null> {
+  const { rows } = await pool.query<{ is_nsfw: boolean }>(
+    "SELECT is_nsfw FROM communities WHERE community_id = $1",
+    [communityId],
+  );
+  if (!isNsfw && !rows[0]?.is_nsfw) return null;
+  return (await isAdult(userId)) ? null : NSFW_FORBIDDEN;
+}
 
 /**
  * A FK só garante que a subcategoria existe, não que é desta comunidade: sem
@@ -331,6 +355,9 @@ router.post(
     try {
       const data = createPostSchema.parse(req.body);
 
+      const nsfwError = await nsfwPublishError(req.userId!, data.communityId, data.isNsfw);
+      if (nsfwError) return res.status(403).json({ error: nsfwError });
+
       if (
         data.communityCategoryId &&
         !(await categoryBelongs(data.communityCategoryId, data.communityId))
@@ -348,8 +375,8 @@ router.post(
         await client.query("BEGIN");
         await client.query(
           `INSERT INTO posts
-             (post_id, community_id, community_category_id, author_id, title, content)
-           VALUES ($1, $2, $3, $4, $5, $6)`,
+             (post_id, community_id, community_category_id, author_id, title, content, is_nsfw)
+           VALUES ($1, $2, $3, $4, $5, $6, $7)`,
           [
             postId,
             data.communityId,
@@ -357,6 +384,7 @@ router.post(
             req.userId,
             data.title,
             data.content,
+            data.isNsfw,
           ],
         );
         await addPoints(client, {
@@ -402,6 +430,7 @@ const editPostSchema = z
     title: titleSchema.optional(),
     content: contentSchema.optional(),
     communityCategoryId: z.string().uuid("Categoria inválida").nullable().optional(),
+    isNsfw: z.boolean().optional(),
   })
   .strict()
   .refine((data) => Object.keys(data).length > 0, "Nada para atualizar");
@@ -427,6 +456,9 @@ router.patch("/posts/:postId", requireAuth, async (req, res, next) => {
     ) {
       return res.status(400).json({ error: "Categoria não pertence a esta comunidade" });
     }
+    if (data.isNsfw && !(await isAdult(req.userId))) {
+      return res.status(403).json({ error: NSFW_FORBIDDEN });
+    }
 
     const sets = ["edited_at = NOW()"];
     const params: unknown[] = [postId];
@@ -441,6 +473,10 @@ router.patch("/posts/:postId", requireAuth, async (req, res, next) => {
     if (data.communityCategoryId !== undefined) {
       params.push(data.communityCategoryId);
       sets.push(`community_category_id = $${params.length}`);
+    }
+    if (data.isNsfw !== undefined) {
+      params.push(data.isNsfw);
+      sets.push(`is_nsfw = $${params.length}`);
     }
 
     // Edição e menções novas juntas: só quem não estava mencionado antes é

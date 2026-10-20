@@ -48,6 +48,10 @@ node -e "console.log(require('crypto').randomBytes(48).toString('base64url'))"
 | `SUPABASE_URL` | não | Project URL — necessária para upload de capa |
 | `SUPABASE_SERVICE_KEY` | não | Chave `service_role` — necessária para upload de capa |
 | `SUPABASE_COVERS_BUCKET` | não | Bucket das capas (padrão `community-covers`) |
+| `APP_URL` | em produção | Endereço público do site, para os links dos e-mails (verificação de e-mail) |
+| `TWO_FACTOR_KEY` | para 2FA | 32 bytes em hex — cifra os segredos da verificação em duas etapas. Sem ela a 2FA fica indisponível |
+| `REALTIME_BUS` | não | `postgres` (LISTEN/NOTIFY, várias instâncias) ou `memory` (uma instância). Padrão: `postgres` no external, `memory` no embedded |
+| `REALTIME_DATABASE_URL` | não | Conexão de sessão para o LISTEN, se a `DATABASE_URL` for o pooler em modo transação |
 
 ### Rate limit e proxy
 
@@ -71,6 +75,21 @@ subir, para o erro aparecer no deploy e não quando alguém esquecer a senha.
 
 Sem `SUPABASE_URL`/`SUPABASE_SERVICE_KEY` o upload de capa é desativado: a
 comunidade é criada sem imagem e o resto do fluxo continua funcionando.
+
+O cadastro também manda um link de verificação de e-mail (vale 24 h). O link
+usa `APP_URL`; sem ela, o host da requisição. Sem e-mail verificado a conta
+navega, publica e comenta, mas não cria comunidade nem manda mensagem no chat.
+
+### Conta e segurança
+
+- **Verificação em duas etapas (TOTP):** exige `TWO_FACTOR_KEY`. O segredo de
+  cada pessoa fica cifrado com ela no banco — guarde a chave junto com os
+  outros segredos e não a troque depois que alguém ativar a 2FA.
+- **Excluir conta:** o perfil é anonimizado na hora e a pessoa tem 30 dias
+  para reativar entrando com a senha. Um job (no boot e a cada 6 h) faz a
+  exclusão definitiva depois do prazo: troca e-mail e username, apaga
+  vínculos e imagens. Posts, comentários e mensagens ficam como "Usuário
+  removido". Durante os 30 dias o e-mail e o username continuam reservados.
 
 ## Banco de dados
 

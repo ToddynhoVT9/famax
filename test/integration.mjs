@@ -34,7 +34,13 @@ function check(name, condition, detail) {
     }
 }
 
-async function call(method, endpoint, { token, body, raw } = {}) {
+/**
+ * Chama a API. Cadastros bem-sucedidos já saem com o e-mail verificado (direto
+ * no banco), porque quase toda a suíte cria comunidade ou manda mensagem — o
+ * que a verificação trava. A seção de verificação de e-mail usa
+ * keepUnverified para exercitar o fluxo de verdade.
+ */
+async function call(method, endpoint, { token, body, raw, keepUnverified } = {}) {
     const headers = {};
     if (token) headers.Authorization = `Bearer ${token}`;
     if (body && !raw) headers["Content-Type"] = "application/json";
@@ -48,6 +54,9 @@ async function call(method, endpoint, { token, body, raw } = {}) {
     let payload = null;
     if (response.status !== 204) {
         payload = await response.json().catch(() => null);
+    }
+    if (method === "POST" && endpoint === "/auth/register" && response.status === 201 && !keepUnverified) {
+        await db.query("UPDATE users SET email_verified_at = NOW() WHERE user_id = $1", [payload.user.userId]);
     }
     return { status: response.status, body: payload };
 }
@@ -82,6 +91,8 @@ process.env.NODE_ENV = "development";
 // travaria a suíte. O barramento em memória cobre o mesmo caminho (ver
 // lib/realtime.ts).
 process.env.REALTIME_BUS = "memory";
+// Chave da 2FA só de teste (32 bytes em hex).
+process.env.TWO_FACTOR_KEY = "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef";
 
 console.log("Subindo a API...");
 await import("../server/server.js");
@@ -3837,6 +3848,727 @@ check(
 streamA.close();
 streamB.close();
 streamC.close();
+
+console.log("\n[Conta A] Verificação de e-mail");
+resetRateLimits();
+
+const a_tokenFromMail = (mail) => {
+    const link = mail?.text.match(/https?:\/\/\S+#token=(\S+)/)?.[1];
+    return link ? decodeURIComponent(link) : null;
+};
+
+const a_vEmail = `verif${stamp}@famax.test`;
+let a_vMark = outbox.length;
+const a_vReg = await call("POST", "/auth/register", {
+    keepUnverified: true,
+    body: {
+        email: a_vEmail,
+        username: `verif${stamp}`.slice(0, 30),
+        password: "senha123!forte",
+        displayName: "Vera Verificação",
+        termsAccepted: true,
+    },
+});
+const a_vToken = a_vReg.body?.token;
+const a_vMail = await nextMailTo(a_vEmail, a_vMark);
+check(
+    "cadastro manda o link de verificação e nasce não verificado",
+    a_vReg.status === 201 &&
+        a_vReg.body.user.emailVerified === false &&
+        Boolean(a_tokenFromMail(a_vMail)) &&
+        a_vMail.text.includes("/html/user-pages/verify-email.html#token=") &&
+        (await call("GET", "/me", { token: a_vToken })).body?.user?.emailVerified === false,
+    a_vMail?.text,
+);
+
+const a_blockedCommunity = await call("POST", "/communities", {
+    token: a_vToken,
+    body: { name: `Sem verificar ${stamp}`, categoryId },
+});
+check(
+    "sem verificar não cria comunidade (403 EMAIL_NOT_VERIFIED)",
+    a_blockedCommunity.status === 403 && a_blockedCommunity.body?.code === "EMAIL_NOT_VERIFIED",
+    JSON.stringify(a_blockedCommunity.body),
+);
+const a_vConv = await call("POST", "/conversations", { token: a_vToken, body: { userId: bobId } });
+const a_blockedMessage = await call("POST", `/conversations/${a_vConv.body?.conversationId}/messages`, {
+    token: a_vToken,
+    body: { content: "oi" },
+});
+check(
+    "sem verificar não manda mensagem; navegar e abrir conversa continuam livres",
+    a_vConv.status === 201 &&
+        a_blockedMessage.status === 403 &&
+        a_blockedMessage.body?.code === "EMAIL_NOT_VERIFIED" &&
+        (await call("GET", "/communities", { token: a_vToken })).status === 200,
+);
+
+a_vMark = outbox.length;
+const a_resend = await call("POST", "/auth/resend-verification", { token: a_vToken });
+const a_resentMail = await nextMailTo(a_vEmail, a_vMark);
+check("reenvio manda um link novo", a_resend.status === 200 && Boolean(a_tokenFromMail(a_resentMail)));
+await call("POST", "/auth/resend-verification", { token: a_vToken });
+await call("POST", "/auth/resend-verification", { token: a_vToken });
+check(
+    "reenvio tem limite",
+    (await call("POST", "/auth/resend-verification", { token: a_vToken })).status === 429,
+);
+
+check(
+    "token inválido → 400",
+    (await call("POST", "/auth/verify-email", { body: { token: "lixo" } })).status === 400,
+);
+const a_verified = await call("POST", "/auth/verify-email", { body: { token: a_tokenFromMail(a_vMail) } });
+check(
+    "link confirma o e-mail (sem precisar de sessão)",
+    a_verified.status === 200 && (await call("GET", "/me", { token: a_vToken })).body?.user?.emailVerified === true,
+    JSON.stringify(a_verified.body),
+);
+check(
+    "verificado cria comunidade",
+    (
+        await call("POST", "/communities", {
+            token: a_vToken,
+            body: { name: `Verificada ${stamp}`, categoryId },
+        })
+    ).status === 201,
+);
+resetRateLimits();
+check(
+    "já verificado: reenvio → 400",
+    (await call("POST", "/auth/resend-verification", { token: a_vToken })).status === 400,
+);
+
+// Troca de e-mail
+const a_newEmail = `verif-novo${stamp}@famax.test`;
+check(
+    "troca de e-mail exige a senha",
+    (await call("PATCH", "/me/email", { token: a_vToken, body: { a_newEmail, password: "errada" } })).status === 400,
+);
+check(
+    "troca para e-mail de outra conta → 409",
+    (await call("PATCH", "/me/email", { token: a_vToken, body: { newEmail: alice.email, password: "senha123!forte" } }))
+        .status === 409,
+);
+a_vMark = outbox.length;
+const a_change = await call("PATCH", "/me/email", {
+    token: a_vToken,
+    body: { newEmail: a_newEmail.toUpperCase(), password: "senha123!forte" },
+});
+const a_changeMail = await nextMailTo(a_newEmail, a_vMark);
+const a_noticeMail = await nextMailTo(a_vEmail, a_vMark);
+check(
+    "troca fica pendente: link para o novo, aviso para o antigo",
+    a_change.status === 200 &&
+        a_change.body?.user?.pendingEmail === a_newEmail &&
+        a_change.body.user.email === a_vEmail &&
+        Boolean(a_tokenFromMail(a_changeMail)) &&
+        a_noticeMail?.subject.includes("troca de e-mail"),
+    JSON.stringify(a_change.body?.user),
+);
+check(
+    "enquanto pendente, o login segue no e-mail antigo",
+    (await call("POST", "/auth/login", { body: { identifier: a_vEmail, password: "senha123!forte" } })).status === 200,
+);
+const a_confirmChange = await call("POST", "/auth/verify-email", { body: { token: a_tokenFromMail(a_changeMail) } });
+const a_afterChange = (await call("GET", "/me", { token: a_vToken })).body?.user;
+check(
+    "confirmar o link troca o e-mail",
+    a_confirmChange.status === 200 &&
+        a_afterChange?.email === a_newEmail &&
+        a_afterChange.pendingEmail === null &&
+        a_afterChange.emailVerified === true &&
+        (await call("POST", "/auth/login", { body: { identifier: a_newEmail, password: "senha123!forte" } })).status === 200,
+    JSON.stringify(a_afterChange),
+);
+check(
+    "link do e-mail antigo deixa de valer",
+    (await call("POST", "/auth/verify-email", { body: { token: a_tokenFromMail(a_vMail) } })).status === 400,
+);
+await call("PATCH", "/me/email", { token: a_vToken, body: { newEmail: `outro${stamp}@famax.test`, password: "senha123!forte" } });
+const a_cancelled = await call("DELETE", "/me/email/pending", { token: a_vToken });
+check("cancelar a troca pendente", a_cancelled.status === 200 && a_cancelled.body?.user?.pendingEmail === null);
+
+console.log("\n[Conta B] Verificação em duas etapas");
+resetRateLimits();
+
+const b_OTPAuth = await import("otpauth");
+const b_tfUser = await newUser("tfa");
+const b_tfName = `tfa${stamp}`.slice(0, 30);
+const b_codeAt = (secret, offsetSeconds = 0) =>
+    new b_OTPAuth.TOTP({ secret: b_OTPAuth.Secret.fromBase32(secret), digits: 6, period: 30, algorithm: "SHA1" }).generate({
+        timestamp: Date.now() + offsetSeconds * 1000,
+    });
+
+const b_setup = await call("POST", "/me/2fa/setup", { token: b_tfUser.token });
+const b_tfSecret = b_setup.body?.secret;
+check(
+    "setup devolve segredo, URI otpauth e QR",
+    b_setup.status === 200 &&
+        /^[A-Z2-7]+=*$/.test(b_tfSecret) &&
+        b_setup.body.otpauthUri.startsWith("otpauth://totp/FAMAX:") &&
+        b_setup.body.otpauthUri.includes(`secret=${b_tfSecret}`) &&
+        b_setup.body.qrCode.startsWith("data:image/png;base64,"),
+    JSON.stringify(b_setup.body).slice(0, 200),
+);
+const { rows: b_storedSecret } = await db.query(
+    "SELECT two_factor_pending_secret AS s, two_factor_enabled AS on FROM users WHERE user_id = $1",
+    [b_tfUser.id],
+);
+check(
+    "segredo fica cifrado no banco e a 2FA ainda não liga",
+    b_storedSecret[0].s.startsWith("v1:") && !b_storedSecret[0].s.includes(b_tfSecret) && b_storedSecret[0].on === false,
+);
+check(
+    "ativar com código errado → 400",
+    (await call("POST", "/me/2fa/enable", { token: b_tfUser.token, body: { code: "000000" } })).status === 400,
+);
+// Guardado: o teste de replay usa o MESMO código (recalcular poderia cair no
+// passo seguinte, se a suíte cruzasse a virada dos 30 s).
+const b_enableCode = b_codeAt(b_tfSecret);
+const b_enabled = await call("POST", "/me/2fa/enable", { token: b_tfUser.token, body: { code: b_enableCode } });
+const b_recoveryCodes = b_enabled.body?.recoveryCodes ?? [];
+check(
+    "ativar com o código do app liga a 2FA e mostra 10 códigos de recuperação",
+    b_enabled.status === 200 && b_recoveryCodes.length === 10 && /^[a-z2-9]{5}-[a-z2-9]{5}$/.test(b_recoveryCodes[0]),
+    JSON.stringify(b_enabled.body),
+);
+check(
+    "/me mostra a 2FA ativa e os códigos restantes",
+    (await call("GET", "/me", { token: b_tfUser.token })).body?.user?.twoFactorEnabled === true &&
+        (await call("GET", "/me", { token: b_tfUser.token })).body.user.recoveryCodesLeft === 10,
+);
+check(
+    "códigos de recuperação ficam só como hash",
+    (await db.query("SELECT 1 FROM two_factor_recovery_codes WHERE code_hash LIKE $1", [`%${b_recoveryCodes[0]}%`])).rows
+        .length === 0,
+);
+
+const b_tfLogin = () => call("POST", "/auth/login", { body: { identifier: b_tfName, password: "senha123!forte" } });
+const b_step1 = await b_tfLogin();
+check(
+    "login com 2FA não abre sessão: devolve mfaToken",
+    b_step1.status === 200 && b_step1.body?.mfaRequired === true && Boolean(b_step1.body.mfaToken) && !b_step1.body.token,
+    JSON.stringify(b_step1.body),
+);
+check("mfaToken não vale como sessão", (await call("GET", "/me", { token: b_step1.body.mfaToken })).status === 401);
+const b_mfa = (mfaToken, code) => call("POST", "/auth/login/2fa", { body: { mfaToken, code } });
+check("segundo passo com código errado → 400", (await b_mfa(b_step1.body.mfaToken, "123456")).status === 400);
+check(
+    "código já usado (o da ativação) não serve de novo",
+    (await b_mfa(b_step1.body.mfaToken, b_enableCode)).status === 400,
+);
+const b_step2 = await b_mfa(b_step1.body.mfaToken, b_codeAt(b_tfSecret, 30));
+check(
+    "segundo passo com o código do app emite a sessão",
+    b_step2.status === 200 && Boolean(b_step2.body?.token) && (await call("GET", "/me", { token: b_step2.body.token })).status === 200,
+    JSON.stringify(b_step2.body),
+);
+check("mfaToken inválido → 401", (await b_mfa("lixo", "123456")).status === 401);
+
+const b_viaRecovery = await b_mfa((await b_tfLogin()).body.mfaToken, b_recoveryCodes[0].toUpperCase());
+check(
+    "código de recuperação entra e diz quantos sobraram",
+    b_viaRecovery.status === 200 && Boolean(b_viaRecovery.body?.token) && b_viaRecovery.body.recoveryCodesLeft === 9,
+    JSON.stringify(b_viaRecovery.body),
+);
+check(
+    "código de recuperação é de uso único",
+    (await b_mfa((await b_tfLogin()).body.mfaToken, b_recoveryCodes[0])).status === 400,
+);
+
+resetRateLimits();
+const b_regenerated = await call("POST", "/me/2fa/recovery-codes", {
+    token: b_tfUser.token,
+    body: { password: "senha123!forte", code: b_recoveryCodes[1] },
+});
+check(
+    "gerar códigos novos (senha + código) invalida os antigos",
+    b_regenerated.status === 200 &&
+        b_regenerated.body?.recoveryCodes?.length === 10 &&
+        (await b_mfa((await b_tfLogin()).body.mfaToken, b_recoveryCodes[2])).status === 400,
+    JSON.stringify(b_regenerated.body).slice(0, 120),
+);
+
+resetRateLimits();
+const b_lockoutToken = (await b_tfLogin()).body.mfaToken;
+for (let i = 0; i < 5; i++) await b_mfa(b_lockoutToken, "000000");
+check("segundo passo tem limite forte por conta", (await b_mfa(b_lockoutToken, "000000")).status === 429);
+resetRateLimits();
+
+check(
+    "desativar exige a senha",
+    (
+        await call("POST", "/me/2fa/disable", {
+            token: b_tfUser.token,
+            body: { password: "errada", code: b_regenerated.body.recoveryCodes[0] },
+        })
+    ).status === 400,
+);
+const b_disabled = await call("POST", "/me/2fa/disable", {
+    token: b_tfUser.token,
+    body: { password: "senha123!forte", code: b_regenerated.body.recoveryCodes[0] },
+});
+const b_plainLogin = await b_tfLogin();
+check(
+    "desativar (senha + código) volta ao login de um passo",
+    b_disabled.status === 200 &&
+        Boolean(b_plainLogin.body?.token) &&
+        !b_plainLogin.body.mfaRequired &&
+        (await db.query("SELECT two_factor_secret FROM users WHERE user_id = $1", [b_tfUser.id])).rows[0].two_factor_secret ===
+            null,
+    JSON.stringify(b_plainLogin.body).slice(0, 120),
+);
+
+console.log("\n[Conta C] Sessões ativas");
+resetRateLimits();
+
+const c_sesUser = await newUser("sessoes");
+const c_sesName = `sessoes${stamp}`.slice(0, 30);
+const c_loginWith = async (userAgent) => {
+    const res = await fetch(`${BASE}/auth/login`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "User-Agent": userAgent },
+        body: JSON.stringify({ identifier: c_sesName, password: "senha123!forte" }),
+    });
+    return (await res.json()).token;
+};
+const c_phoneToken = await c_loginWith(
+    "Mozilla/5.0 (Linux; Android 14; Pixel 8) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0 Mobile Safari/537.36",
+);
+const c_firefoxToken = await c_loginWith("Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:131.0) Gecko/20100101 Firefox/131.0");
+
+const c_sessionsList = await call("GET", "/me/sessions", { token: c_phoneToken });
+const c_devices = c_sessionsList.body?.data ?? [];
+check(
+    "lista as sessões com dispositivo, IP parcial e a atual marcada",
+    c_sessionsList.status === 200 &&
+        c_devices.length === 3 &&
+        c_devices.some((s) => s.device === "Chrome no Android" && s.current === true) &&
+        c_devices.some((s) => s.device === "Firefox no Windows" && s.current === false) &&
+        c_devices.every((s) => s.ip === null || s.ip === "rede local" || /\*/.test(s.ip)) &&
+        c_devices.filter((s) => s.current).length === 1,
+    JSON.stringify(c_devices),
+);
+
+const c_firefoxSession = c_devices.find((s) => s.device === "Firefox no Windows");
+check(
+    "sessão de outra pessoa → 404",
+    (await call("DELETE", `/me/sessions/${c_firefoxSession.sessionId}`, { token: aliceToken })).status === 404,
+);
+check(
+    "encerrar uma sessão derruba o token dela",
+    (await call("DELETE", `/me/sessions/${c_firefoxSession.sessionId}`, { token: c_phoneToken })).status === 204 &&
+        (await call("GET", "/me", { token: c_firefoxToken })).status === 401 &&
+        (await call("GET", "/me", { token: c_phoneToken })).status === 200,
+);
+check(
+    "sair de todos os outros mantém só esta",
+    (await call("POST", "/me/sessions/revoke-others", { token: c_phoneToken })).status === 204 &&
+        (await call("GET", "/me", { token: c_sesUser.token })).status === 401 &&
+        (await call("GET", "/me/sessions", { token: c_phoneToken })).body?.data?.length === 1,
+);
+check("lista de sessões exige login", (await call("GET", "/me/sessions")).status === 401);
+
+console.log("\n[Conta D] Exportar dados e excluir conta");
+resetRateLimits();
+
+const d_delOwner = await newUser("deldono");
+const d_delUser = await newUser("delconta");
+const d_delName = `delconta${stamp}`.slice(0, 30);
+const d_delEmail = `delconta${stamp}@famax.test`;
+const d_delCommunity = await call("POST", "/communities", {
+    token: d_delOwner.token,
+    body: { name: `Exclusões ${stamp}`, categoryId },
+});
+const d_delCid = d_delCommunity.body?.community?.communityId;
+await call("POST", `/communities/${d_delCid}/join`, { token: d_delUser.token });
+await call("PATCH", "/me/profile", { token: d_delUser.token, body: { bio: "Minha bio original" } });
+await call("PUT", "/me/social-links", {
+    token: d_delUser.token,
+    body: { links: [{ platform: "github", url: "https://github.com/exemplo" }] },
+});
+const d_delPost = await call("POST", "/posts", {
+    token: d_delUser.token,
+    body: { communityId: d_delCid, title: "Post de quem vai sair", content: "conteúdo" },
+});
+const d_delPostId = d_delPost.body?.post?.post_id;
+await call("POST", `/posts/${d_delPostId}/comments`, { token: d_delUser.token, body: { content: "meu comentário" } });
+const d_delConv = await call("POST", "/conversations", { token: d_delUser.token, body: { userId: d_delOwner.id } });
+await call("POST", `/conversations/${d_delConv.body?.conversationId}/messages`, {
+    token: d_delUser.token,
+    body: { content: "mensagem minha" },
+});
+await call("POST", `/conversations/${d_delConv.body?.conversationId}/messages`, {
+    token: d_delOwner.token,
+    body: { content: "mensagem da outra pessoa" },
+});
+
+// Exportar
+const d_exportRes = await fetch(`${BASE}/me/export`, {
+    method: "POST",
+    headers: { Authorization: `Bearer ${d_delUser.token}` },
+});
+const d_exported = await d_exportRes.json();
+check(
+    "exportar devolve um JSON para download com os dados da pessoa",
+    d_exportRes.status === 200 &&
+        /attachment; filename="famax-dados-/.test(d_exportRes.headers.get("content-disposition") ?? "") &&
+        d_exported.account?.email === d_delEmail &&
+        d_exported.profile?.bio === "Minha bio original" &&
+        d_exported.posts?.some((p) => p.title === "Post de quem vai sair") &&
+        d_exported.comments?.some((c) => c.content === "meu comentário") &&
+        d_exported.communities?.some((c) => c.name === `Exclusões ${stamp}`) &&
+        d_exported.termsAcceptance?.length === 1,
+    JSON.stringify(d_exported).slice(0, 300),
+);
+check(
+    "exportação só traz as mensagens que a pessoa enviou",
+    d_exported.messagesSent?.length === 1 && d_exported.messagesSent[0].content === "mensagem minha",
+    JSON.stringify(d_exported.messagesSent),
+);
+check("exportar exige login", (await call("POST", "/me/export")).status === 401);
+
+// Excluir
+const d_ownerDelete = await call("DELETE", "/me", { token: d_delOwner.token, body: { password: "senha123!forte" } });
+check(
+    "dono de comunidade não exclui a conta sem transferir → 409 com a lista",
+    d_ownerDelete.status === 409 && d_ownerDelete.body?.communities?.[0] === `Exclusões ${stamp}`,
+    JSON.stringify(d_ownerDelete.body),
+);
+check(
+    "excluir exige a senha",
+    (await call("DELETE", "/me", { token: d_delUser.token, body: { password: "errada" } })).status === 400,
+);
+const d_deleted = await call("DELETE", "/me", { token: d_delUser.token, body: { password: "senha123!forte" } });
+const d_daysLeft = (new Date(d_deleted.body?.reactivateUntil) - Date.now()) / 86_400_000;
+check(
+    "excluir: prazo de 30 dias para reativar e sessão encerrada",
+    d_deleted.status === 200 &&
+        d_daysLeft > 29.9 &&
+        d_daysLeft <= 30 &&
+        (await call("GET", "/me", { token: d_delUser.token })).status === 401,
+    JSON.stringify(d_deleted.body),
+);
+const d_postAfter = await call("GET", `/posts/${d_delPostId}`);
+check(
+    "perfil some e o conteúdo fica como “Usuário removido”",
+    (await call("GET", `/users/${d_delUser.id}`)).status === 404 &&
+        d_postAfter.body?.post?.author_display_name === "Usuário removido" &&
+        (await db.query("SELECT 1 FROM user_social_links WHERE user_id = $1", [d_delUser.id])).rows.length === 0,
+    JSON.stringify(d_postAfter.body?.post).slice(0, 200),
+);
+const d_deletedLogin = await call("POST", "/auth/login", { body: { identifier: d_delName, password: "senha123!forte" } });
+check(
+    "login com a senha certa oferece reativar",
+    d_deletedLogin.status === 403 && d_deletedLogin.body?.reactivatable === true && Boolean(d_deletedLogin.body.reactivateUntil),
+    JSON.stringify(d_deletedLogin.body),
+);
+check(
+    "senha errada não revela que a conta foi excluída",
+    (await call("POST", "/auth/login", { body: { identifier: d_delName, password: "errada" } })).status === 401,
+);
+check(
+    "durante o prazo o e-mail continua reservado",
+    (
+        await call("POST", "/auth/register", {
+            body: { email: d_delEmail, username: `outro${stamp}`.slice(0, 30), password: "senha123!forte", displayName: "X", termsAccepted: true },
+        })
+    ).status === 409,
+);
+
+resetRateLimits();
+check(
+    "reativar exige a senha",
+    (await call("POST", "/auth/reactivate", { body: { identifier: d_delName, password: "errada" } })).status === 401,
+);
+const d_reactivated = await call("POST", "/auth/reactivate", { body: { identifier: d_delName, password: "senha123!forte" } });
+const d_meBack = (await call("GET", "/me", { token: d_reactivated.body?.token })).body?.user;
+check(
+    "reativar devolve a conta, o perfil e as redes",
+    d_reactivated.status === 200 &&
+        d_meBack?.displayName === "delconta" &&
+        d_meBack.bio === "Minha bio original" &&
+        d_meBack.socialLinks?.length === 1,
+    JSON.stringify(d_meBack).slice(0, 200),
+);
+
+// Exclusão definitiva (o job, com o prazo vencido à força)
+await call("DELETE", "/me", { token: d_reactivated.body?.token, body: { password: "senha123!forte" } });
+await db.query("UPDATE account_deletions SET purge_after = NOW() - INTERVAL '1 minute' WHERE user_id = $1", [d_delUser.id]);
+const { purgeExpiredAccounts: d_purgeExpiredAccounts } = await import("../server/lib/account.js");
+const d_purgedCount = await d_purgeExpiredAccounts();
+const { rows: d_purgedRow } = await db.query("SELECT email, username, password_hash FROM users WHERE user_id = $1", [
+    d_delUser.id,
+]);
+check(
+    "depois do prazo: e-mail e username trocados, vínculos apagados",
+    d_purgedCount >= 1 &&
+        d_purgedRow[0].email.endsWith("@removido.invalid") &&
+        d_purgedRow[0].username.startsWith("removido_") &&
+        d_purgedRow[0].password_hash === "!" &&
+        (await db.query("SELECT 1 FROM account_deletions WHERE user_id = $1", [d_delUser.id])).rows.length === 0 &&
+        (await db.query("SELECT 1 FROM user_sessions WHERE user_id = $1", [d_delUser.id])).rows.length === 0,
+    JSON.stringify(d_purgedRow[0]),
+);
+resetRateLimits();
+check(
+    "depois do prazo não há mais reativação, e o e-mail fica livre",
+    (await call("POST", "/auth/reactivate", { body: { identifier: d_delName, password: "senha123!forte" } })).status === 401 &&
+        (
+            await call("POST", "/auth/register", {
+                body: { email: d_delEmail, username: d_delName, password: "senha123!forte", displayName: "Nova", termsAccepted: true },
+            })
+        ).status === 201,
+);
+check(
+    "posts e mensagens de quem saiu continuam, anônimos",
+    (await call("GET", `/posts/${d_delPostId}`)).body?.post?.author_display_name === "Usuário removido" &&
+        (await call("GET", `/conversations/${d_delConv.body?.conversationId}/messages`, { token: d_delOwner.token })).body?.data
+            ?.length === 2,
+);
+
+console.log("\n[Conta E] Bloquear usuário");
+resetRateLimits();
+
+const blA = await newUser("blqa");
+const blB = await newUser("blqb");
+const blC = await newUser("blqc");
+const blBName = `blqb${stamp}`.slice(0, 30);
+const blCommunity = await call("POST", "/communities", {
+    token: blA.token,
+    body: { name: `Bloqueios ${stamp}`, categoryId },
+});
+const blCid = blCommunity.body?.community?.communityId;
+await call("POST", `/communities/${blCid}/join`, { token: blB.token });
+await call("POST", `/communities/${blCid}/join`, { token: blC.token });
+await call("POST", `/users/${blA.id}/follow`, { token: blB.token });
+const blConv = await call("POST", "/conversations", { token: blB.token, body: { userId: blA.id } });
+
+check("bloquear a si mesmo → 400", (await call("POST", `/users/${blA.id}/block`, { token: blA.token })).status === 400);
+check(
+    "bloquear conta inexistente → 404",
+    (await call("POST", "/users/00000000-0000-4000-8000-000000000000/block", { token: blA.token })).status === 404,
+);
+const e_blocked = await call("POST", `/users/${blB.id}/block`, { token: blA.token });
+check(
+    "bloquear (idempotente) desfaz os follows entre os dois",
+    e_blocked.status === 200 &&
+        e_blocked.body?.blocked === true &&
+        (await call("POST", `/users/${blB.id}/block`, { token: blA.token })).status === 200 &&
+        (await call("GET", `/users/${blA.id}`, { token: blA.token })).body?.user?.stats?.followers === 0,
+);
+check(
+    "ninguém segue ninguém com bloqueio",
+    (await call("POST", `/users/${blA.id}/follow`, { token: blB.token })).status === 403 &&
+        (await call("POST", `/users/${blB.id}/follow`, { token: blA.token })).status === 403,
+);
+check(
+    "bloqueado não manda mensagem (nem quem bloqueou)",
+    (
+        await call("POST", `/conversations/${blConv.body?.conversationId}/messages`, {
+            token: blB.token,
+            body: { content: "oi" },
+        })
+    ).status === 403 &&
+        (await call("POST", "/conversations", { token: blA.token, body: { userId: blB.id } })).status === 403,
+);
+check(
+    "não dá para pôr o bloqueado num grupo",
+    (
+        await call("POST", "/conversations/groups", {
+            token: blA.token,
+            body: { title: "Grupo", userIds: [blB.id, blC.id] },
+        })
+    ).status === 403,
+);
+const blSearchA = await call("GET", `/search?q=${blBName}&type=users`, { token: blA.token });
+const blSearchC = await call("GET", `/search?q=${blBName}&type=users`, { token: blC.token });
+// A busca de pessoas é aproximada (trigramas) e casa com outras contas da
+// suíte; o que importa é o bloqueado — e só ele — sumir para quem bloqueou.
+check(
+    "quem bloqueou não vê o bloqueado na busca; os outros veem",
+    blSearchA.body?.results?.users?.total === blSearchC.body?.results?.users?.total - 1,
+    `${blSearchA.body?.results?.users?.total} / ${blSearchC.body?.results?.users?.total}`,
+);
+check(
+    "busca do chat esconde nos dois sentidos",
+    (await call("GET", `/users?search=${blBName}`, { token: blA.token })).body?.data?.length === 0 &&
+        (await call("GET", `/users?search=blqa${stamp}`, { token: blB.token })).body?.data?.length === 0,
+);
+
+const blPostA = await call("POST", "/posts", {
+    token: blA.token,
+    body: { communityId: blCid, title: "Post da A", content: "x" },
+});
+const blPostB = await call("POST", "/posts", {
+    token: blB.token,
+    body: { communityId: blCid, title: "Post do B", content: "x" },
+});
+await call("POST", `/posts/${blPostA.body?.post?.post_id}/comments`, { token: blB.token, body: { content: "comentário do B" } });
+await call("POST", `/posts/${blPostA.body?.post?.post_id}/reactions`, { token: blB.token });
+check(
+    "quem bloqueou não recebe avisos do bloqueado",
+    !(await call("GET", "/notifications", { token: blA.token })).body?.data?.some((n) => n.actor_id === blB.id),
+);
+const e_feedForA = (await call("GET", `/communities/${blCid}/posts`, { token: blA.token })).body?.data ?? [];
+const e_feedForC = (await call("GET", `/communities/${blCid}/posts`, { token: blC.token })).body?.data ?? [];
+check(
+    "posts do bloqueado vêm marcados para quem bloqueou (e só para ele)",
+    e_feedForA.find((p) => p.post_id === blPostB.body?.post?.post_id)?.author_blocked_by_me === true &&
+        e_feedForA.find((p) => p.post_id === blPostA.body?.post?.post_id)?.author_blocked_by_me === false &&
+        e_feedForC.find((p) => p.post_id === blPostB.body?.post?.post_id)?.author_blocked_by_me === false,
+);
+const e_commentsForA = await call("GET", `/posts/${blPostA.body?.post?.post_id}/comments`, { token: blA.token });
+const e_commentsAnon = await call("GET", `/posts/${blPostA.body?.post?.post_id}/comments`);
+check(
+    "comentários do bloqueado vêm marcados para quem bloqueou",
+    e_commentsForA.body?.data?.[0]?.author_blocked_by_me === true &&
+        e_commentsAnon.body?.data?.[0]?.author_blocked_by_me === false,
+);
+
+const e_blockList = await call("GET", "/me/blocks", { token: blA.token });
+check(
+    "lista de bloqueados e perfil com blockedByMe",
+    e_blockList.body?.data?.length === 1 &&
+        e_blockList.body.data[0].user_id === blB.id &&
+        (await call("GET", `/users/${blB.id}`, { token: blA.token })).body?.user?.blockedByMe === true,
+    JSON.stringify(e_blockList.body),
+);
+const e_unblocked = await call("DELETE", `/users/${blB.id}/block`, { token: blA.token });
+check(
+    "desbloquear libera mensagem e follow de novo",
+    e_unblocked.body?.blocked === false &&
+        (
+            await call("POST", `/conversations/${blConv.body?.conversationId}/messages`, {
+                token: blB.token,
+                body: { content: "oi de novo" },
+            })
+        ).status === 201 &&
+        (await call("POST", `/users/${blA.id}/follow`, { token: blB.token })).status === 200,
+);
+
+console.log("\n[Conta F] Conteúdo adulto (+18)");
+resetRateLimits();
+
+const nsAdult = await newUser("nsadulto");
+const nsMinor = await newUser("nsmenor");
+// is_adult direto no banco: pela API ele exige nascimento com 18+ (prompt 04).
+await db.query("UPDATE users SET is_adult = TRUE WHERE user_id = $1", [nsAdult.id]);
+
+const nsCommunityName = `Adultos ${stamp}`;
+check(
+    "menor não cria comunidade +18",
+    (
+        await call("POST", "/communities", {
+            token: nsMinor.token,
+            body: { name: `Bloqueada ${stamp}`, categoryId, isNsfw: "true" },
+        })
+    ).status === 403,
+);
+const nsCommunity = await call("POST", "/communities", {
+    token: nsAdult.token,
+    body: { name: nsCommunityName, categoryId, isNsfw: "true" },
+});
+const nsCid = nsCommunity.body?.community?.communityId;
+check("adulto cria comunidade +18", nsCommunity.status === 201 && nsCommunity.body.community.isNsfw === true);
+
+const f_homeList = (await call("GET", "/communities?limit=50", { token: nsAdult.token })).body?.data ?? [];
+check("comunidade +18 fica fora da home (até para adultos)", !f_homeList.some((c) => c.community_id === nsCid));
+check(
+    "página da comunidade avisa quem não pode ver",
+    (await call("GET", `/communities/${nsCid}`, { token: nsMinor.token })).body?.community?.nsfw_blocked === true &&
+        (await call("GET", `/communities/${nsCid}`)).body?.community?.nsfw_blocked === true &&
+        (await call("GET", `/communities/${nsCid}`, { token: nsAdult.token })).body?.community?.nsfw_blocked === false,
+);
+check("menor não entra em comunidade +18", (await call("POST", `/communities/${nsCid}/join`, { token: nsMinor.token })).status === 403);
+
+// Post +18 numa comunidade comum
+const nsNormal = await call("POST", "/communities", {
+    token: nsAdult.token,
+    body: { name: `Comum ${stamp}`, categoryId },
+});
+const nsNormalId = nsNormal.body?.community?.communityId;
+await call("POST", `/communities/${nsNormalId}/join`, { token: nsMinor.token });
+check(
+    "menor não publica post +18",
+    (
+        await call("POST", "/posts", {
+            token: nsMinor.token,
+            body: { communityId: nsNormalId, title: "Tentativa", content: "x", isNsfw: true },
+        })
+    ).status === 403,
+);
+const nsPost = await call("POST", "/posts", {
+    token: nsAdult.token,
+    body: { communityId: nsNormalId, title: "Post adulto", content: "conteúdo +18 secreto", isNsfw: true },
+});
+const nsPostId = nsPost.body?.post?.post_id;
+const nsInNsfw = await call("POST", "/posts", {
+    token: nsAdult.token,
+    body: { communityId: nsCid, title: "Na comunidade +18", content: "também secreto" },
+});
+check(
+    "post +18 criado; em comunidade +18 todo post conta como +18",
+    nsPost.status === 201 && nsPost.body.post.is_nsfw === true && nsInNsfw.body?.post?.is_nsfw === true,
+);
+
+const f_asMinor = await call("GET", `/posts/${nsPostId}`, { token: nsMinor.token });
+const f_asVisitor = await call("GET", `/posts/${nsPostId}`);
+const f_asAdult = await call("GET", `/posts/${nsPostId}`, { token: nsAdult.token });
+check(
+    "quem não pode ver recebe só o título, sem o conteúdo",
+    f_asMinor.body?.post?.nsfw_hidden === true &&
+        f_asMinor.body.post.content === "" &&
+        f_asMinor.body.post.title === "Post adulto" &&
+        f_asVisitor.body?.post?.content === "" &&
+        f_asAdult.body?.post?.nsfw_hidden === false &&
+        f_asAdult.body.post.content === "conteúdo +18 secreto",
+    JSON.stringify(f_asMinor.body?.post).slice(0, 200),
+);
+const f_feedMinor = (await call("GET", `/communities/${nsNormalId}/posts`, { token: nsMinor.token })).body?.data ?? [];
+check(
+    "no feed também",
+    f_feedMinor.find((p) => p.post_id === nsPostId)?.content === "" &&
+        !JSON.stringify(f_feedMinor).includes("conteúdo +18 secreto"),
+);
+check(
+    "comentários de post +18: 403 para quem não pode ver",
+    (await call("GET", `/posts/${nsPostId}/comments`, { token: nsMinor.token })).status === 403 &&
+        (await call("GET", `/posts/${nsPostId}/comments`)).status === 403 &&
+        (await call("GET", `/posts/${nsPostId}/comments`, { token: nsAdult.token })).status === 200 &&
+        (
+            await call("POST", `/posts/${nsPostId}/comments`, { token: nsMinor.token, body: { content: "oi" } })
+        ).status === 403,
+);
+const f_profilePosts = (await call("GET", `/users/${nsAdult.id}/posts`, { token: nsMinor.token })).body?.data ?? [];
+check(
+    "aba Posts do perfil esconde o conteúdo +18",
+    f_profilePosts.length >= 2 && f_profilePosts.every((p) => p.nsfw_hidden === true && p.content === ""),
+    JSON.stringify(f_profilePosts).slice(0, 200),
+);
+
+const f_searchFor = (u, q, type) => call("GET", `/search?q=${encodeURIComponent(q)}&type=${type}`, { token: u?.token });
+check(
+    "busca: +18 só para adultos",
+    (await f_searchFor(nsMinor, "secreto", "posts")).body?.results?.posts?.total === 0 &&
+        (await f_searchFor(nsAdult, "secreto", "posts")).body?.results?.posts?.total === 2 &&
+        !(await f_searchFor(nsMinor, nsCommunityName, "communities")).body?.results?.communities?.data?.some(
+            (c) => c.community_id === nsCid,
+        ) &&
+        (await f_searchFor(nsAdult, nsCommunityName, "communities")).body?.results?.communities?.data?.some(
+            (c) => c.community_id === nsCid && c.is_nsfw === true,
+        ),
+);
+const f_minorPost = await call("POST", "/posts", {
+    token: nsMinor.token,
+    body: { communityId: nsNormalId, title: "Post comum", content: "x" },
+});
+check(
+    "menor não marca o próprio post como +18",
+    (await call("PATCH", `/posts/${f_minorPost.body?.post?.post_id}`, { token: nsMinor.token, body: { isNsfw: true } }))
+        .status === 403,
+);
 
 // ---------------------------------------------------------------------------
 

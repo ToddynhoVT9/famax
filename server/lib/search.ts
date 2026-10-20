@@ -86,10 +86,12 @@ async function runSection(
   return { data: rows, total, page, totalPages: Math.ceil(total / limit) };
 }
 
+/** adult: comunidades +18 só aparecem para quem tem conteúdo adulto liberado. */
 export async function searchCommunities(
   q: string,
   page: number,
   limit: number,
+  adult = false,
 ): Promise<SearchSection> {
   const trgm = await hasTrgm();
   const params = new Params();
@@ -102,6 +104,7 @@ export async function searchCommunities(
     FROM communities c
     LEFT JOIN categories cat ON cat.category_id = c.category_id
     WHERE c.deleted_at IS NULL
+      ${adult ? "" : "AND NOT c.is_nsfw"}
       AND (c.name ILIKE ${contains}
            ${term ? `OR word_similarity(${term}, c.name) >= ${MIN_WORD_SIMILARITY}` : ""})`;
 
@@ -111,7 +114,7 @@ export async function searchCommunities(
     : "";
 
   return runSection(
-    `c.community_id, c.name, c.description, c.cover_image_url,
+    `c.community_id, c.name, c.description, c.cover_image_url, c.is_nsfw,
      cat.name AS category_name,
      (SELECT COUNT(*) FROM community_members cm
       WHERE cm.community_id = c.community_id)::int AS members_count`,
@@ -154,6 +157,9 @@ export async function searchUsers(
     LEFT JOIN user_settings us ON us.user_id = u.user_id
     WHERE u.deleted_at IS NULL
       AND (u.username ILIKE ${contains} OR up.display_name ILIKE ${contains} ${fuzzy})
+      AND NOT EXISTS (
+        SELECT 1 FROM user_blocks b WHERE b.blocker_id = ${viewer}::uuid AND b.blocked_id = u.user_id
+      )
       AND (
         COALESCE(us.is_private, TRUE) = FALSE
         OR u.user_id = ${viewer}::uuid
@@ -194,10 +200,12 @@ export function toPrefixQuery(q: string): string | null {
   return words.length ? words.map((word) => `${word}:*`).join(" & ") : null;
 }
 
+/** adult: quem busca vê conteúdo +18 (users.is_adult). Sem isso, fica de fora. */
 export async function searchPosts(
   q: string,
   page: number,
   limit: number,
+  adult = false,
 ): Promise<SearchSection> {
   const tsquery = toPrefixQuery(q);
   if (!tsquery) return { data: [], total: 0, page, totalPages: 0 };
@@ -212,6 +220,7 @@ export async function searchPosts(
     LEFT  JOIN user_profiles up ON up.user_id = p.author_id
     WHERE p.deleted_at IS NULL
       AND c.deleted_at IS NULL
+      ${adult ? "" : "AND NOT p.is_nsfw AND NOT c.is_nsfw"}
       AND p.search_vector @@ to_tsquery('portuguese', ${query})`;
 
   return runSection(

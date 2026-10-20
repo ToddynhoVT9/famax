@@ -3,6 +3,7 @@ import { z } from "zod";
 import { pool } from "../db.js";
 import { optionalAuth, requireAuth } from "../middleware/auth.js";
 import { loadSocialLinks, profileAccess } from "../lib/profile.js";
+import { nsfwHiddenSql } from "../lib/nsfw.js";
 
 const router = Router();
 
@@ -36,6 +37,12 @@ router.get("/users", requireAuth, async (req, res, next) => {
        WHERE u.deleted_at IS NULL
          AND u.user_id <> $1
          AND (u.username ILIKE $2 OR up.display_name ILIKE $2)
+         -- Busca do chat: com bloqueio (em qualquer sentido) não há conversa.
+         AND NOT EXISTS (
+           SELECT 1 FROM user_blocks b
+           WHERE (b.blocker_id = $1 AND b.blocked_id = u.user_id)
+              OR (b.blocker_id = u.user_id AND b.blocked_id = $1)
+         )
          AND (
            COALESCE(us.is_private, TRUE) = FALSE
            OR EXISTS (
@@ -138,7 +145,11 @@ router.get("/users/:userId", optionalAuth, async (req, res, next) => {
          EXISTS (
            SELECT 1 FROM follows f
            WHERE f.follower_id = $2 AND f.following_id = u.user_id
-         ) AS followed_by_me
+         ) AS followed_by_me,
+         EXISTS (
+           SELECT 1 FROM user_blocks b
+           WHERE b.blocker_id = $2 AND b.blocked_id = u.user_id
+         ) AS blocked_by_me
        FROM users u
        LEFT JOIN user_profiles up ON up.user_id = u.user_id
        WHERE u.user_id = $1`,
@@ -157,6 +168,7 @@ router.get("/users/:userId", optionalAuth, async (req, res, next) => {
           isOwner: false,
           // O botão Seguir funciona mesmo no perfil privado.
           followedByMe: row.followed_by_me,
+          blockedByMe: row.blocked_by_me,
         },
       });
     }
@@ -174,6 +186,7 @@ router.get("/users/:userId", optionalAuth, async (req, res, next) => {
         isPrivate: access.isPrivate,
         isOwner: access.isOwner,
         followedByMe: row.followed_by_me,
+        blockedByMe: row.blocked_by_me,
         stats: {
           posts: row.posts_count,
           comments: row.comments_count,
@@ -254,11 +267,14 @@ router.get("/users/:userId/posts", optionalAuth, async (req, res, next) => {
     if (!guard) return;
     const { userId, page, limit } = guard;
 
+    // Post +18 para quem não pode ver: só o título (lib/nsfw.ts).
     const { rows } = await pool.query(
       `SELECT
          p.post_id,
          p.title,
-         p.content,
+         CASE WHEN ${nsfwHiddenSql("$4", "p", "c")} THEN '' ELSE p.content END AS content,
+         (p.is_nsfw OR c.is_nsfw) AS is_nsfw,
+         ${nsfwHiddenSql("$4", "p", "c")} AS nsfw_hidden,
          p.likes_count,
          p.comments_count,
          p.created_at,
@@ -271,7 +287,7 @@ router.get("/users/:userId/posts", optionalAuth, async (req, res, next) => {
          AND c.deleted_at IS NULL
        ORDER BY p.created_at DESC, p.post_id DESC
        LIMIT $2 OFFSET $3`,
-      [userId, limit, (page - 1) * limit],
+      [userId, limit, (page - 1) * limit, req.userId ?? null],
     );
 
     const { rows: countRows } = await pool.query(

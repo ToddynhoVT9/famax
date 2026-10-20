@@ -9,6 +9,13 @@ import { requireAuth } from "../middleware/auth.js";
 import { rateLimit } from "../lib/rate-limit.js";
 import { BCRYPT_ROUNDS, passwordSchema } from "../lib/password.js";
 import { revokeOtherSessions } from "../lib/session.js";
+import { sendMailInBackground } from "../lib/mailer.js";
+import {
+  emailChangeRequestedMail,
+  signVerifyToken,
+  verificationMail,
+  verifyLink,
+} from "../lib/email-verification.js";
 import {
   ADULT_AGE,
   MAX_SOCIAL_LINKS,
@@ -49,8 +56,12 @@ async function loadMe(userId: string) {
        u.user_id,
        u.email,
        u.username,
+       u.email_verified_at,
+       u.pending_email,
        u.is_adult,
        u.two_factor_enabled,
+       (SELECT COUNT(*)::int FROM two_factor_recovery_codes r
+        WHERE r.user_id = u.user_id AND r.used_at IS NULL) AS recovery_codes_left,
        u.is_admin,
        u.created_at,
        up.display_name,
@@ -79,6 +90,9 @@ async function loadMe(userId: string) {
   return {
     userId: row.user_id,
     email: row.email,
+    emailVerified: row.email_verified_at !== null,
+    // Troca de e-mail aguardando a confirmação do endereço novo.
+    pendingEmail: row.pending_email,
     username: row.username,
     displayName: row.display_name,
     avatarUrl: row.avatar_url,
@@ -91,6 +105,7 @@ async function loadMe(userId: string) {
     isPrivate: row.is_private ?? true,
     isAdult: row.is_adult,
     twoFactorEnabled: row.two_factor_enabled,
+    recoveryCodesLeft: row.recovery_codes_left,
     // Admin do site: o header mostra o link da fila de denúncias de usuários.
     isAdmin: row.is_admin === true,
     // Preferências de notificação; sem linha de settings, tudo ligado.
@@ -370,6 +385,80 @@ router.post(
     }
   },
 );
+
+// ===========================================================================
+// PATCH /api/me/email — pede a troca de e-mail { newEmail, password }
+// DELETE /api/me/email/pending — cancela a troca pendente
+// ---------------------------------------------------------------------------
+// Exige a senha (um token roubado não basta para desviar a conta). O novo
+// endereço vai para pending_email e recebe o link de confirmação; o antigo
+// recebe um aviso. Só ao confirmar o link o e-mail da conta muda — até lá
+// login e recuperação seguem no endereço antigo.
+// ===========================================================================
+
+const emailChangeSchema = z.object({
+  newEmail: z.string().trim().email("Email inválido").max(255),
+  password: z.string().min(1, "Informe sua senha"),
+});
+
+router.patch(
+  "/me/email",
+  requireAuth,
+  rateLimit({
+    name: "change-email",
+    limit: 5,
+    windowMs: 60 * 60_000,
+    message: "Muitos pedidos de troca de e-mail. Tente mais tarde.",
+  }),
+  async (req, res, next) => {
+    try {
+      const { newEmail, password } = emailChangeSchema.parse(req.body);
+      const email = newEmail.toLowerCase();
+
+      const { rows } = await pool.query<{ password_hash: string; email: string; name: string }>(
+        `SELECT u.password_hash, u.email, COALESCE(p.display_name, u.username) AS name
+         FROM users u LEFT JOIN user_profiles p ON p.user_id = u.user_id
+         WHERE u.user_id = $1`,
+        [req.userId],
+      );
+      const user = rows[0];
+      // 400 e não 401: 401 significa "sessão inválida" para o front.
+      if (!user || !(await bcrypt.compare(password, user.password_hash))) {
+        return res.status(400).json({ error: "Senha incorreta" });
+      }
+      if (user.email.toLowerCase() === email) {
+        return res.status(400).json({ error: "Este já é o seu e-mail" });
+      }
+      const { rows: taken } = await pool.query(
+        "SELECT 1 FROM users WHERE lower(email) = $1 AND user_id <> $2",
+        [email, req.userId],
+      );
+      if (taken.length > 0) {
+        return res.status(409).json({ error: "Este e-mail já está em uso por outra conta." });
+      }
+
+      await pool.query("UPDATE users SET pending_email = $2 WHERE user_id = $1", [req.userId, email]);
+      sendMailInBackground(
+        verificationMail(email, user.name, verifyLink(req, signVerifyToken(req.userId!, email)), true),
+      );
+      sendMailInBackground(emailChangeRequestedMail(user.email, user.name, email));
+
+      await sendMe(req, res);
+    } catch (err) {
+      if (err instanceof z.ZodError) return zodError(res, err);
+      next(err);
+    }
+  },
+);
+
+router.delete("/me/email/pending", requireAuth, async (req, res, next) => {
+  try {
+    await pool.query("UPDATE users SET pending_email = NULL WHERE user_id = $1", [req.userId]);
+    await sendMe(req, res);
+  } catch (err) {
+    next(err);
+  }
+});
 
 // ===========================================================================
 // POST/DELETE /api/me/avatar e /api/me/banner

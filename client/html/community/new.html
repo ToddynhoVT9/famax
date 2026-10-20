@@ -49,6 +49,12 @@
                               placeholder="Uma regra por linha. Ex.: 1. Respeite os outros membros."></textarea>
                 </div>
 
+                <!-- Só para quem tem "Conteúdo adulto" ligado (community-new.ts mostra). -->
+                <label class="checkbox-field" id="nsfwField" hidden>
+                    <input type="checkbox" id="communityNsfw">
+                    Comunidade para maiores de 18 (+18) — fica fora da home e só quem tem conteúdo adulto liberado entra
+                </label>
+
                 <div class="form-field">
                     <label for="communityCover">Capa da comunidade <span class="field-hint">(opcional)</span></label>
                     <input id="communityCover" name="communityCover" type="file"

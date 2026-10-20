@@ -1949,3 +1949,75 @@ button.tf-tab:focus-visible {
         max-width: none;
     }
 }
+
+/* ----- Conteúdo de usuário bloqueado ----- */
+.tf-blocked-notice {
+    margin: 0;
+    color: #777777;
+    font-size: 0.9rem;
+    font-style: italic;
+}
+
+.tf-blocked-show {
+    border: none;
+    background: none;
+    padding: 0;
+    color: #1a5fb4;
+    font: inherit;
+    font-style: normal;
+    text-decoration: underline;
+    cursor: pointer;
+}
+
+.tf-post.is-blocked > .tf-post-avatar-container,
+.tf-post.is-blocked > .tf-post-body,
+.tf-comment-item.is-blocked > .tf-comment-main,
+.tf-comment-item.is-blocked > .tf-comment-replies {
+    display: none;
+}
+
+/* ----- Conteúdo adulto (+18) ----- */
+.modal-checkbox {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin: 12px 0 4px;
+    font-size: 0.9rem;
+    color: #dddddd;
+    cursor: pointer;
+}
+
+.modal-checkbox[hidden] {
+    display: none;
+}
+
+.tf-badge--nsfw {
+    background-color: #b3261e;
+    color: #ffffff;
+}
+
+.tf-nsfw-notice {
+    margin: 4px 0 12px;
+    padding: 12px 14px;
+    border-radius: 8px;
+    background-color: #f4f4f4;
+    color: #555555;
+    font-size: 0.9rem;
+}
+
+.tf-nsfw-notice a {
+    color: #1a5fb4;
+}
+
+.tf-nsfw-banner {
+    margin: 0 0 18px;
+    padding: 14px 16px;
+    border-radius: 8px;
+    background-color: #3a1a1a;
+    border: 1px solid #b3261e;
+    color: #ffdede;
+}
+
+.tf-nsfw-banner a {
+    color: #ffffff;
+}

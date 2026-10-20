@@ -23,6 +23,21 @@ import {
   signResetToken,
   verifyResetToken,
 } from "../lib/password-recovery.js";
+import {
+  checkSecondFactor,
+  isTwoFactorConfigured,
+  MFA_TOKEN_TTL_SECONDS,
+  mfaTokenSubject,
+  signMfaToken,
+  verifyMfaToken,
+} from "../lib/two-factor.js";
+import { dateBr, reactivateAccount } from "../lib/account.js";
+import {
+  signVerifyToken,
+  verificationMail,
+  verifyLink,
+  verifyVerifyToken,
+} from "../lib/email-verification.js";
 
 const router = Router();
 
@@ -157,6 +172,13 @@ router.post("/register", registerLimitByIp, async (req, res, next) => {
       client.release();
     }
 
+    // Link de verificação em segundo plano: o cadastro não espera o
+    // provedor de e-mail (e uma falha nele não desfaz a conta — dá para pedir
+    // outro link depois).
+    sendMailInBackground(
+      verificationMail(data.email, data.displayName, verifyLink(req, signVerifyToken(userId, data.email))),
+    );
+
     return res.status(201).json({
       token,
       user: {
@@ -164,6 +186,7 @@ router.post("/register", registerLimitByIp, async (req, res, next) => {
         email: data.email,
         username: data.username,
         displayName: data.displayName,
+        emailVerified: false,
       },
     });
   } catch (err) {
@@ -189,12 +212,16 @@ router.post("/login", loginLimitByIp, loginLimitByIdentifier, async (req, res, n
   try {
     const { identifier, password } = loginSchema.parse(req.body);
 
+    // Conta excluída ainda no prazo de reativação também entra na busca: com
+    // a senha certa, a resposta oferece reativar (ver abaixo).
     const { rows } = await pool.query(
-      `SELECT u.user_id, u.email, u.username, u.password_hash, p.display_name
+      `SELECT u.user_id, u.email, u.username, u.password_hash, u.two_factor_enabled,
+              u.deleted_at, p.display_name, d.purge_after AS reactivate_until
        FROM users u
        LEFT JOIN user_profiles p ON p.user_id = u.user_id
+       LEFT JOIN account_deletions d ON d.user_id = u.user_id AND d.purge_after > NOW()
        WHERE (u.email = $1 OR u.username = $1)
-         AND u.deleted_at IS NULL
+         AND (u.deleted_at IS NULL OR d.user_id IS NOT NULL)
        LIMIT 1`,
       [identifier],
     );
@@ -208,6 +235,31 @@ router.post("/login", loginLimitByIp, loginLimitByIdentifier, async (req, res, n
 
     if (!user || !passwordOk) {
       return res.status(401).json({ error: "Credenciais inválidas" });
+    }
+
+    // Só com a senha certa a resposta diz que a conta foi excluída — sem ela,
+    // é o mesmo "Credenciais inválidas" de sempre.
+    if (user.deleted_at) {
+      return res.status(403).json({
+        error: `Esta conta foi excluída. Você pode reativá-la até ${dateBr(user.reactivate_until)}.`,
+        reactivatable: true,
+        reactivateUntil: user.reactivate_until,
+      });
+    }
+
+    // Com 2FA a senha certa ainda não abre sessão: devolve um mfaToken curto
+    // (5 min, sem jti — nunca vale como sessão) para o segundo passo.
+    if (user.two_factor_enabled) {
+      if (!isTwoFactorConfigured()) {
+        return res
+          .status(503)
+          .json({ error: "Verificação em duas etapas indisponível no servidor. Tente mais tarde." });
+      }
+      return res.json({
+        mfaRequired: true,
+        mfaToken: signMfaToken(user.user_id),
+        expiresIn: MFA_TOKEN_TTL_SECONDS,
+      });
     }
 
     // O jti (gerado no createSession) é o que torna o token único — sem ele
@@ -228,6 +280,138 @@ router.post("/login", loginLimitByIp, loginLimitByIdentifier, async (req, res, n
       return res
         .status(400)
         .json({ error: "Dados inválidos", details: err.flatten() });
+    }
+    next(err);
+  }
+});
+
+// ===========================================================================
+// POST /api/auth/reactivate { identifier, password } — desfaz a exclusão
+// ---------------------------------------------------------------------------
+// Dentro do prazo (lib/account.ts). Reativada a conta, segue como um login:
+// com 2FA devolve o mfaToken para o segundo passo; sem, a sessão.
+// ===========================================================================
+
+router.post("/reactivate", loginLimitByIp, loginLimitByIdentifier, async (req, res, next) => {
+  try {
+    const { identifier, password } = loginSchema.parse(req.body);
+    const { rows } = await pool.query(
+      `SELECT u.user_id, u.email, u.username, u.password_hash, u.two_factor_enabled
+       FROM users u
+       INNER JOIN account_deletions d ON d.user_id = u.user_id AND d.purge_after > NOW()
+       WHERE (u.email = $1 OR u.username = $1) AND u.deleted_at IS NOT NULL
+       LIMIT 1`,
+      [identifier],
+    );
+    const user = rows[0];
+    if (!user || !(await bcrypt.compare(password, user.password_hash))) {
+      return res.status(401).json({ error: "Credenciais inválidas" });
+    }
+
+    const client = await pool.connect();
+    try {
+      await client.query("BEGIN");
+      const restored = await reactivateAccount(client, user.user_id);
+      if (!restored) {
+        await client.query("ROLLBACK");
+        return res.status(401).json({ error: "Credenciais inválidas" });
+      }
+      await client.query("COMMIT");
+    } catch (err) {
+      await client.query("ROLLBACK").catch(() => {});
+      throw err;
+    } finally {
+      client.release();
+    }
+
+    if (user.two_factor_enabled && isTwoFactorConfigured()) {
+      return res.json({ reactivated: true, mfaRequired: true, mfaToken: signMfaToken(user.user_id), expiresIn: MFA_TOKEN_TTL_SECONDS });
+    }
+    const token = await createSession(user.user_id, req);
+    res.json({ reactivated: true, token });
+  } catch (err) {
+    if (err instanceof z.ZodError) {
+      return res.status(400).json({ error: "Dados inválidos", details: err.flatten() });
+    }
+    next(err);
+  }
+});
+
+// ===========================================================================
+// POST /api/auth/login/2fa { mfaToken, code } — segundo passo do login
+// ---------------------------------------------------------------------------
+// code: os 6 dígitos do app ou um código de recuperação. Limite forte por IP
+// e por conta (o sujeito do mfaToken): 5 erros em 15 min por conta e o
+// mfaToken expira em 5 min — chutar um milhão de códigos não é viável.
+// ===========================================================================
+
+const mfaLimitByIp = rateLimit({
+  name: "login-2fa-ip",
+  limit: 10,
+  windowMs: FIFTEEN_MINUTES,
+  message: tooManyLogins,
+  skipSuccessful: true,
+});
+
+const mfaLimitByAccount = rateLimit({
+  name: "login-2fa-account",
+  limit: 5,
+  windowMs: FIFTEEN_MINUTES,
+  message: tooManyLogins,
+  skipSuccessful: true,
+  key: (req) => mfaTokenSubject(req.body?.mfaToken),
+});
+
+const mfaSchema = z.object({
+  mfaToken: z.string().min(1, "Faça o login de novo"),
+  code: z.string().trim().min(6, "Informe o código").max(20),
+});
+
+router.post("/login/2fa", mfaLimitByIp, mfaLimitByAccount, async (req, res, next) => {
+  try {
+    const { mfaToken, code } = mfaSchema.parse(req.body);
+    const userId = verifyMfaToken(mfaToken);
+    if (!userId) {
+      return res.status(401).json({ error: "O login expirou. Entre com a senha de novo." });
+    }
+    if (!isTwoFactorConfigured()) {
+      return res.status(503).json({ error: "Verificação em duas etapas indisponível no servidor." });
+    }
+
+    const { rows } = await pool.query(
+      `SELECT u.user_id, u.email, u.username, u.two_factor_enabled, p.display_name,
+              (SELECT COUNT(*)::int FROM two_factor_recovery_codes r
+               WHERE r.user_id = u.user_id AND r.used_at IS NULL) AS recovery_left
+       FROM users u
+       LEFT JOIN user_profiles p ON p.user_id = u.user_id
+       WHERE u.user_id = $1 AND u.deleted_at IS NULL`,
+      [userId],
+    );
+    const user = rows[0];
+    if (!user?.two_factor_enabled) {
+      return res.status(401).json({ error: "O login expirou. Entre com a senha de novo." });
+    }
+
+    const check = await checkSecondFactor(pool, userId, code);
+    if (!check.ok) {
+      return res.status(400).json({ error: "Código incorreto" });
+    }
+
+    const token = await createSession(userId, req);
+    res.json({
+      token,
+      user: {
+        userId: user.user_id,
+        email: user.email,
+        username: user.username,
+        displayName: user.display_name,
+      },
+      // Entrou com código de recuperação: o front avisa quantos sobraram.
+      ...(check.usedRecoveryCode ? { recoveryCodesLeft: user.recovery_left - 1 } : {}),
+    });
+  } catch (err) {
+    if (err instanceof z.ZodError) {
+      return res.status(400).json({ error: err.issues[0]?.message ?? "Dados inválidos" });
     }
     next(err);
   }
@@ -258,6 +442,134 @@ router.post("/logout-all", requireAuth, async (req, res, next) => {
     next(err);
   }
 });
+
+// ===========================================================================
+// Verificação de e-mail
+// ---------------------------------------------------------------------------
+// POST /api/auth/verify-email { token } — o link do e-mail (verify-email.html)
+// chama isto. Pública: o link pode ser aberto em outro aparelho, sem sessão.
+// O token confirma o e-mail do cadastro ou, numa troca, o pending_email —
+// que só então vira o e-mail da conta.
+//
+// POST /api/auth/resend-verification — novo link, com limite por pessoa.
+// ===========================================================================
+
+const verifyEmailLimitByIp = rateLimit({
+  name: "verify-email-ip",
+  limit: 20,
+  windowMs: FIFTEEN_MINUTES,
+  message: "Muitas tentativas. Tente novamente mais tarde.",
+});
+
+const INVALID_VERIFY_LINK =
+  "Link de verificação inválido ou expirado. Peça um novo nas configurações da conta.";
+
+router.post("/verify-email", verifyEmailLimitByIp, async (req, res, next) => {
+  try {
+    const { token } = z.object({ token: z.string().min(1).max(2000) }).parse(req.body);
+    const payload = verifyVerifyToken(token);
+    if (!payload) return res.status(400).json({ error: INVALID_VERIFY_LINK });
+
+    const client = await pool.connect();
+    try {
+      await client.query("BEGIN");
+      const { rows } = await client.query<{ email: string; pending_email: string | null }>(
+        `SELECT email, pending_email FROM users
+         WHERE user_id = $1 AND deleted_at IS NULL
+         FOR UPDATE`,
+        [payload.userId],
+      );
+      const user = rows[0];
+      if (!user) {
+        await client.query("ROLLBACK");
+        return res.status(400).json({ error: INVALID_VERIFY_LINK });
+      }
+
+      if (user.pending_email && user.pending_email.toLowerCase() === payload.email) {
+        // Troca de e-mail: o endereço pode ter sido pego por outra conta
+        // depois do pedido.
+        const { rows: taken } = await client.query(
+          "SELECT 1 FROM users WHERE lower(email) = $1 AND user_id <> $2",
+          [payload.email, payload.userId],
+        );
+        if (taken.length > 0) {
+          await client.query("UPDATE users SET pending_email = NULL WHERE user_id = $1", [payload.userId]);
+          await client.query("COMMIT");
+          return res.status(409).json({ error: "Este e-mail já está em uso por outra conta." });
+        }
+        await client.query(
+          `UPDATE users SET email = pending_email, pending_email = NULL, email_verified_at = NOW()
+           WHERE user_id = $1`,
+          [payload.userId],
+        );
+      } else if (user.email.toLowerCase() === payload.email) {
+        await client.query(
+          "UPDATE users SET email_verified_at = COALESCE(email_verified_at, NOW()) WHERE user_id = $1",
+          [payload.userId],
+        );
+      } else {
+        // Link de um endereço que a conta não usa mais (outra troca depois).
+        await client.query("ROLLBACK");
+        return res.status(400).json({ error: INVALID_VERIFY_LINK });
+      }
+      await client.query("COMMIT");
+    } catch (err) {
+      await client.query("ROLLBACK").catch(() => {});
+      throw err;
+    } finally {
+      client.release();
+    }
+
+    res.json({ message: "E-mail confirmado!", email: payload.email });
+  } catch (err) {
+    if (err instanceof z.ZodError) return res.status(400).json({ error: INVALID_VERIFY_LINK });
+    next(err);
+  }
+});
+
+router.post(
+  "/resend-verification",
+  requireAuth,
+  rateLimit({
+    name: "resend-verification",
+    limit: 3,
+    windowMs: FIFTEEN_MINUTES,
+    message: "Você já pediu vários links. Aguarde alguns minutos.",
+  }),
+  async (req, res, next) => {
+    try {
+      const { rows } = await pool.query<{
+        email: string;
+        pending_email: string | null;
+        verified: boolean;
+        name: string;
+      }>(
+        `SELECT u.email, u.pending_email, u.email_verified_at IS NOT NULL AS verified,
+                COALESCE(p.display_name, u.username) AS name
+         FROM users u LEFT JOIN user_profiles p ON p.user_id = u.user_id
+         WHERE u.user_id = $1`,
+        [req.userId],
+      );
+      const user = rows[0];
+      // Troca pendente tem prioridade: é ela que precisa de confirmação.
+      const target = user?.pending_email ?? (user && !user.verified ? user.email : null);
+      if (!user || !target) {
+        return res.status(400).json({ error: "Seu e-mail já está confirmado." });
+      }
+      sendMailInBackground(
+        verificationMail(
+          target,
+          user.name,
+          verifyLink(req, signVerifyToken(req.userId!, target)),
+          Boolean(user.pending_email),
+        ),
+      );
+      res.json({ message: `Enviamos um novo link para ${target}.` });
+    } catch (err) {
+      next(err);
+    }
+  },
+);
 
 // ===========================================================================
 // Recuperação de senha

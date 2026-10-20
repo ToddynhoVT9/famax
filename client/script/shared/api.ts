@@ -57,6 +57,21 @@ function handleUnauthorized(): void {
   window.location.replace(loginUrlReturningHere());
 }
 
+/**
+ * Erro de uma chamada à API: a mensagem do servidor em `message`, mais o
+ * status e o corpo inteiro, para quem precisa de um campo além do texto (ex.:
+ * code: "EMAIL_NOT_VERIFIED", reactivatable no login de conta excluída).
+ */
+export class ApiError extends Error {
+  constructor(
+    message: string,
+    public status: number,
+    public body: Record<string, unknown>,
+  ) {
+    super(message);
+  }
+}
+
 export async function api<T = unknown>(
   path: string,
   options: RequestInit = {},
@@ -84,7 +99,7 @@ export async function api<T = unknown>(
       handleUnauthorized();
     }
     const body = await response.json().catch(() => ({}));
-    throw new Error(body.error ?? `HTTP ${response.status}`);
+    throw new ApiError(body.error ?? `HTTP ${response.status}`, response.status, body);
   }
 
   if (response.status === 204) {
@@ -112,6 +127,8 @@ export type Me = {
   isPrivate: boolean;
   isAdult: boolean;
   twoFactorEnabled: boolean;
+  /** Códigos de recuperação da 2FA ainda não usados. */
+  recoveryCodesLeft: number;
   /** Admin do site: vê a fila de denúncias de usuários. */
   isAdmin: boolean;
   /** Preferências de notificação (configurações). */
@@ -120,6 +137,10 @@ export type Me = {
   notifyReplies: boolean;
   notifyFollows: boolean;
   notifyEvents: boolean;
+  /** E-mail confirmado pelo link (prompt 12). */
+  emailVerified: boolean;
+  /** Troca de e-mail aguardando confirmação do endereço novo. */
+  pendingEmail: string | null;
   createdAt: string;
   socialLinks: SocialLink[];
 };

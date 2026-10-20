@@ -23,6 +23,7 @@ export const pages = {
   moderation: `${BASE}html/community/moderation.html`,
   adminReports: `${BASE}html/admin/reports.html`,
   notifications: `${BASE}html/notifications.html`,
+  verifyEmail: `${BASE}html/user-pages/verify-email.html`,
 } as const;
 
 export type SearchType = "all" | "communities" | "users" | "posts";

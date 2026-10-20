@@ -10,7 +10,7 @@
  * cancelamento não deixa imagem órfã no Storage. Na edição, as imagens
  * marcadas para remover também só saem ao salvar.
  */
-import { api } from "./api.js";
+import { api, getMe } from "./api.js";
 import { toast } from "./dialog.js";
 import type { Post } from "./post-thread.js";
 import { MAX_POST_IMAGES, type PostImage } from "./post-images.js";
@@ -95,6 +95,19 @@ export function openPostEditor(options: PostEditorOptions): Promise<Post | null>
             "modal-hint",
             "Aceita markdown: **negrito**, *itálico*, [link](https://...), listas, `código`, > citação, ||spoiler|| e @menções.",
         );
+
+        // ----- +18 (só para quem tem conteúdo adulto liberado) -----
+        const nsfwLabel = el("label", "modal-checkbox");
+        const nsfwInput = el("input");
+        nsfwInput.type = "checkbox";
+        nsfwInput.checked = post?.post_is_nsfw ?? false;
+        nsfwLabel.append(nsfwInput, " Conteúdo adulto (+18): só quem tem conteúdo adulto liberado vê");
+        nsfwLabel.hidden = !post?.post_is_nsfw;
+        void getMe()
+            .then((me) => {
+                if (me.isAdult) nsfwLabel.hidden = false;
+            })
+            .catch(() => {});
 
         // ----- Imagens -----
         const imagesLabel = el("span", "modal-label modal-label--spaced", `Imagens (até ${MAX_POST_IMAGES})`);
@@ -190,6 +203,7 @@ export function openPostEditor(options: PostEditorOptions): Promise<Post | null>
             contentLabel,
             contentInput,
             contentHint,
+            nsfwLabel,
             imagesLabel,
             imagesList,
             fileInput,
@@ -271,7 +285,12 @@ export function openPostEditor(options: PostEditorOptions): Promise<Post | null>
                 const result = post
                     ? await api<{ post: Post }>(`/posts/${encodeURIComponent(post.post_id)}`, {
                           method: "PATCH",
-                          body: JSON.stringify({ title: titleValue, content, communityCategoryId: categoryId }),
+                          body: JSON.stringify({
+                              title: titleValue,
+                              content,
+                              communityCategoryId: categoryId,
+                              ...(nsfwLabel.hidden ? {} : { isNsfw: nsfwInput.checked }),
+                          }),
                       })
                     : await api<{ post: Post }>("/posts", {
                           method: "POST",
@@ -280,6 +299,7 @@ export function openPostEditor(options: PostEditorOptions): Promise<Post | null>
                               communityCategoryId: categoryId,
                               title: titleValue,
                               content,
+                              isNsfw: !nsfwLabel.hidden && nsfwInput.checked,
                           }),
                       });
                 finish(await syncImages(result.post));

@@ -12,7 +12,7 @@
  *  - o botão é travado durante o request — dois cliques criariam duas
  *    comunidades.
  */
-import { api } from "./shared/api.js";
+import { api, getMe } from "./shared/api.js";
 import { requireLogin } from "./shared/auth-guard.js";
 import { initLayout } from "./shared/layout.js";
 import { communityUrl, pages } from "./shared/pages.js";
@@ -42,6 +42,16 @@ const dangerZone = document.getElementById("dangerZone");
 const deleteBtn = document.getElementById("deleteCommunityBtn") as HTMLButtonElement | null;
 
 const editId = queryParam("edit");
+const nsfwField = document.getElementById("nsfwField");
+const nsfwInput = document.getElementById("communityNsfw") as HTMLInputElement | null;
+
+// A opção +18 aparece para quem tem conteúdo adulto liberado (a API recusa
+// os demais de qualquer jeito).
+void getMe()
+    .then((me) => {
+        if (me.isAdult && nsfwField) nsfwField.hidden = false;
+    })
+    .catch(() => {});
 
 interface EditableCommunity {
     name: string;
@@ -50,6 +60,7 @@ interface EditableCommunity {
     cover_image_url: string | null;
     category_id: string;
     my_role: string | null;
+    is_nsfw: boolean;
 }
 
 if (
@@ -197,6 +208,10 @@ if (
 
             editingName = community.name;
             nameInput.value = community.name;
+            if (nsfwInput) nsfwInput.checked = community.is_nsfw;
+            // Já marcada: o dono vê a opção mesmo sem conteúdo adulto, para
+            // poder desmarcar.
+            if (nsfwField && community.is_nsfw) nsfwField.hidden = false;
             descriptionInput.value = community.description ?? "";
             if (rulesInput instanceof HTMLTextAreaElement) {
                 rulesInput.value = community.rules ?? "";
@@ -279,6 +294,7 @@ if (
         }
         if (file) body.append("cover", file);
         else if (editId && removeCover?.checked) body.append("removeCover", "true");
+        if (nsfwField && !nsfwField.hidden && nsfwInput) body.append("isNsfw", String(nsfwInput.checked));
 
         submitBtn.disabled = true;
         submitBtn.textContent = editId ? "Salvando..." : "Criando...";

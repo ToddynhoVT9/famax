@@ -16,6 +16,7 @@ import {
     communityEditUrl,
     communityUrl,
     moderationUrl,
+    pages,
     type CommunityView,
 } from "./shared/pages.js";
 import { avatarColor, queryParam } from "./shared/dom.js";
@@ -39,6 +40,9 @@ interface Community {
     my_role: "owner" | "moderator" | "member" | null;
     is_banned: boolean;
     my_ban_expires_at: string | null;
+    /** Comunidade +18, e se quem vê não pode ver. */
+    is_nsfw: boolean;
+    nsfw_blocked: boolean;
 }
 
 type Tab = "all" | "unanswered" | "categories";
@@ -141,6 +145,7 @@ function renderHero(): void {
     const meta = $("communityMeta");
     if (meta) {
         meta.textContent = [
+            c.is_nsfw ? "+18" : null,
             c.category_name,
             `${c.members_count} ${c.members_count === 1 ? "membro" : "membros"}`,
         ]
@@ -170,9 +175,28 @@ function renderHero(): void {
         }
     }
 
+    renderNsfwBanner(c);
     renderActions();
     renderRules();
     $("communityHero")?.removeAttribute("aria-busy");
+}
+
+/** Comunidade +18 vista por quem não pode ver: aviso no topo das discussões. */
+function renderNsfwBanner(c: Community): void {
+    document.getElementById("nsfwBanner")?.remove();
+    // Sem acesso não há como publicar: o "Compartilhe-os" levaria a um 403.
+    const greeting = $("btnCreatePost")?.closest<HTMLElement>(".tf-widget");
+    if (greeting) greeting.hidden = c.nsfw_blocked;
+    if (!c.nsfw_blocked) return;
+    const banner = document.createElement("p");
+    banner.id = "nsfwBanner";
+    banner.className = "tf-nsfw-banner";
+    banner.append("Esta comunidade é para maiores de 18. Para ver as discussões e participar, ative “Conteúdo adulto” nas ");
+    const link = document.createElement("a");
+    link.href = pages.settings;
+    link.textContent = "configurações";
+    banner.append(link, " (exige 18 anos pela data de nascimento).");
+    $("viewDiscussions")?.prepend(banner);
 }
 
 function renderActions(): void {
@@ -251,6 +275,9 @@ function renderActions(): void {
         leave.addEventListener("click", () => void leaveCommunity());
         return;
     }
+
+    // +18 sem conteúdo adulto liberado: não há como entrar (a API recusa).
+    if (community.nsfw_blocked && getToken()) return;
 
     // Visitante ou não-membro: participar (visitante vai ao login).
     const join = button("Participar");

@@ -7,6 +7,7 @@ import { optionalAuth, requireAuth } from "../middleware/auth.js";
 import { rateLimit } from "../lib/rate-limit.js";
 import { profileAccess } from "../lib/profile.js";
 import { notify } from "../lib/notify.js";
+import { isBlockedBetween } from "../lib/blocks.js";
 
 const router = Router();
 
@@ -73,6 +74,10 @@ router.post(
       if (target.length === 0) {
         await client.query("ROLLBACK");
         return res.status(404).json({ error: "Usuário não encontrado" });
+      }
+      if (await isBlockedBetween(req.userId!, userId, client)) {
+        await client.query("ROLLBACK");
+        return res.status(403).json({ error: "Não é possível seguir esta pessoa" });
       }
 
       const { rowCount } = await client.query(

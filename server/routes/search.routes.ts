@@ -2,6 +2,7 @@ import { Router } from "express";
 import { z } from "zod";
 import { optionalAuth } from "../middleware/auth.js";
 import { rateLimit } from "../lib/rate-limit.js";
+import { isAdult } from "../lib/nsfw.js";
 import {
   type SearchSection,
   searchCommunities,
@@ -43,19 +44,21 @@ router.get(
     try {
       const { q, type, page, limit } = searchQuery.parse(req.query);
       const results: Partial<Record<"communities" | "users" | "posts", SearchSection>> = {};
+      // Conteúdo +18 (comunidades e posts) só entra para quem pode ver.
+      const adult = await isAdult(req.userId);
 
       if (type === "all") {
         // Em sequência, não em paralelo: cada uma é uma consulta curta, e três
         // de uma vez por tecla multiplicariam as conexões do pool.
-        results.communities = await searchCommunities(q, 1, PREVIEW_LIMIT);
+        results.communities = await searchCommunities(q, 1, PREVIEW_LIMIT, adult);
         results.users = await searchUsers(q, req.userId, 1, PREVIEW_LIMIT);
-        results.posts = await searchPosts(q, 1, PREVIEW_LIMIT);
+        results.posts = await searchPosts(q, 1, PREVIEW_LIMIT, adult);
       } else if (type === "communities") {
-        results.communities = await searchCommunities(q, page, limit);
+        results.communities = await searchCommunities(q, page, limit, adult);
       } else if (type === "users") {
         results.users = await searchUsers(q, req.userId, page, limit);
       } else {
-        results.posts = await searchPosts(q, page, limit);
+        results.posts = await searchPosts(q, page, limit, adult);
       }
 
       res.json({ q, type, results });

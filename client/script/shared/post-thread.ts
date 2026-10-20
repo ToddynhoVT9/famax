@@ -18,7 +18,7 @@
  */
 import { api, getCurrentUserId, getToken } from "./api.js";
 import { goToLogin } from "./auth-guard.js";
-import { communityUrl, postUrl, profileUrl } from "./pages.js";
+import { communityUrl, pages, postUrl, profileUrl } from "./pages.js";
 import { avatarColor, escapeHtml, initials, timeAgo } from "./dom.js";
 import { confirmDialog, toast } from "./dialog.js";
 import {
@@ -74,6 +74,13 @@ export interface Post {
     saved_by_me: boolean;
     /** Imagens anexadas (até 4), na ordem de exibição. */
     images: PostImage[];
+    /** Quem vê bloqueou o autor: o post aparece recolhido ("mostrar"). */
+    author_blocked_by_me?: boolean;
+    /** +18 (o post ou a comunidade dele); post_is_nsfw é só a marca do post. */
+    is_nsfw?: boolean;
+    post_is_nsfw?: boolean;
+    /** +18 e quem vê não pode ver: veio só o título. */
+    nsfw_hidden?: boolean;
     /** Papel do autor na comunidade (selo) e de quem vê (pode moderar?). */
     author_role: CommunityRole | null;
     viewer_role: CommunityRole | null;
@@ -92,6 +99,8 @@ export interface Comment {
     author_username: string | null;
     author_display_name: string | null;
     author_role?: CommunityRole | null;
+    /** Quem vê bloqueou o autor: o comentário aparece recolhido. */
+    author_blocked_by_me?: boolean;
 }
 
 export interface PostThreadOptions {
@@ -164,6 +173,7 @@ function postBadges(post: Post): string {
     const badges = [
         post.pinned_at ? '<span class="tf-badge tf-badge--pinned">📌 Fixado</span>' : "",
         post.resolved_comment_id ? '<span class="tf-badge tf-badge--resolved">✓ Resolvido</span>' : "",
+        post.is_nsfw ? '<span class="tf-badge tf-badge--nsfw">+18</span>' : "",
     ].join("");
     return `<div class="tf-post-badges"${badges ? "" : " hidden"}>${badges}</div>`;
 }
@@ -188,7 +198,8 @@ export function renderPost(post: Post, options: { single?: boolean; showCommunit
         : `<h3 class="tf-post-title"><a class="tf-post-title-link" href="${escapeHtml(postUrl(post.post_id))}">${title}</a></h3>`;
 
     return `
-        <article class="tf-post${options.single ? " tf-post--single" : ""}" data-post-id="${id}">
+        <article class="tf-post${options.single ? " tf-post--single" : ""}${post.author_blocked_by_me ? " is-blocked" : ""}" data-post-id="${id}">
+            ${post.author_blocked_by_me ? BLOCKED_NOTICE : ""}
             <div class="tf-post-avatar-container" data-author-id="${escapeHtml(post.author_id)}">
                 <div class="tf-avatar ${avatarColor(post.author_id)}">${escapeHtml(initials(name))}</div>
             </div>
@@ -202,10 +213,10 @@ export function renderPost(post: Post, options: { single?: boolean; showCommunit
                 </div>
                 ${postBadges(post)}
                 ${heading}
-                <div class="tf-post-snippet md${options.single ? " expanded" : ""}">${renderMarkdown(post.content)}</div>
+                ${post.nsfw_hidden ? nsfwNoticeHtml() : `<div class="tf-post-snippet md${options.single ? " expanded" : ""}">${renderMarkdown(post.content)}</div>
                 <button type="button" class="tf-read-more" data-action="read-more" hidden>ler mais</button>
-                ${imagesGridHtml(post.images)}
-                <div class="tf-post-stats">
+                ${imagesGridHtml(post.images)}`}
+                <div class="tf-post-stats"${post.nsfw_hidden ? " hidden" : ""}>
                     ${reactionControlHtml(post.my_reaction ?? null, post.likes_count, post.reaction_counts ?? {})}
                     <button type="button" class="tf-stat" data-action="toggle-comments"
                             aria-expanded="${options.single ? "true" : "false"}" aria-label="Comentários">
@@ -233,6 +244,20 @@ function saveButtonHtml(saved: boolean): string {
                     aria-pressed="${saved}" title="${saved ? "Tirar dos salvos" : "Salvar para ler depois"}">
                 🔖 <span class="save-label">${saved ? "Salvo" : "Salvar"}</span>
             </button>`;
+}
+
+/**
+ * Conteúdo de quem a pessoa bloqueou: recolhido, com um "mostrar" que só
+ * abre ali (não desbloqueia ninguém). O CSS esconde o resto enquanto o
+ * item tem .is-blocked.
+ */
+const BLOCKED_NOTICE = `<p class="tf-blocked-notice">Conteúdo de usuário bloqueado —
+    <button type="button" class="tf-blocked-show" data-action="show-blocked">mostrar</button></p>`;
+
+/** No lugar do conteúdo +18, para quem não pode ver (o servidor nem o mandou). */
+function nsfwNoticeHtml(): string {
+    return `<p class="tf-nsfw-notice">Conteúdo para maiores de 18. Para ver, ative “Conteúdo adulto” nas
+        <a href="${escapeHtml(pages.settings)}">configurações</a> (exige 18 anos pela data de nascimento).</p>`;
 }
 
 /** "ler mais" só aparece onde o texto realmente foi cortado. */
@@ -306,11 +331,12 @@ function renderCommentMain(comment: Comment, context: CommentContext = NO_CONTEX
 function renderComment(comment: Comment, depth: number, context: CommentContext): string {
     const accepted = !comment.is_deleted && comment.comment_id === context.resolvedId;
     // id: âncora #comment-<id> dos links de notificação.
-    return `<div class="tf-comment-item${comment.is_deleted ? " is-deleted" : ""}${accepted ? " is-accepted" : ""}"
+    return `<div class="tf-comment-item${comment.is_deleted ? " is-deleted" : ""}${accepted ? " is-accepted" : ""}${comment.author_blocked_by_me ? " is-blocked" : ""}"
                  id="comment-${escapeHtml(comment.comment_id)}"
                  data-comment-id="${escapeHtml(comment.comment_id)}" data-depth="${depth}"
                  data-created-at="${escapeHtml(comment.created_at)}" data-edited="${comment.edited_at ? "true" : "false"}"
                  data-author-role="${escapeHtml(comment.author_role ?? "")}">
+                ${comment.author_blocked_by_me ? BLOCKED_NOTICE : ""}
                 ${renderCommentMain(comment, context)}
                 <div class="tf-comment-replies"></div>
             </div>`;
@@ -954,6 +980,14 @@ export function createPostThread(container: HTMLElement, options: PostThreadOpti
                 case "save":
                     void toggleSave(postEl);
                     return;
+                case "show-blocked": {
+                    // O item mais próximo recolhido: o comentário, ou o post.
+                    const blocked = actionEl.closest<HTMLElement>(".is-blocked");
+                    blocked?.classList.remove("is-blocked");
+                    actionEl.closest(".tf-blocked-notice")?.remove();
+                    if (blocked === postEl) markOverflow(postEl);
+                    return;
+                }
                 case "open-image": {
                     const post = posts.get(postId);
                     if (post) openLightbox(post.images ?? [], Number(actionEl.dataset.index ?? "0"));

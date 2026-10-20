@@ -11,7 +11,8 @@ import { publish } from "./realtime.js";
  *  - ninguém é notificado da própria ação;
  *  - conta excluída não recebe nada;
  *  - tipos com preferência (curtidas, comentários, respostas) respeitam o
- *    user_settings; sem linha de settings, vale o padrão (ligado).
+ *    user_settings; sem linha de settings, vale o padrão (ligado);
+ *  - quem bloqueou alguém não recebe avisos das ações dessa pessoa.
  *
  * Cada aviso gravado também vira um evento notification:new no tempo real
  * (lib/realtime.ts), entregue só no COMMIT da mesma transação: o sininho
@@ -78,6 +79,8 @@ export async function notify(client: PoolClient, input: NotifyInput): Promise<bo
      SELECT $1, $2, $3, $4, $5, $6, $7, $8::jsonb
      WHERE ${wants}
        AND EXISTS (SELECT 1 FROM users WHERE user_id = $2 AND deleted_at IS NULL)
+       -- Bloqueou quem agiu: nenhum aviso dessa pessoa.
+       AND NOT EXISTS (SELECT 1 FROM user_blocks WHERE blocker_id = $2 AND blocked_id = $4)
      ${conflict}
      RETURNING notification_id`,
     [
@@ -148,6 +151,7 @@ export async function notifyEventToMembers(
      WHERE m.community_id = $1
        AND m.user_id <> $2
        AND COALESCE(us.notify_events, TRUE)
+       AND NOT EXISTS (SELECT 1 FROM user_blocks b WHERE b.blocker_id = m.user_id AND b.blocked_id = $2)
      RETURNING user_id`,
     [input.communityId, input.actorId, input.eventId, JSON.stringify({ title: input.title })],
   );

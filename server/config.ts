@@ -103,6 +103,36 @@ if (MAIL_PROVIDER === "console" && process.env.NODE_ENV === "production") {
   );
 }
 
+/**
+ * Chave da 2FA (AES-256-GCM dos segredos TOTP): 32 bytes, em hex (64
+ * caracteres) ou base64. Ausente: a 2FA fica indisponível. Presente mas
+ * inválida: erro no boot — melhor do que descobrir na hora de ativar.
+ */
+function parseTwoFactorKey(raw: string | undefined): Buffer | null {
+  if (!raw) return null;
+  const value = raw.trim();
+  const buffer = /^[0-9a-fA-F]{64}$/.test(value) ? Buffer.from(value, "hex") : Buffer.from(value, "base64");
+  if (buffer.length !== 32) {
+    throw new Error(
+      "TWO_FACTOR_KEY deve ter 32 bytes (64 caracteres hex ou base64). " +
+        "Gere com: node -e \"console.log(require('crypto').randomBytes(32).toString('hex'))\"",
+    );
+  }
+  return buffer;
+}
+
+const TWO_FACTOR_KEY = parseTwoFactorKey(process.env.TWO_FACTOR_KEY);
+if (!TWO_FACTOR_KEY && process.env.NODE_ENV === "production") {
+  console.warn("⚠️  TWO_FACTOR_KEY não definida: a verificação em duas etapas fica indisponível.");
+}
+
+if (process.env.NODE_ENV === "production" && !process.env.APP_URL) {
+  console.warn(
+    "⚠️  APP_URL não definida em produção: os links dos e-mails usarão o host\n" +
+      "   da requisição. Defina APP_URL=https://seu-dominio.",
+  );
+}
+
 export const config = {
   PORT: Number(process.env.PORT ?? 3000),
   NODE_ENV: (process.env.NODE_ENV ?? "development") as
@@ -124,6 +154,18 @@ export const config = {
   JWT_EXPIRES_IN: (process.env.JWT_EXPIRES_IN ?? "7d") as `${number}d`,
 
   CORS_ORIGIN: process.env.CORS_ORIGIN ?? "http://localhost:5173",
+
+  // Endereço público do site, para os links dos e-mails (verificação de
+  // e-mail). Em dev, sem a variável, o Vite (5173) — o proxy dele troca o
+  // Host para a porta da API. Em produção, vazio usa o host da requisição,
+  // mas o header Host vem do cliente, então configure (aviso no boot).
+  APP_URL: (
+    process.env.APP_URL ??
+    (process.env.NODE_ENV === "production" ? "" : "http://localhost:5173")
+  ).replace(/\/+$/, ""),
+
+  // Chave dos segredos da verificação em duas etapas (lib/two-factor.ts).
+  TWO_FACTOR_KEY,
 
   TRUST_PROXY: parseTrustProxy(process.env.TRUST_PROXY),
 

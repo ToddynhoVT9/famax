@@ -4,6 +4,8 @@ import { z } from "zod";
 import { randomUUID } from "node:crypto";
 import { pool } from "../db.js";
 import { optionalAuth, requireAuth } from "../middleware/auth.js";
+import { requireVerifiedEmail } from "../middleware/verified-email.js";
+import { NSFW_FORBIDDEN, isAdult } from "../lib/nsfw.js";
 import { rateLimit } from "../lib/rate-limit.js";
 import { ACTIVE_BAN } from "../middleware/community-role.js";
 import {
@@ -76,7 +78,8 @@ router.get("/communities", async (req, res, next) => {
 
     // communities tem soft delete (deleted_at no schema base) — sem este filtro
     // uma comunidade excluída continuaria aparecendo no feed.
-    const filters: string[] = ["c.deleted_at IS NULL"];
+    // Comunidades +18 ficam fora da home (só por link ou, para adultos, na busca).
+    const filters: string[] = ["c.deleted_at IS NULL", "NOT c.is_nsfw"];
     const params: unknown[] = [];
 
     if (search) {
@@ -159,17 +162,24 @@ const createCommunitySchema = z.object({
     .max(80, "Nome deve ter no máximo 80 caracteres"),
   categoryId: z.string().uuid("Selecione uma categoria"),
   description: z.string().trim().max(500).optional(),
+  // Multipart só tem texto: "true" marca a comunidade como +18.
+  isNsfw: z.enum(["true", "false"]).optional(),
 });
 
 router.post(
   "/communities",
   requireAuth,
+  requireVerifiedEmail,
   rateLimit({ name: "create-community", limit: 5, windowMs: 60_000 }),
   upload.single("cover"),
   async (req, res, next) => {
     try {
       const data = createCommunitySchema.parse(req.body);
       const communityId = randomUUID();
+      const nsfw = data.isNsfw === "true";
+      if (nsfw && !(await isAdult(req.userId))) {
+        return res.status(403).json({ error: NSFW_FORBIDDEN });
+      }
 
       // O upload acontece antes da transação: uma falha aqui não deve deixar
       // uma comunidade órfã, e um objeto órfão no Storage é inofensivo.
@@ -184,8 +194,8 @@ router.post(
 
         await client.query(
           `INSERT INTO communities
-             (community_id, name, description, cover_image_url, category_id, owner_id)
-           VALUES ($1, $2, $3, $4, $5, $6)`,
+             (community_id, name, description, cover_image_url, category_id, owner_id, is_nsfw)
+           VALUES ($1, $2, $3, $4, $5, $6, $7)`,
           [
             communityId,
             data.name,
@@ -193,6 +203,7 @@ router.post(
             coverUrl,
             data.categoryId,
             req.userId,
+            nsfw,
           ],
         );
 
@@ -229,6 +240,7 @@ router.post(
           description: data.description ?? null,
           coverImageUrl: coverUrl,
           categoryId: data.categoryId,
+          isNsfw: nsfw,
         },
       });
     } catch (err) {
@@ -280,6 +292,10 @@ router.get("/communities/:communityId", optionalAuth, async (req, res, next) => 
          c.created_at,
          c.owner_id,
          c.category_id,
+         c.is_nsfw,
+         -- Quem vê não pode ver +18: a página mostra o aviso no lugar do feed.
+         (c.is_nsfw AND NOT COALESCE(
+            (SELECT vu.is_adult FROM users vu WHERE vu.user_id = $2), FALSE)) AS nsfw_blocked,
          cat.name AS category_name,
          (SELECT COUNT(*) FROM community_members cm
           WHERE cm.community_id = c.community_id)::int AS members_count,
@@ -356,12 +372,16 @@ router.post(
     try {
       const { communityId } = communityIdParam.parse(req.params);
 
-      const { rows: exists } = await pool.query(
-        "SELECT 1 FROM communities WHERE community_id = $1 AND deleted_at IS NULL",
+      const { rows: exists } = await pool.query<{ is_nsfw: boolean }>(
+        "SELECT is_nsfw FROM communities WHERE community_id = $1 AND deleted_at IS NULL",
         [communityId],
       );
       if (exists.length === 0) {
         return res.status(404).json({ error: "Comunidade não encontrada" });
+      }
+      // Comunidade +18: só entra quem tem conteúdo adulto liberado.
+      if (exists[0].is_nsfw && !(await isAdult(req.userId))) {
+        return res.status(403).json({ error: NSFW_FORBIDDEN });
       }
 
       // Banido não volta enquanto o ban valer (o ban já o tirou dos membros).
@@ -484,6 +504,7 @@ const editCommunitySchema = z
     rules: z.string().trim().max(5000, "As regras devem ter no máximo 5000 caracteres").optional(),
     // Multipart só tem texto: "true" remove a capa atual.
     removeCover: z.enum(["true", "false"]).optional(),
+    isNsfw: z.enum(["true", "false"]).optional(),
   })
   .strict();
 
@@ -511,6 +532,12 @@ router.patch(
       if (data.categoryId !== undefined) set("category_id", data.categoryId);
       if (data.description !== undefined) set("description", data.description || null);
       if (data.rules !== undefined) set("rules", data.rules || null);
+      if (data.isNsfw !== undefined) {
+        if (data.isNsfw === "true" && !(await isAdult(req.userId))) {
+          return res.status(403).json({ error: NSFW_FORBIDDEN });
+        }
+        set("is_nsfw", data.isNsfw === "true");
+      }
 
       // Capa nova substitui; removeCover sem arquivo apaga. A antiga sai do
       // Storage só depois que o banco já aponta para a nova.
@@ -540,7 +567,7 @@ router.patch(
 
       const { rows } = await pool.query(
         `SELECT c.community_id, c.name, c.description, c.rules, c.cover_image_url,
-                c.category_id, cat.name AS category_name
+                c.category_id, c.is_nsfw, cat.name AS category_name
          FROM communities c
          LEFT JOIN categories cat ON cat.category_id = c.category_id
          WHERE c.community_id = $1`,

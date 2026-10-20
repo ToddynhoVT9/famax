@@ -8,6 +8,7 @@ import { requireAuth } from "../middleware/auth.js";
 import { rateLimit } from "../lib/rate-limit.js";
 import { publish } from "../lib/realtime.js";
 import { BLOCKED_MESSAGE, isBlockedBetween } from "../lib/blocks.js";
+import { requireVerifiedEmail } from "../middleware/verified-email.js";
 
 const router = Router();
 
@@ -368,6 +369,7 @@ async function checkInvitees(db: Db, meId: string, ids: string[]): Promise<{ sta
 
 router.post(
   "/groups",
+  requireVerifiedEmail,
   rateLimit({ name: "create-group", limit: 10, windowMs: 60_000 }),
   async (req, res, next) => {
     try {
@@ -733,6 +735,7 @@ const sendMessageSchema = z.object({
 
 router.post(
   "/:conversationId/messages",
+  requireVerifiedEmail,
   rateLimit({
     name: "send-message",
     limit: 20,
