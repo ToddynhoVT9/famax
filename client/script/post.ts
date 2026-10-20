@@ -11,6 +11,7 @@ import { communityUrl, pages, postUrl } from "./shared/pages.js";
 import { queryParam, truncate } from "./shared/dom.js";
 import { toast } from "./shared/dialog.js";
 import { createPostThread, type Post } from "./shared/post-thread.js";
+import { markdownToText } from "./shared/markdown.js";
 import { openPostEditor, type PostCategory } from "./shared/post-editor.js";
 
 initLayout();
@@ -35,7 +36,7 @@ function showStatus(message: string, isError = false): void {
 /** Título da aba e meta description refletem o post. */
 function applyMeta(post: Post): void {
     document.title = `${post.title} · ${post.community_name} · FAMAX`;
-    $("metaDescription")?.setAttribute("content", truncate(post.content.replace(/\s+/g, " "), 160));
+    $("metaDescription")?.setAttribute("content", truncate(markdownToText(post.content), 160));
 
     const community = $<HTMLAnchorElement>("breadcrumbCommunity");
     if (community) {

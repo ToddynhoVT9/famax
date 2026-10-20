@@ -1,26 +1,31 @@
 /**
  * FAMAX — Perfil (próprio ou de outra pessoa)
  *
- * ?id=<userId> mostra o perfil daquela pessoa; sem id, o próprio (exige
- * login). Antes a página era estática e "ver outro perfil" era simulado por
+ * ?id=<userId> mostra o perfil daquela pessoa; ?u=<username> também (é o link
+ * das menções @username no texto, resolvido por GET /users/by-username);
+ * sem nenhum dos dois, o próprio (exige login). Antes a página era estática e "ver outro perfil" era simulado por
  * ?view=other&name=, com o nome tirado da URL — agora tudo vem de
  * GET /api/users/:id, e a privacidade é decidida no servidor.
  *
- * Abas: Posts e Respostas, com "Carregar mais". A aba "Recursos" do protótipo
+ * Abas: Posts e Respostas, com "Carregar mais"; no próprio perfil, também
+ * Salvos (GET /me/saved — privada, só o dono vê). A aba "Recursos" do protótipo
  * foi removida: não há nada no modelo de dados que a sustente, e uma aba que
  * só diz "em breve" é um clique sem saída.
  */
 import { api, getMe, getToken, type SocialLink } from "../shared/api.js";
 import { requireLogin } from "../shared/auth-guard.js";
 import { initLayout } from "../shared/layout.js";
-import { communityUrl, pages } from "../shared/pages.js";
+import { communityUrl, pages, postUrl } from "../shared/pages.js";
 import { avatarColor, initials, queryParam, timeAgo, truncate } from "../shared/dom.js";
 import { SOCIAL_PLATFORM_LABELS, isSafeLink } from "../shared/social.js";
 import { openReportDialog } from "../shared/moderation.js";
+import { bindFollowButton, openFollowList } from "../shared/follow.js";
+import { markdownToText } from "../shared/markdown.js";
 
 // Visitante pode ver o perfil público de alguém; o próprio perfil exige conta.
 const requestedId = queryParam("id");
-if (!requestedId) requireLogin();
+const requestedUsername = queryParam("u");
+if (!requestedId && !requestedUsername) requireLogin();
 initLayout();
 
 // ===========================================================================
@@ -34,12 +39,14 @@ interface PublicProfile {
     avatarUrl: string | null;
     isPrivate: boolean;
     isOwner: boolean;
+    /** Quem vê segue este perfil (sempre false sem sessão). */
+    followedByMe?: boolean;
     // Ausentes quando o perfil é privado e quem vê não é o dono.
     nickname?: string | null;
     bannerUrl?: string | null;
     bio?: string | null;
     createdAt?: string;
-    stats?: { posts: number; comments: number; communities: number };
+    stats?: { posts: number; comments: number; communities: number; followers: number; following: number };
     socialLinks?: SocialLink[];
 }
 
@@ -137,23 +144,45 @@ function renderSocialLinks(links: SocialLink[]): void {
     socialEl.hidden = items.length === 0;
 }
 
-function renderStats(stats: NonNullable<PublicProfile["stats"]>): void {
-    if (!statsEl) return;
-    const entries: Array<[number, string, string]> = [
-        [stats.posts, "post", "posts"],
-        [stats.comments, "resposta", "respostas"],
-        [stats.communities, "comunidade", "comunidades"],
-    ];
+function statNode(count: number, one: string, many: string, tag: "span" | "button" = "span"): HTMLElement {
+    const node = document.createElement(tag);
+    const strong = document.createElement("strong");
+    strong.textContent = String(count);
+    const label = document.createElement("span");
+    label.textContent = ` ${count === 1 ? one : many}`;
+    node.append(strong, label);
+    return node;
+}
+
+function renderStats(profile: PublicProfile): void {
+    const stats = profile.stats;
+    if (!statsEl || !stats) return;
+    const name = profile.displayName ?? profile.username;
+
+    // Seguidores e Seguindo abrem a lista num diálogo.
+    const followList = (count: number, one: string, many: string, kind: "followers" | "following") => {
+        const button = statNode(count, one, many, "button") as HTMLButtonElement;
+        button.type = "button";
+        button.className = "profile-stat-link";
+        button.dataset.stat = kind;
+        button.addEventListener("click", () => openFollowList(profile.userId, kind, name));
+        return button;
+    };
+
     statsEl.replaceChildren(
-        ...entries.map(([count, one, many]) => {
-            const span = document.createElement("span");
-            const strong = document.createElement("strong");
-            strong.textContent = String(count);
-            span.append(strong, ` ${count === 1 ? one : many}`);
-            return span;
-        }),
+        followList(stats.followers, "seguidor", "seguidores", "followers"),
+        followList(stats.following, "seguindo", "seguindo", "following"),
+        statNode(stats.posts, "post", "posts"),
+        statNode(stats.comments, "resposta", "respostas"),
+        statNode(stats.communities, "comunidade", "comunidades"),
     );
     statsEl.hidden = false;
+}
+
+/** Atualiza o "N seguidores" depois de seguir / deixar de seguir. */
+function updateFollowersCount(count: number): void {
+    const stat = statsEl?.querySelector('[data-stat="followers"]');
+    if (stat) stat.replaceChildren(...statNode(count, "seguidor", "seguidores").childNodes);
 }
 
 function renderProfile(profile: PublicProfile): void {
@@ -173,6 +202,7 @@ function renderProfile(profile: PublicProfile): void {
         editBtn.hidden = !profile.isOwner;
     }
     setupReportMenu(profile);
+    setupFollowButton(profile);
 
     const canView = profile.stats !== undefined;
     if (!canView) {
@@ -202,9 +232,11 @@ function renderProfile(profile: PublicProfile): void {
     }
 
     renderSocialLinks(profile.socialLinks ?? []);
-    if (profile.stats) renderStats(profile.stats);
+    renderStats(profile);
 
     if (tabsEl) tabsEl.hidden = false;
+    const savedTab = document.getElementById("tabSaved");
+    if (savedTab) savedTab.hidden = !profile.isOwner;
     if (feedEl) feedEl.hidden = false;
     void loadTab("posts", true);
 }
@@ -213,7 +245,7 @@ function renderProfile(profile: PublicProfile): void {
 // Abas: Posts e Respostas
 // ===========================================================================
 
-type Tab = "posts" | "comments";
+type Tab = "posts" | "comments" | "saved";
 
 let profileUserId = "";
 let isOwnProfile = false;
@@ -236,15 +268,14 @@ function renderPostItem(post: ProfilePost): HTMLElement {
     const item = document.createElement("article");
     item.className = "profile-item";
 
-    // Ainda não há página de post (prompt 07): o título leva à comunidade.
     const title = document.createElement("a");
     title.className = "profile-item-title";
-    title.href = communityUrl(post.community_id);
+    title.href = postUrl(post.post_id);
     title.textContent = post.title;
 
     const snippet = document.createElement("p");
     snippet.className = "profile-item-snippet";
-    snippet.textContent = truncate(post.content, 220);
+    snippet.textContent = truncate(markdownToText(post.content), 220);
 
     const stats = document.createElement("div");
     stats.className = "profile-item-stats";
@@ -261,13 +292,13 @@ function renderCommentItem(comment: ProfileComment): HTMLElement {
     const context = document.createElement("div");
     context.className = "profile-item-context";
     const postLink = document.createElement("a");
-    postLink.href = communityUrl(comment.community_id);
+    postLink.href = postUrl(comment.post_id, comment.comment_id);
     postLink.textContent = comment.post_title;
     context.append("Em resposta a ", postLink);
 
     const content = document.createElement("p");
     content.className = "profile-item-snippet";
-    content.textContent = truncate(comment.content, 300);
+    content.textContent = truncate(markdownToText(comment.content), 300);
 
     item.append(itemMeta(comment.community_id, comment.community_name, comment.created_at), context, content);
     return item;
@@ -280,6 +311,9 @@ function setStatus(text: string | null): void {
 }
 
 function emptyMessage(tab: Tab): string {
+    if (tab === "saved") {
+        return "Nenhum post salvo ainda. Use o 🔖 Salvar nos posts para guardá-los aqui.";
+    }
     if (tab === "posts") {
         return isOwnProfile ? "Você ainda não publicou nenhum post." : "Nenhum post ainda.";
     }
@@ -301,18 +335,22 @@ async function loadTab(tab: Tab, reset: boolean): Promise<void> {
 
     const nextPage = currentPage + 1;
     try {
-        const path = `/users/${encodeURIComponent(profileUserId)}/${tab}?page=${nextPage}&limit=10`;
+        // Salvos têm o formato de post (o mesmo desenho da aba Posts).
+        const path =
+            tab === "saved"
+                ? `/me/saved?page=${nextPage}&limit=10`
+                : `/users/${encodeURIComponent(profileUserId)}/${tab}?page=${nextPage}&limit=10`;
         const result =
-            tab === "posts"
-                ? await api<Page<ProfilePost>>(path)
-                : await api<Page<ProfileComment>>(path);
+            tab === "comments"
+                ? await api<Page<ProfileComment>>(path)
+                : await api<Page<ProfilePost>>(path);
         if (seq !== requestSeq) return;
 
         currentPage = nextPage;
         const nodes =
-            tab === "posts"
-                ? (result.data as ProfilePost[]).map(renderPostItem)
-                : (result.data as ProfileComment[]).map(renderCommentItem);
+            tab === "comments"
+                ? (result.data as ProfileComment[]).map(renderCommentItem)
+                : (result.data as ProfilePost[]).map(renderPostItem);
         feedList.append(...nodes);
 
         setStatus(feedList.childElementCount === 0 ? emptyMessage(tab) : null);
@@ -356,6 +394,18 @@ function showFatal(message: string): void {
 
 async function init(): Promise<void> {
     let userId = requestedId;
+    if (!userId && requestedUsername) {
+        try {
+            const { user } = await api<{ user: { userId: string } }>(
+                `/users/by-username/${encodeURIComponent(requestedUsername)}`,
+            );
+            userId = user.userId;
+        } catch {
+            showFatal(`Ninguém com o usuário @${requestedUsername}`);
+            container?.removeAttribute("aria-busy");
+            return;
+        }
+    }
     if (!userId) {
         if (!getToken()) return; // requireLogin já está redirecionando
         try {
@@ -378,6 +428,20 @@ async function init(): Promise<void> {
 }
 
 void init();
+
+// ===========================================================================
+// Seguir (perfil de outra pessoa; visitante vai ao login ao clicar)
+// ===========================================================================
+
+function setupFollowButton(profile: PublicProfile): void {
+    const button = document.getElementById("btnFollow") as HTMLButtonElement | null;
+    if (!button || profile.isOwner || button.dataset.ready) return;
+    button.dataset.ready = "true";
+    button.hidden = false;
+    bindFollowButton(button, profile.userId, profile.followedByMe ?? false, (state) =>
+        updateFollowersCount(state.followersCount),
+    );
+}
 
 // ===========================================================================
 // "⋯" com Denunciar (perfil de outra pessoa, com sessão)

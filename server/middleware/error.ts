@@ -31,6 +31,7 @@ const FILE_SIZE_MESSAGES: Record<string, string> = {
   cover: "A capa deve ter no máximo 2MB",
   avatar: "A foto de perfil deve ter no máximo 1MB",
   banner: "O banner deve ter no máximo 2MB",
+  images: "Cada imagem deve ter no máximo 2MB",
 };
 
 export function errorHandler(
@@ -53,6 +54,9 @@ export function errorHandler(
     }
     if (FIELD_ERROR_CODES.has(err.code)) {
       return res.status(400).json({ error: "Formulário inválido" });
+    }
+    if (err.code === "LIMIT_FILE_COUNT" || (err.code === "LIMIT_UNEXPECTED_FILE" && err.field === "images")) {
+      return res.status(400).json({ error: "Arquivos demais de uma vez" });
     }
     return res.status(400).json({ error: "Arquivo inválido" });
   }

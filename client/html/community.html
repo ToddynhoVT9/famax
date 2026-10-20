@@ -49,7 +49,18 @@
         <div class="tf-layout">
             <!-- Esquerda: lista de posts -->
             <div class="tf-main-col" id="tfFeedPanel" role="tabpanel" aria-labelledby="tab-all">
-                <p class="tf-tab-hint" id="tfTabHint" hidden></p>
+                <div class="tf-feed-toolbar">
+                    <p class="tf-tab-hint" id="tfTabHint" hidden></p>
+                    <label class="tf-sort">
+                        <span>Ordenar por</span>
+                        <select id="tfSort">
+                            <option value="new">Recentes</option>
+                            <option value="hot">Em alta</option>
+                            <option value="top">Mais curtidos</option>
+                            <option value="comments">Mais comentados</option>
+                        </select>
+                    </label>
+                </div>
                 <div class="tf-category-chips" id="tfCategoryChips" role="group"
                     aria-label="Filtrar por categoria" hidden></div>
                 <div class="tf-posts-list" id="tfPostsList">
@@ -65,10 +76,29 @@
                     <button type="button" class="tf-btn-dark" id="btnCreatePost">Compartilhe-os</button>
                 </div>
 
-                <!-- O ranking chega no prompt de engajamento; até lá, sem dados inventados. -->
-                <div class="tf-widget tf-leaderboard-widget">
+                <!-- Próximos eventos (community-events.ts) -->
+                <div class="tf-widget tf-upcoming-widget" id="upcomingWidget">
+                    <div class="tf-widget-head">
+                        <h3 class="tf-widget-title">Próximos eventos</h3>
+                        <a class="tf-upcoming-all">Ver todos</a>
+                    </div>
+                    <div class="tf-upcoming-list" aria-live="polite">
+                        <p class="tf-lb-status">Carregando...</p>
+                    </div>
+                </div>
+
+                <!-- Ranking real, montado por community-leaderboard.ts -->
+                <div class="tf-widget tf-leaderboard-widget" id="leaderboardWidget">
                     <h3 class="tf-widget-title">Maiores criadores</h3>
-                    <p class="tf-widget-soon">Em breve: um ranking com quem mais contribui nesta comunidade.</p>
+                    <div class="tf-lb-tabs" role="tablist" aria-label="Período do ranking">
+                        <button type="button" class="tf-lb-tab active" role="tab" aria-selected="true"
+                            data-period="week">Semanalmente</button>
+                        <button type="button" class="tf-lb-tab" role="tab" aria-selected="false"
+                            data-period="all">Todos os tempos</button>
+                    </div>
+                    <ol class="tf-lb-list" aria-live="polite"></ol>
+                    <p class="tf-lb-status" hidden></p>
+                    <p class="tf-lb-note">Post publicado +5 · reação recebida +2 · comentário recebido +1</p>
                 </div>
             </div>
         </div>
@@ -82,6 +112,14 @@
                 <a class="tf-view-action" id="rulesEdit" hidden>Editar regras</a>
             </div>
             <div class="tf-rules-text" id="rulesText"></div>
+        </section>
+
+        <!-- Vista "Eventos" (?view=events), montada por community-events.ts -->
+        <section class="tf-view" id="viewEvents" aria-labelledby="eventsTitle" hidden>
+            <div class="tf-view-header">
+                <h2 class="tf-view-title" id="eventsTitle">Eventos</h2>
+            </div>
+            <div id="eventsRoot"></div>
         </section>
 
         <!-- Vista "Membros" (?view=members), montada por community-members.ts -->

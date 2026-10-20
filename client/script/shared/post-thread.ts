@@ -11,11 +11,14 @@
  *  - Comentários sob demanda: só são buscados quando o post é aberto.
  *  - Todo dado de usuário passa por escapeHtml (ou entra por textContent). O
  *    protótipo montava o post com interpolação crua — um título com
- *    <img src=x onerror=...> executava para todos os visitantes.
+ *    <img src=x onerror=...> executava para todos os visitantes. O conteúdo
+ *    de posts e comentários é markdown: passa por renderMarkdown (marked +
+ *    DOMPurify, shared/markdown.ts), e o texto original fica em data-content
+ *    para a edição.
  */
 import { api, getCurrentUserId, getToken } from "./api.js";
 import { goToLogin } from "./auth-guard.js";
-import { postUrl, profileUrl } from "./pages.js";
+import { communityUrl, postUrl, profileUrl } from "./pages.js";
 import { avatarColor, escapeHtml, initials, timeAgo } from "./dom.js";
 import { confirmDialog, toast } from "./dialog.js";
 import {
@@ -25,6 +28,19 @@ import {
     roleBadgeHtml,
     type CommunityRole,
 } from "./moderation.js";
+import {
+    applyToCounts,
+    isReactionType,
+    nextReaction,
+    reactionControlHtml,
+    reactionEmoji,
+    reactionLabel,
+    reactionSummaryHtml,
+    type ReactionCounts,
+    type ReactionType,
+} from "./reactions.js";
+import { renderMarkdown } from "./markdown.js";
+import { imagesGridHtml, openLightbox, type PostImage } from "./post-images.js";
 
 // ===========================================================================
 // Tipos
@@ -38,6 +54,10 @@ export interface Post {
     comments_count: number;
     created_at: string;
     edited_at: string | null;
+    /** Fixado no topo pelo dono/moderação (null = não fixado). */
+    pinned_at: string | null;
+    /** Comentário marcado pelo autor como resposta aceita. */
+    resolved_comment_id: string | null;
     community_category_id: string | null;
     community_id: string;
     community_name: string;
@@ -47,6 +67,13 @@ export interface Post {
     author_avatar_url: string | null;
     category_name: string | null;
     liked_by_me: boolean;
+    /** Reação de quem vê (null = nenhuma) e contagem por tipo. likes_count é o total. */
+    my_reaction: ReactionType | null;
+    reaction_counts: ReactionCounts;
+    /** Está nos salvos de quem vê. */
+    saved_by_me: boolean;
+    /** Imagens anexadas (até 4), na ordem de exibição. */
+    images: PostImage[];
     /** Papel do autor na comunidade (selo) e de quem vê (pode moderar?). */
     author_role: CommunityRole | null;
     viewer_role: CommunityRole | null;
@@ -70,6 +97,8 @@ export interface Comment {
 export interface PostThreadOptions {
     /** Página do post: conteúdo inteiro, título sem link, comentários abertos. */
     single?: boolean;
+    /** Feed com posts de várias comunidades (aba Seguindo): mostra de onde é cada um. */
+    showCommunity?: boolean;
     /** Autor pediu para editar; quem chama abre o editor e usa replace(). */
     onEditPost?: (post: Post) => void;
     /** Post excluído e já removido da tela. */
@@ -113,17 +142,33 @@ const menuItem = (action: string, label: string, danger = false) =>
  */
 function postMenuItems(post: Post): string {
     if (!getToken()) return "";
+    // Fixar vale para qualquer post, inclusive os da própria moderação.
+    const pinItem =
+        post.viewer_role === "owner" || post.viewer_role === "moderator"
+            ? post.pinned_at
+                ? menuItem("unpin-post", "Desafixar")
+                : menuItem("pin-post", "Fixar no topo")
+            : "";
     if (post.author_id === getCurrentUserId()) {
-        return menuItem("edit-post", "Editar") + menuItem("delete-post", "Excluir", true);
+        return pinItem + menuItem("edit-post", "Editar") + menuItem("delete-post", "Excluir", true);
     }
-    let items = menuItem("report-post", "Denunciar");
+    let items = pinItem + menuItem("report-post", "Denunciar");
     if (canModerate(post.viewer_role, post.author_role)) {
         items += menuItem("mod-remove-post", "Remover", true) + menuItem("ban-post-author", "Banir autor", true);
     }
     return items;
 }
 
-export function renderPost(post: Post, options: { single?: boolean } = {}): string {
+/** Selos "Fixado" e "Resolvido" acima do título. */
+function postBadges(post: Post): string {
+    const badges = [
+        post.pinned_at ? '<span class="tf-badge tf-badge--pinned">📌 Fixado</span>' : "",
+        post.resolved_comment_id ? '<span class="tf-badge tf-badge--resolved">✓ Resolvido</span>' : "",
+    ].join("");
+    return `<div class="tf-post-badges"${badges ? "" : " hidden"}>${badges}</div>`;
+}
+
+export function renderPost(post: Post, options: { single?: boolean; showCommunity?: boolean } = {}): string {
     const name = authorName(post);
     const id = escapeHtml(post.post_id);
     const title = escapeHtml(post.title);
@@ -151,30 +196,29 @@ export function renderPost(post: Post, options: { single?: boolean } = {}): stri
                 <div class="tf-post-meta">
                     <span>
                         <strong data-author-id="${escapeHtml(post.author_id)}">${escapeHtml(name)}</strong>${roleBadgeHtml(post.author_role)}
-                        • ${post.category_name ? `em ${escapeHtml(post.category_name)} • ` : ""}${escapeHtml(timeAgo(post.created_at))}${post.edited_at ? ' <span class="tf-edited">(editado)</span>' : ""}
+                        • ${options.showCommunity ? `em <a class="tf-post-community" href="${escapeHtml(communityUrl(post.community_id))}">${escapeHtml(post.community_name)}</a> • ` : ""}${post.category_name ? `em ${escapeHtml(post.category_name)} • ` : ""}${escapeHtml(timeAgo(post.created_at))}${post.edited_at ? ' <span class="tf-edited">(editado)</span>' : ""}
                     </span>
                     ${menu}
                 </div>
+                ${postBadges(post)}
                 ${heading}
-                <div class="tf-post-snippet${options.single ? " expanded" : ""}">${escapeHtml(post.content)}</div>
+                <div class="tf-post-snippet md${options.single ? " expanded" : ""}">${renderMarkdown(post.content)}</div>
                 <button type="button" class="tf-read-more" data-action="read-more" hidden>ler mais</button>
+                ${imagesGridHtml(post.images)}
                 <div class="tf-post-stats">
-                    <button type="button" class="tf-stat tf-stat-like${post.liked_by_me ? " active" : ""}"
-                            data-action="like" data-liked="${post.liked_by_me}" aria-pressed="${post.liked_by_me}"
-                            aria-label="Curtir">
-                        👍 <span class="like-count">${post.likes_count}</span>
-                    </button>
+                    ${reactionControlHtml(post.my_reaction ?? null, post.likes_count, post.reaction_counts ?? {})}
                     <button type="button" class="tf-stat" data-action="toggle-comments"
                             aria-expanded="${options.single ? "true" : "false"}" aria-label="Comentários">
                         💬 <span class="comment-count">${post.comments_count}</span>
                     </button>
+                    ${saveButtonHtml(post.saved_by_me)}
                 </div>
                 <div class="tf-post-comments"${options.single ? "" : " hidden"}>
                     <div class="tf-comment-list"></div>
                     <button type="button" class="tf-comments-more" data-action="more-comments" hidden>Carregar mais comentários</button>
                     <form class="tf-comment-form" data-form="comment">
                         <input type="text" class="tf-comment-input" maxlength="2000"
-                               placeholder="Escreva um comentário..." aria-label="Comentário" />
+                               placeholder="Escreva um comentário... (**negrito**, @menção, ||spoiler||)" aria-label="Comentário" />
                         <button type="submit">Enviar</button>
                     </form>
                     <div class="tf-inline-error" role="alert" hidden></div>
@@ -182,6 +226,13 @@ export function renderPost(post: Post, options: { single?: boolean } = {}): stri
             </div>
         </article>
     `;
+}
+
+function saveButtonHtml(saved: boolean): string {
+    return `<button type="button" class="tf-stat tf-stat-save${saved ? " active" : ""}" data-action="save"
+                    aria-pressed="${saved}" title="${saved ? "Tirar dos salvos" : "Salvar para ler depois"}">
+                🔖 <span class="save-label">${saved ? "Salvo" : "Salvar"}</span>
+            </button>`;
 }
 
 /** "ler mais" só aparece onde o texto realmente foi cortado. */
@@ -194,8 +245,29 @@ export function markOverflow(root: ParentNode): void {
     });
 }
 
-/** viewerRole: papel de quem vê na comunidade do post (vem do post). */
-function renderCommentMain(comment: Comment, viewerRole: CommunityRole | null = null): string {
+/**
+ * Contexto do post que muda o desenho de um comentário: o papel de quem vê
+ * (pode moderar?), a resposta aceita e se quem vê é o autor do post (pode
+ * marcar a resposta).
+ */
+interface CommentContext {
+    viewerRole: CommunityRole | null;
+    resolvedId: string | null;
+    viewerIsPostAuthor: boolean;
+}
+
+function commentContext(post: Post | undefined): CommentContext {
+    return {
+        viewerRole: post?.viewer_role ?? null,
+        resolvedId: post?.resolved_comment_id ?? null,
+        viewerIsPostAuthor: Boolean(post && post.author_id === getCurrentUserId()),
+    };
+}
+
+const NO_CONTEXT: CommentContext = { viewerRole: null, resolvedId: null, viewerIsPostAuthor: false };
+
+function renderCommentMain(comment: Comment, context: CommentContext = NO_CONTEXT): string {
+    const viewerRole = context.viewerRole;
     if (comment.is_deleted) {
         return `<div class="tf-comment-main">
                     <p class="tf-comment-removed">[comentário removido]</p>
@@ -214,9 +286,15 @@ function renderCommentMain(comment: Comment, viewerRole: CommunityRole | null = 
                         <button type="button" class="tf-comment-action tf-comment-action--danger" data-action="ban-comment-author">Banir</button>`;
         }
     }
+    const accepted = comment.comment_id === context.resolvedId;
+    if (context.viewerIsPostAuthor) {
+        actions += accepted
+            ? '<button type="button" class="tf-comment-action" data-action="unaccept-answer">Desmarcar resposta</button>'
+            : '<button type="button" class="tf-comment-action" data-action="accept-answer">Marcar como resposta</button>';
+    }
     return `<div class="tf-comment-main">
-                <strong data-author-id="${escapeHtml(comment.author_id ?? "")}">${escapeHtml(authorName(comment))}</strong>${roleBadgeHtml(comment.author_role)}
-                <p class="tf-comment-text">${escapeHtml(comment.content ?? "")}</p>
+                <strong data-author-id="${escapeHtml(comment.author_id ?? "")}">${escapeHtml(authorName(comment))}</strong>${roleBadgeHtml(comment.author_role)}${accepted ? '<span class="tf-accepted-badge">✓ Resposta aceita</span>' : ""}
+                <div class="tf-comment-text md" data-content="${escapeHtml(comment.content ?? "")}">${renderMarkdown(comment.content ?? "")}</div>
                 <div class="tf-comment-footer">
                     <span class="tf-comment-time">${escapeHtml(timeAgo(comment.created_at))}${comment.edited_at ? " · editado" : ""}</span>
                     <button type="button" class="tf-comment-action" data-action="reply">Responder</button>
@@ -225,14 +303,41 @@ function renderCommentMain(comment: Comment, viewerRole: CommunityRole | null = 
             </div>`;
 }
 
-function renderComment(comment: Comment, depth: number, viewerRole: CommunityRole | null): string {
+function renderComment(comment: Comment, depth: number, context: CommentContext): string {
+    const accepted = !comment.is_deleted && comment.comment_id === context.resolvedId;
     // id: âncora #comment-<id> dos links de notificação.
-    return `<div class="tf-comment-item${comment.is_deleted ? " is-deleted" : ""}"
+    return `<div class="tf-comment-item${comment.is_deleted ? " is-deleted" : ""}${accepted ? " is-accepted" : ""}"
                  id="comment-${escapeHtml(comment.comment_id)}"
-                 data-comment-id="${escapeHtml(comment.comment_id)}" data-depth="${depth}">
-                ${renderCommentMain(comment, viewerRole)}
+                 data-comment-id="${escapeHtml(comment.comment_id)}" data-depth="${depth}"
+                 data-created-at="${escapeHtml(comment.created_at)}" data-edited="${comment.edited_at ? "true" : "false"}"
+                 data-author-role="${escapeHtml(comment.author_role ?? "")}">
+                ${renderCommentMain(comment, context)}
                 <div class="tf-comment-replies"></div>
             </div>`;
+}
+
+/**
+ * Comentários ficam só no DOM (a thread não guarda a lista). Para redesenhar
+ * os botões de um comentário — ao marcar a resposta aceita — os dados voltam
+ * dos data-* e do texto já na tela.
+ */
+function commentFromDom(item: HTMLElement, main: HTMLElement): Comment | null {
+    const id = item.dataset.commentId;
+    const author = main.querySelector<HTMLElement>(":scope > strong[data-author-id]");
+    if (!id || !author) return null;
+    return {
+        comment_id: id,
+        parent_comment_id: null,
+        content: main.querySelector<HTMLElement>(".tf-comment-text")?.dataset.content ?? "",
+        created_at: item.dataset.createdAt ?? new Date().toISOString(),
+        edited_at: item.dataset.edited === "true" ? item.dataset.createdAt ?? null : null,
+        is_deleted: false,
+        replies_count: 0,
+        author_id: author.dataset.authorId ?? null,
+        author_username: null,
+        author_display_name: author.textContent,
+        author_role: (item.dataset.authorRole || null) as CommunityRole | null,
+    };
 }
 
 // ===========================================================================
@@ -265,43 +370,147 @@ export function createPostThread(container: HTMLElement, options: PostThreadOpti
     const postElement = (postId: string) =>
         container.querySelector<HTMLElement>(`.tf-post[data-post-id="${cssId(postId)}"]`);
 
-    // ----- Curtir ---------------------------------------------------------
+    // ----- Reagir ---------------------------------------------------------
 
-    function applyLikeState(button: HTMLButtonElement, liked: boolean, count: number): void {
-        button.dataset.liked = String(liked);
-        button.setAttribute("aria-pressed", String(liked));
-        button.classList.toggle("active", liked);
-        const countEl = button.querySelector(".like-count");
-        if (countEl) countEl.textContent = String(count);
-        const post = posts.get(button.closest<HTMLElement>(".tf-post")?.dataset.postId ?? "");
+    /** Reflete a reação no botão, no seletor, no resumo e no Post guardado. */
+    function applyReaction(
+        postEl: HTMLElement,
+        reaction: ReactionType | null,
+        total: number,
+        counts: ReactionCounts,
+    ): void {
+        const button = postEl.querySelector<HTMLButtonElement>('[data-action="like"]');
+        if (button) {
+            button.dataset.reaction = reaction ?? "";
+            button.setAttribute("aria-pressed", String(reaction !== null));
+            button.setAttribute(
+                "aria-label",
+                reaction ? `Sua reação: ${reactionLabel(reaction)}. Clique para desfazer` : "Curtir",
+            );
+            button.classList.toggle("active", reaction !== null);
+            const emoji = button.querySelector(".tf-reaction-emoji");
+            if (emoji) emoji.textContent = reactionEmoji(reaction);
+            const countEl = button.querySelector(".like-count");
+            if (countEl) countEl.textContent = String(total);
+        }
+        postEl.querySelectorAll<HTMLElement>(".tf-reaction-option").forEach((option) => {
+            option.classList.toggle("is-mine", option.dataset.type === reaction);
+        });
+        const summary = postEl.querySelector(".tf-reaction-summary");
+        summary?.insertAdjacentHTML("afterend", reactionSummaryHtml(counts));
+        summary?.remove();
+
+        const post = posts.get(postEl.dataset.postId ?? "");
         if (post) {
-            post.liked_by_me = liked;
-            post.likes_count = count;
+            post.my_reaction = reaction;
+            post.liked_by_me = reaction !== null;
+            post.likes_count = total;
+            post.reaction_counts = counts;
         }
     }
 
-    async function toggleLike(button: HTMLButtonElement, postId: string): Promise<void> {
-        if (!ensureLoggedIn()) return;
+    /** requested null = botão principal (curtir / desfazer). */
+    async function react(postEl: HTMLElement, requested: ReactionType | null): Promise<void> {
+        const postId = postEl.dataset.postId;
+        const post = postId ? posts.get(postId) : undefined;
+        if (!postId || !post || !ensureLoggedIn()) return;
 
         // Otimista: o clique responde na hora e volta atrás se a API recusar.
-        const wasLiked = button.dataset.liked === "true";
-        const previous = Number(button.querySelector(".like-count")?.textContent ?? "0");
-        applyLikeState(button, !wasLiked, Math.max(0, previous + (wasLiked ? -1 : 1)));
+        const before = {
+            reaction: post.my_reaction ?? null,
+            total: post.likes_count,
+            counts: { ...(post.reaction_counts ?? {}) },
+        };
+        const guess = nextReaction(before.reaction, requested);
+        const delta = (guess ? 1 : 0) - (before.reaction ? 1 : 0);
+        applyReaction(postEl, guess, Math.max(0, before.total + delta), applyToCounts(before.counts, before.reaction, guess));
 
-        button.disabled = true;
+        const button = postEl.querySelector<HTMLButtonElement>('[data-action="like"]');
+        if (button) button.disabled = true;
         try {
-            const { liked, likesCount } = await api<{ liked: boolean; likesCount: number }>(
+            const result = await api<{ reaction: string | null; likesCount: number; reactionCounts: ReactionCounts }>(
                 `/posts/${encodeURIComponent(postId)}/reactions`,
-                { method: "POST" },
+                { method: "POST", body: JSON.stringify(requested ? { type: requested } : {}) },
             );
-            applyLikeState(button, liked, likesCount);
+            applyReaction(
+                postEl,
+                isReactionType(result.reaction) ? result.reaction : null,
+                result.likesCount,
+                result.reactionCounts,
+            );
         } catch (err) {
-            applyLikeState(button, wasLiked, previous);
-            toast(errorMessage(err, "Não foi possível curtir."), "error");
+            applyReaction(postEl, before.reaction, before.total, before.counts);
+            toast(errorMessage(err, "Não foi possível reagir."), "error");
         } finally {
-            button.disabled = false;
+            if (button) button.disabled = false;
         }
     }
+
+    // Seletor: abre ao parar o mouse no botão, ao segurar (toque) ou com a
+    // seta para cima; fecha ao sair, com Esc ou ao escolher.
+    const pickerTimers = new WeakMap<HTMLElement, number>();
+    /** Depois de um toque longo, o click que vem em seguida não conta. */
+    let suppressNextClick = false;
+
+    function setPicker(wrapper: HTMLElement, open: boolean, focusFirst = false): void {
+        window.clearTimeout(pickerTimers.get(wrapper));
+        const picker = wrapper.querySelector<HTMLElement>(".tf-reaction-picker");
+        const button = wrapper.querySelector<HTMLElement>('[data-action="like"]');
+        if (!picker || !button) return;
+        if (open && !getToken()) return; // visitante: o clique leva ao login
+        picker.hidden = !open;
+        button.setAttribute("aria-expanded", String(open));
+        if (open && focusFirst) picker.querySelector<HTMLElement>(".tf-reaction-option")?.focus();
+    }
+
+    function schedulePicker(wrapper: HTMLElement, open: boolean, delay: number): void {
+        window.clearTimeout(pickerTimers.get(wrapper));
+        pickerTimers.set(wrapper, window.setTimeout(() => setPicker(wrapper, open), delay));
+    }
+
+    container.addEventListener("mouseover", (event) => {
+        const wrapper = (event.target as Element).closest<HTMLElement>(".tf-reaction");
+        if (wrapper && !wrapper.contains(event.relatedTarget as Node | null)) schedulePicker(wrapper, true, 450);
+    });
+    container.addEventListener("mouseout", (event) => {
+        const wrapper = (event.target as Element).closest<HTMLElement>(".tf-reaction");
+        if (wrapper && !wrapper.contains(event.relatedTarget as Node | null)) schedulePicker(wrapper, false, 300);
+    });
+    container.addEventListener("pointerdown", (event) => {
+        if (event.pointerType !== "touch") return;
+        const button = (event.target as Element).closest<HTMLElement>('[data-action="like"]');
+        const wrapper = button?.closest<HTMLElement>(".tf-reaction");
+        if (!wrapper) return;
+        pickerTimers.set(
+            wrapper,
+            window.setTimeout(() => {
+                suppressNextClick = true;
+                setPicker(wrapper, true);
+            }, 500),
+        );
+    });
+    container.addEventListener("pointerup", (event) => {
+        const wrapper = (event.target as Element).closest<HTMLElement>(".tf-reaction");
+        const picker = wrapper?.querySelector<HTMLElement>(".tf-reaction-picker");
+        // Soltou antes de abrir: era um toque normal.
+        if (wrapper && picker?.hidden) window.clearTimeout(pickerTimers.get(wrapper));
+    });
+    container.addEventListener("keydown", (event) => {
+        const target = event.target as HTMLElement;
+        const wrapper = target.closest<HTMLElement>(".tf-reaction");
+        if (!wrapper) return;
+        if (event.key === "ArrowUp" && target.dataset.action === "like") {
+            event.preventDefault();
+            setPicker(wrapper, true, true);
+        } else if (event.key === "Escape") {
+            setPicker(wrapper, false);
+            wrapper.querySelector<HTMLElement>('[data-action="like"]')?.focus();
+        } else if ((event.key === "ArrowRight" || event.key === "ArrowLeft") && target.dataset.action === "react") {
+            event.preventDefault();
+            const sibling = event.key === "ArrowRight" ? target.nextElementSibling : target.previousElementSibling;
+            (sibling as HTMLElement | null)?.focus();
+        }
+    });
 
     // ----- Excluir post ---------------------------------------------------
 
@@ -341,7 +550,7 @@ export function createPostThread(container: HTMLElement, options: PostThreadOpti
         const list = postEl.querySelector<HTMLElement>(".tf-comment-list");
         if (!list) return;
         list.querySelector(".tf-comment-status")?.remove();
-        const viewerRole = posts.get(postEl.dataset.postId ?? "")?.viewer_role ?? null;
+        const context = commentContext(posts.get(postEl.dataset.postId ?? ""));
 
         for (const comment of comments) {
             const parent = comment.parent_comment_id
@@ -349,7 +558,7 @@ export function createPostThread(container: HTMLElement, options: PostThreadOpti
                 : null;
             const target = parent ? parent.querySelector<HTMLElement>(":scope > .tf-comment-replies") : list;
             const depth = parent ? Number(parent.dataset.depth ?? "0") + 1 : 0;
-            target?.insertAdjacentHTML("beforeend", renderComment(comment, depth, viewerRole));
+            target?.insertAdjacentHTML("beforeend", renderComment(comment, depth, context));
         }
     }
 
@@ -467,7 +676,7 @@ export function createPostThread(container: HTMLElement, options: PostThreadOpti
                 <button type="submit" class="tf-edit-save">Salvar</button>
             </div>`;
         const textarea = form.querySelector<HTMLTextAreaElement>("textarea");
-        if (textarea) textarea.value = text.textContent ?? "";
+        if (textarea) textarea.value = text.dataset.content ?? text.textContent ?? "";
         text.hidden = true;
         text.after(form);
         textarea?.focus();
@@ -489,9 +698,12 @@ export function createPostThread(container: HTMLElement, options: PostThreadOpti
                 method: "PATCH",
                 body: JSON.stringify({ content }),
             });
+            item.dataset.edited = "true";
             const main = item.querySelector(":scope > .tf-comment-main");
-            const viewerRole = posts.get(postEl.dataset.postId ?? "")?.viewer_role ?? null;
-            main?.insertAdjacentHTML("afterend", renderCommentMain(comment, viewerRole));
+            main?.insertAdjacentHTML(
+                "afterend",
+                renderCommentMain(comment, commentContext(posts.get(postEl.dataset.postId ?? ""))),
+            );
             main?.remove();
         } catch (err) {
             setInlineError(postEl, errorMessage(err, "Não foi possível editar."));
@@ -541,8 +753,96 @@ export function createPostThread(container: HTMLElement, options: PostThreadOpti
                 item.remove();
             }
             bumpCommentCount(postEl, -1);
+            // A resposta aceita apagada reabre a pergunta (o servidor já fez).
+            const post = posts.get(postEl.dataset.postId ?? "");
+            if (post?.resolved_comment_id === commentId) applyResolution(postEl, null);
         } catch (err) {
             toast(errorMessage(err, "Não foi possível excluir."), "error");
+        }
+    }
+
+    // ----- Salvar ------------------------------------------------------------
+
+    function applySaved(postEl: HTMLElement, saved: boolean): void {
+        const button = postEl.querySelector<HTMLElement>('[data-action="save"]');
+        button?.insertAdjacentHTML("afterend", saveButtonHtml(saved));
+        button?.remove();
+        const post = posts.get(postEl.dataset.postId ?? "");
+        if (post) post.saved_by_me = saved;
+    }
+
+    async function toggleSave(postEl: HTMLElement): Promise<void> {
+        const postId = postEl.dataset.postId;
+        const post = postId ? posts.get(postId) : undefined;
+        if (!postId || !post || !ensureLoggedIn()) return;
+        const wasSaved = post.saved_by_me;
+        applySaved(postEl, !wasSaved); // otimista
+        try {
+            await api(`/posts/${encodeURIComponent(postId)}/save`, { method: wasSaved ? "DELETE" : "POST" });
+            toast(wasSaved ? "Removido dos salvos." : "Salvo! Veja seus salvos no seu perfil.");
+        } catch (err) {
+            applySaved(postEl, wasSaved);
+            toast(errorMessage(err, "Não foi possível salvar."), "error");
+        }
+    }
+
+    // ----- Fixar ------------------------------------------------------------
+
+    async function setPinned(postEl: HTMLElement, pinned: boolean): Promise<void> {
+        const postId = postEl.dataset.postId;
+        if (!postId) return;
+        try {
+            const { post } = await api<{ post: Post }>(`/posts/${encodeURIComponent(postId)}/pin`, {
+                method: pinned ? "POST" : "DELETE",
+            });
+            redraw(post);
+            toast(pinned ? "Post fixado no topo da comunidade." : "Post desafixado.");
+        } catch (err) {
+            toast(errorMessage(err, "Não foi possível fixar."), "error");
+        }
+    }
+
+    // ----- Resposta aceita -----------------------------------------------------
+
+    /**
+     * Reflete a resposta aceita na tela sem redesenhar a conversa: selo do
+     * post, destaque e botões dos comentários.
+     */
+    function applyResolution(postEl: HTMLElement, commentId: string | null): void {
+        const post = posts.get(postEl.dataset.postId ?? "");
+        if (!post) return;
+        post.resolved_comment_id = commentId;
+
+        postEl.querySelector(".tf-post-badges")?.insertAdjacentHTML("afterend", postBadges(post));
+        postEl.querySelector(".tf-post-badges")?.remove();
+
+        const context = commentContext(post);
+        postEl.querySelectorAll<HTMLElement>(".tf-comment-item:not(.is-deleted)").forEach((item) => {
+            const id = item.dataset.commentId;
+            const isAccepted = id === commentId;
+            const wasAccepted = item.classList.contains("is-accepted");
+            item.classList.toggle("is-accepted", isAccepted);
+            if (isAccepted === wasAccepted && !context.viewerIsPostAuthor) return;
+            const main = item.querySelector<HTMLElement>(":scope > .tf-comment-main");
+            const comment = main && commentFromDom(item, main);
+            if (!main || !comment) return;
+            main.insertAdjacentHTML("afterend", renderCommentMain(comment, context));
+            main.remove();
+        });
+    }
+
+    async function setAnswer(postEl: HTMLElement, commentId: string | null): Promise<void> {
+        const postId = postEl.dataset.postId;
+        if (!postId) return;
+        try {
+            const { post } = await api<{ post: Post }>(`/posts/${encodeURIComponent(postId)}/resolution`, {
+                method: commentId ? "PUT" : "DELETE",
+                body: commentId ? JSON.stringify({ commentId }) : undefined,
+            });
+            applyResolution(postEl, post.resolved_comment_id);
+            toast(commentId ? "Resposta marcada como aceita." : "Resposta desmarcada.");
+        } catch (err) {
+            toast(errorMessage(err, "Não foi possível marcar a resposta."), "error");
         }
     }
 
@@ -587,9 +887,24 @@ export function createPostThread(container: HTMLElement, options: PostThreadOpti
         if (actionEl && postEl && postId) {
             const item = actionEl.closest<HTMLElement>(".tf-comment-item");
             switch (actionEl.dataset.action) {
-                case "like":
-                    void toggleLike(actionEl as HTMLButtonElement, postId);
+                case "like": {
+                    if (suppressNextClick) {
+                        suppressNextClick = false;
+                        return;
+                    }
+                    const wrapper = actionEl.closest<HTMLElement>(".tf-reaction");
+                    if (wrapper) setPicker(wrapper, false);
+                    void react(postEl, null);
                     return;
+                }
+                case "react": {
+                    const wrapper = actionEl.closest<HTMLElement>(".tf-reaction");
+                    if (wrapper) setPicker(wrapper, false);
+                    const type = actionEl.dataset.type;
+                    if (isReactionType(type)) void react(postEl, type);
+                    wrapper?.querySelector<HTMLElement>('[data-action="like"]')?.focus();
+                    return;
+                }
                 case "toggle-comments": {
                     const panel = postEl.querySelector<HTMLElement>(".tf-post-comments");
                     if (!panel) return;
@@ -635,6 +950,28 @@ export function createPostThread(container: HTMLElement, options: PostThreadOpti
                 case "mod-remove-post":
                     closeMenus();
                     void deletePost(postEl, true);
+                    return;
+                case "save":
+                    void toggleSave(postEl);
+                    return;
+                case "open-image": {
+                    const post = posts.get(postId);
+                    if (post) openLightbox(post.images ?? [], Number(actionEl.dataset.index ?? "0"));
+                    return;
+                }
+                case "pin-post":
+                    closeMenus();
+                    void setPinned(postEl, true);
+                    return;
+                case "unpin-post":
+                    closeMenus();
+                    void setPinned(postEl, false);
+                    return;
+                case "accept-answer":
+                    if (item?.dataset.commentId) void setAnswer(postEl, item.dataset.commentId);
+                    return;
+                case "unaccept-answer":
+                    void setAnswer(postEl, null);
                     return;
                 case "ban-post-author": {
                     closeMenus();
@@ -694,6 +1031,19 @@ export function createPostThread(container: HTMLElement, options: PostThreadOpti
         else if (form.dataset.form === "edit-comment" && item) void saveCommentEdit(form, item);
     });
 
+    /** Redesenha um post (edição, fixar/desafixar); os comentários recarregam se abertos. */
+    function redraw(post: Post): void {
+        posts.set(post.post_id, post);
+        const current = postElement(post.post_id);
+        if (!current) return;
+        current.insertAdjacentHTML("afterend", renderPost(post, options));
+        const replacement = current.nextElementSibling as HTMLElement;
+        current.remove();
+        commentCursors.delete(post.post_id);
+        markOverflow(replacement);
+        if (options.single) void loadComments(replacement);
+    }
+
     return {
         posts,
         add(list, position = "append") {
@@ -702,17 +1052,7 @@ export function createPostThread(container: HTMLElement, options: PostThreadOpti
             container.insertAdjacentHTML(position === "append" ? "beforeend" : "afterbegin", html);
             markOverflow(container);
         },
-        replace(post) {
-            posts.set(post.post_id, post);
-            const current = postElement(post.post_id);
-            if (!current) return;
-            current.insertAdjacentHTML("afterend", renderPost(post, options));
-            const replacement = current.nextElementSibling as HTMLElement;
-            current.remove();
-            commentCursors.delete(post.post_id);
-            markOverflow(replacement);
-            if (options.single) void loadComments(replacement);
-        },
+        replace: redraw,
         clear() {
             posts.clear();
             commentCursors.clear();

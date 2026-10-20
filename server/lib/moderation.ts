@@ -3,6 +3,7 @@ import type { PoolClient } from "pg";
 import { pool } from "../db.js";
 import { outranks, type CommunityRole } from "../middleware/community-role.js";
 import { notify } from "./notify.js";
+import { addPoints, revertPostPoints, POINTS } from "./points.js";
 
 /**
  * Remoção de conteúdo e banimento, compartilhados entre as rotas diretas
@@ -96,7 +97,14 @@ export async function removePost(
       await client.query("ROLLBACK");
       return { ok: false, status: 404, error: "Post não encontrado" };
     }
+    // O post deixa de render pontos; removido pela moderação, ainda custa −10.
+    await revertPostPoints(client, postId);
     if (!isAuthor) {
+      await addPoints(client, {
+        userId: post.author_id,
+        communityId: post.community_id,
+        points: POINTS.removedByModeration,
+      });
       await closeOpenReports(client, "post", postId, actor.userId, "remove_content");
       // O autor fica sabendo; o aviso não diz quem da moderação removeu.
       await notify(client, {
@@ -131,6 +139,9 @@ export async function removeComment(
     post_id: string;
     community_id: string;
     content: string;
+    created_at: Date;
+    post_author: string;
+    post_deleted: boolean;
     actor_role: CommunityRole | null;
     author_role: CommunityRole | null;
   }>(
@@ -139,6 +150,9 @@ export async function removeComment(
        c.post_id,
        p.community_id,
        c.content,
+       c.created_at,
+       p.author_id AS post_author,
+       p.deleted_at IS NOT NULL AS post_deleted,
        (SELECT role FROM community_members
         WHERE community_id = p.community_id AND user_id = $2) AS actor_role,
        (SELECT role FROM community_members
@@ -179,13 +193,31 @@ export async function removeComment(
       return { ok: false, status: 404, error: "Comentário não encontrado ou não é seu" };
     }
 
+    // Se era a resposta aceita, o post volta a ser "sem resposta aceita".
     await client.query(
       `UPDATE posts
-       SET comments_count = GREATEST(0, comments_count - 1)
+       SET comments_count = GREATEST(0, comments_count - 1),
+           resolved_comment_id = CASE WHEN resolved_comment_id = $2 THEN NULL
+                                      ELSE resolved_comment_id END
        WHERE post_id = $1`,
-      [updated[0].post_id],
+      [updated[0].post_id, commentId],
     );
+    // O autor do post perde o ponto do comentário recebido, na semana em que
+    // ganhou. Com o post já apagado, os pontos dele já foram devolvidos.
+    if (!comment.post_deleted && comment.author_id !== comment.post_author) {
+      await addPoints(client, {
+        userId: comment.post_author,
+        communityId: comment.community_id,
+        points: -POINTS.commentReceived,
+        at: comment.created_at,
+      });
+    }
     if (!isAuthor) {
+      await addPoints(client, {
+        userId: comment.author_id,
+        communityId: comment.community_id,
+        points: POINTS.removedByModeration,
+      });
       await closeOpenReports(client, "comment", commentId, actor.userId, "remove_content");
       await notify(client, {
         userId: comment.author_id,

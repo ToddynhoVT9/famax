@@ -63,7 +63,9 @@ async function loadMe(userId: string) {
        us.is_private,
        us.notify_likes,
        us.notify_comments,
-       us.notify_replies
+       us.notify_replies,
+       us.notify_follows,
+       us.notify_events
      FROM users u
      LEFT JOIN user_profiles up ON up.user_id = u.user_id
      LEFT JOIN user_settings us ON us.user_id = u.user_id
@@ -95,6 +97,8 @@ async function loadMe(userId: string) {
     notifyLikes: row.notify_likes ?? true,
     notifyComments: row.notify_comments ?? true,
     notifyReplies: row.notify_replies ?? true,
+    notifyFollows: row.notify_follows ?? true,
+    notifyEvents: row.notify_events ?? true,
     createdAt: row.created_at,
     socialLinks: await loadSocialLinks(userId),
   };
@@ -234,6 +238,8 @@ const settingsSchema = z
     notifyLikes: z.boolean().optional(),
     notifyComments: z.boolean().optional(),
     notifyReplies: z.boolean().optional(),
+    notifyFollows: z.boolean().optional(),
+    notifyEvents: z.boolean().optional(),
   })
   .strict()
   .refine((data) => Object.keys(data).length > 0, "Nada para atualizar");
@@ -268,6 +274,8 @@ router.patch("/me/settings", requireAuth, async (req, res, next) => {
       ["notify_likes", data.notifyLikes],
       ["notify_comments", data.notifyComments],
       ["notify_replies", data.notifyReplies],
+      ["notify_follows", data.notifyFollows],
+      ["notify_events", data.notifyEvents],
     ];
     const changed = settingsColumns.filter(([, value]) => value !== undefined);
     if (changed.length > 0) {

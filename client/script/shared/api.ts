@@ -118,6 +118,8 @@ export type Me = {
   notifyLikes: boolean;
   notifyComments: boolean;
   notifyReplies: boolean;
+  notifyFollows: boolean;
+  notifyEvents: boolean;
   createdAt: string;
   socialLinks: SocialLink[];
 };

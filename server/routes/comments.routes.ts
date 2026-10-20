@@ -7,6 +7,8 @@ import { requirePostMembership } from "../middleware/membership.js";
 import { rateLimit } from "../lib/rate-limit.js";
 import { removeComment } from "../lib/moderation.js";
 import { notify } from "../lib/notify.js";
+import { addPoints, POINTS } from "../lib/points.js";
+import { notifyMentions } from "../lib/mentions.js";
 
 const router = Router();
 
@@ -283,6 +285,24 @@ router.post(
         if (target.post_author !== target.parent_author) {
           await notify(client, { ...base, userId: target.post_author, type: "post_comment" });
         }
+        // Menções: quem já foi avisado como respondido ou autor do post não
+        // recebe um segundo aviso pela mesma ação.
+        await notifyMentions(client, {
+          content: data.content,
+          actorId: req.userId!,
+          postId,
+          commentId,
+          communityId: target.community_id,
+          skip: [target.post_author, target.parent_author].filter((id): id is string => Boolean(id)),
+        });
+        // Comentar no próprio post não rende pontos.
+        if (target.post_author !== req.userId) {
+          await addPoints(client, {
+            userId: target.post_author,
+            communityId: target.community_id,
+            points: POINTS.commentReceived,
+          });
+        }
       }
 
       await client.query("COMMIT");
@@ -318,20 +338,46 @@ router.patch("/comments/:commentId", requireAuth, async (req, res, next) => {
     const { content } = z.object({ content: contentSchema }).parse(req.body);
 
     // Autoria, comentário vivo e post vivo no próprio WHERE: qualquer um que
-    // falhe responde igual (não confirma que o comentário existe).
-    const { rowCount } = await pool.query(
-      `UPDATE comments c
-       SET content = $3, edited_at = NOW()
-       FROM posts p
-       WHERE c.comment_id = $1
-         AND c.author_id = $2
-         AND c.deleted_at IS NULL
-         AND p.post_id = c.post_id
-         AND p.deleted_at IS NULL`,
-      [commentId, req.userId, content],
-    );
-    if (!rowCount) {
-      return res.status(404).json({ error: "Comentário não encontrado ou não é seu" });
+    // falhe responde igual (não confirma que o comentário existe). O texto
+    // anterior volta no RETURNING para avisar só as menções novas.
+    const client = await pool.connect();
+    try {
+      await client.query("BEGIN");
+      const { rows: edited } = await client.query<{
+        previous: string;
+        post_id: string;
+        community_id: string;
+      }>(
+        `UPDATE comments c
+         SET content = $3, edited_at = NOW()
+         FROM posts p, comments old
+         WHERE c.comment_id = $1
+           AND c.author_id = $2
+           AND c.deleted_at IS NULL
+           AND p.post_id = c.post_id
+           AND p.deleted_at IS NULL
+           AND old.comment_id = c.comment_id
+         RETURNING old.content AS previous, c.post_id, p.community_id`,
+        [commentId, req.userId, content],
+      );
+      if (edited.length === 0) {
+        await client.query("ROLLBACK");
+        return res.status(404).json({ error: "Comentário não encontrado ou não é seu" });
+      }
+      await notifyMentions(client, {
+        content,
+        previousContent: edited[0].previous,
+        actorId: req.userId!,
+        postId: edited[0].post_id,
+        commentId,
+        communityId: edited[0].community_id,
+      });
+      await client.query("COMMIT");
+    } catch (err) {
+      await client.query("ROLLBACK").catch(() => {});
+      throw err;
+    } finally {
+      client.release();
     }
 
     const { rows } = await pool.query<CommentRow>(`${COMMENT_SELECT} WHERE c.comment_id = $1`, [

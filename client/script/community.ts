@@ -3,8 +3,9 @@
  *
  * Topo (capa, descrição, participar/sair/editar), abas Conversas / Ajudar os
  * outros / Categorias com o estado na URL e posts paginados com "carregar
- * mais". Os links Regras e Membros da sidebar trocam de vista sem recarregar
- * (?view=rules|members); a vista de membros fica em community-members.ts. O desenho dos posts, os comentários em árvore e as ações sobre eles
+ * mais". Os links Regras, Membros e Eventos da sidebar trocam de vista sem
+ * recarregar (?view=rules|members|events); as vistas de membros e de eventos
+ * ficam em community-members.ts e community-events.ts. O desenho dos posts, os comentários em árvore e as ações sobre eles
  * ficam em shared/post-thread.ts (a página do post usa o mesmo módulo); o
  * modal de criar/editar, em shared/post-editor.ts.
  */
@@ -23,6 +24,8 @@ import { createPostThread, type Post } from "./shared/post-thread.js";
 import { openPostEditor, type PostCategory } from "./shared/post-editor.js";
 import { banUntil, isStaff } from "./shared/moderation.js";
 import { createMembersView } from "./community-members.js";
+import { createLeaderboard } from "./community-leaderboard.js";
+import { createEventsView, loadUpcomingWidget } from "./community-events.js";
 
 interface Community {
     community_id: string;
@@ -39,6 +42,8 @@ interface Community {
 }
 
 type Tab = "all" | "unanswered" | "categories";
+type Sort = "new" | "hot" | "top" | "comments";
+const SORTS: Sort[] = ["new", "hot", "top", "comments"];
 type View = "discussions" | CommunityView;
 
 const POSTS_PER_PAGE = 10;
@@ -55,6 +60,7 @@ let categories: PostCategory[] = [];
 let view: View = "discussions";
 let tab: Tab = "all";
 let categoryFilter: string | null = null;
+let sort: Sort = "new";
 let page = 0;
 let totalPages = 0;
 // Descarta respostas de uma aba/filtro que o usuário já deixou para trás.
@@ -67,6 +73,7 @@ const postsList = $("tfPostsList");
 const loadMoreBtn = $<HTMLButtonElement>("tfLoadMore");
 const chipsEl = $("tfCategoryChips");
 const tabHint = $("tfTabHint");
+const sortSelect = $<HTMLSelectElement>("tfSort");
 
 /** Link da sidebar que troca de vista sem recarregar (o href abre em nova aba). */
 const viewLink = (label: string, target: View) => ({
@@ -88,8 +95,8 @@ initLayout({
               viewLink("Discussões", "discussions"),
               viewLink("Regras", "rules"),
               viewLink("Membros", "members"),
-              // Ainda sem página própria: desativados com "Em breve".
-              { label: "Eventos" },
+              viewLink("Eventos", "events"),
+              // Ainda sem página própria: desativado com "Em breve".
               { label: "Suporte" },
           ]
         : [],
@@ -261,6 +268,7 @@ async function loadCommunity(): Promise<void> {
         categories = result.categories;
         renderHero();
         renderChips();
+        if (view === "events") void eventsView?.reload();
     } catch (err) {
         const name = $("communityName");
         if (name) name.textContent = errorMessage(err, "Comunidade não encontrada");
@@ -310,24 +318,32 @@ async function leaveCommunity(): Promise<void> {
 
 const TAB_HINTS: Record<Tab, string | null> = {
     all: null,
-    unanswered: "Discussões que ainda não receberam nenhuma resposta. Que tal ajudar?",
+    unanswered: "Perguntas que ainda não têm uma resposta aceita pelo autor. Que tal ajudar?",
     categories: "Escolha uma categoria para ver só as discussões dela.",
 };
 
-/** Reflete aba e categoria na URL, para recarregar ou compartilhar. */
+/** Reflete aba, categoria e ordenação na URL, para recarregar ou compartilhar. */
 function syncUrl(): void {
     const url = new URL(window.location.href);
     url.searchParams.delete("tab");
     url.searchParams.delete("categoryId");
     url.searchParams.delete("view");
+    url.searchParams.delete("sort");
     if (view !== "discussions") {
         url.searchParams.set("view", view);
     } else {
         if (tab !== "all") url.searchParams.set("tab", tab);
         if (tab === "categories" && categoryFilter) url.searchParams.set("categoryId", categoryFilter);
+        if (sort !== "new") url.searchParams.set("sort", sort);
     }
     history.replaceState(null, "", url);
 }
+
+sortSelect?.addEventListener("change", () => {
+    sort = SORTS.includes(sortSelect.value as Sort) ? (sortSelect.value as Sort) : "new";
+    syncUrl();
+    void loadPosts(true);
+});
 
 function renderTabs(): void {
     document.querySelectorAll<HTMLButtonElement>(".tf-tab").forEach((button) => {
@@ -422,6 +438,7 @@ const VIEW_IDS: Record<View, string> = {
     discussions: "viewDiscussions",
     rules: "viewRules",
     members: "viewMembers",
+    events: "viewEvents",
 };
 
 const membersRoot = $("membersRoot");
@@ -434,6 +451,31 @@ const membersView =
               onCommunityChanged: loadCommunity,
           })
         : null;
+
+const upcomingWidget = $("upcomingWidget");
+const refreshUpcoming = (): void => {
+    if (communityId && upcomingWidget) void loadUpcomingWidget(upcomingWidget, communityId);
+};
+
+const eventsRoot = $("eventsRoot");
+const eventsView =
+    communityId && eventsRoot
+        ? createEventsView(eventsRoot, {
+              communityId,
+              viewerRole: () => community?.my_role ?? null,
+              onChanged: refreshUpcoming,
+          })
+        : null;
+let eventsLoaded = false;
+
+// Os links do widget levam à vista de eventos sem recarregar a página.
+upcomingWidget?.addEventListener("click", (event) => {
+    const link = (event.target as Element).closest("a");
+    if (!link || event.ctrlKey || event.metaKey || event.shiftKey) return;
+    event.preventDefault();
+    showView("events");
+    $("main-content")?.scrollIntoView({ behavior: "smooth" });
+});
 
 function renderRules(): void {
     const text = $("rulesText");
@@ -460,6 +502,12 @@ function showView(next: View): void {
     if (view === "members" && (changed || membersRoot?.childElementCount === 0)) {
         void membersView?.reload();
     }
+    // O papel (quem cria eventos) chega com a comunidade; a vista recarrega
+    // quando ela chega também (ver loadCommunity).
+    if (view === "events" && (changed || !eventsLoaded)) {
+        eventsLoaded = true;
+        void eventsView?.reload();
+    }
     if (view === "discussions") updateIndicator();
 }
 
@@ -475,7 +523,7 @@ function showFeedStatus(message: string, isError = false): void {
 }
 
 function emptyMessage(): string {
-    if (tab === "unanswered") return "Todas as discussões já têm resposta. 🎉";
+    if (tab === "unanswered") return "Todas as perguntas já têm uma resposta aceita. 🎉";
     if (tab === "categories" && categoryFilter) return "Nenhuma discussão nesta categoria ainda.";
     return "Nenhuma discussão ainda. Seja o primeiro a publicar!";
 }
@@ -493,7 +541,7 @@ async function loadPosts(reset: boolean): Promise<void> {
     }
     loadMoreBtn.disabled = true;
 
-    const params = new URLSearchParams({ page: String(page + 1), limit: String(POSTS_PER_PAGE) });
+    const params = new URLSearchParams({ page: String(page + 1), limit: String(POSTS_PER_PAGE), sort });
     if (tab === "unanswered") params.set("unanswered", "true");
     if (tab === "categories" && categoryFilter) params.set("categoryId", categoryFilter);
 
@@ -570,7 +618,10 @@ $("btnCreatePost")?.addEventListener("click", async () => {
 function readUrlState(): void {
     const params = new URLSearchParams(window.location.search);
     const urlView = params.get("view");
-    if (urlView === "rules" || urlView === "members") view = urlView;
+    if (urlView === "rules" || urlView === "members" || urlView === "events") view = urlView;
+    const urlSort = params.get("sort") as Sort | null;
+    if (urlSort && SORTS.includes(urlSort)) sort = urlSort;
+    if (sortSelect) sortSelect.value = sort;
     const urlCategory = params.get("categoryId");
     const urlTab = params.get("tab");
     if (urlCategory || urlTab === "categories") {
@@ -591,6 +642,9 @@ if (!communityId) {
     showView(view);
     void loadCommunity();
     void loadPosts(true);
+    const leaderboardWidget = $("leaderboardWidget");
+    if (leaderboardWidget) createLeaderboard(leaderboardWidget, communityId);
+    refreshUpcoming();
 }
 
 export {};

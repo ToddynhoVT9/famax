@@ -399,3 +399,22 @@
         flex-wrap: wrap;
     }
 }
+
+/* Seguidores / Seguindo: abrem a lista (shared/follow.ts) */
+.profile-stats {
+    flex-wrap: wrap;
+}
+
+.profile-stat-link {
+    background: none;
+    border: none;
+    padding: 0;
+    color: inherit;
+    font: inherit;
+    cursor: pointer;
+}
+
+.profile-stat-link:hover strong,
+.profile-stat-link:focus-visible strong {
+    text-decoration: underline;
+}

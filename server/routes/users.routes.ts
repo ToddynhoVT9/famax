@@ -126,11 +126,23 @@ router.get("/users/:userId", optionalAuth, async (req, res, next) => {
             FROM community_members m
             INNER JOIN communities c ON c.community_id = m.community_id
            WHERE m.user_id = u.user_id
-             AND c.deleted_at IS NULL) AS communities_count
+             AND c.deleted_at IS NULL) AS communities_count,
+         (SELECT COUNT(*)::int
+            FROM follows f
+            INNER JOIN users fu ON fu.user_id = f.follower_id AND fu.deleted_at IS NULL
+           WHERE f.following_id = u.user_id) AS followers_count,
+         (SELECT COUNT(*)::int
+            FROM follows f
+            INNER JOIN users fu ON fu.user_id = f.following_id AND fu.deleted_at IS NULL
+           WHERE f.follower_id = u.user_id) AS following_count,
+         EXISTS (
+           SELECT 1 FROM follows f
+           WHERE f.follower_id = $2 AND f.following_id = u.user_id
+         ) AS followed_by_me
        FROM users u
        LEFT JOIN user_profiles up ON up.user_id = u.user_id
        WHERE u.user_id = $1`,
-      [userId],
+      [userId, req.userId ?? null],
     );
     const row = rows[0];
 
@@ -143,6 +155,8 @@ router.get("/users/:userId", optionalAuth, async (req, res, next) => {
           avatarUrl: row.avatar_url,
           isPrivate: true,
           isOwner: false,
+          // O botão Seguir funciona mesmo no perfil privado.
+          followedByMe: row.followed_by_me,
         },
       });
     }
@@ -159,14 +173,47 @@ router.get("/users/:userId", optionalAuth, async (req, res, next) => {
         createdAt: row.created_at,
         isPrivate: access.isPrivate,
         isOwner: access.isOwner,
+        followedByMe: row.followed_by_me,
         stats: {
           posts: row.posts_count,
           comments: row.comments_count,
           communities: row.communities_count,
+          followers: row.followers_count,
+          following: row.following_count,
         },
         socialLinks: await loadSocialLinks(userId),
       },
     });
+  } catch (err) {
+    if (err instanceof z.ZodError) return paramsError(res, err);
+    next(err);
+  }
+});
+
+// ===========================================================================
+// GET /api/users/by-username/:username — resolve @username em id
+// ---------------------------------------------------------------------------
+// Os links de menção (@fulano no texto) apontam para o perfil pelo username;
+// a página do perfil usa isto para chegar ao id. Sem distinção de maiúsculas,
+// como a extração de menções do servidor. Só o id: o perfil em si continua
+// vindo de GET /users/:userId, com as regras de privacidade de lá.
+// ===========================================================================
+
+const usernameParam = z.object({
+  username: z.string().regex(/^[a-zA-Z0-9_]{3,50}$/, "Username inválido"),
+});
+
+router.get("/users/by-username/:username", async (req, res, next) => {
+  try {
+    const { username } = usernameParam.parse(req.params);
+    const { rows } = await pool.query<{ user_id: string }>(
+      "SELECT user_id FROM users WHERE lower(username) = lower($1) AND deleted_at IS NULL",
+      [username],
+    );
+    if (rows.length === 0) {
+      return res.status(404).json({ error: "Usuário não encontrado" });
+    }
+    res.json({ user: { userId: rows[0].user_id } });
   } catch (err) {
     if (err instanceof z.ZodError) return paramsError(res, err);
     next(err);

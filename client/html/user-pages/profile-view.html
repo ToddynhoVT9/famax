@@ -25,6 +25,8 @@
 
             <div class="profile-header-actions">
                 <a href="profile-settings.html" class="btn-edit-profile" id="btnEditProfile" hidden>Editar perfil</a>
+                <!-- Perfil de outra pessoa: Seguir / Seguindo (shared/follow.ts) -->
+                <button type="button" class="follow-btn" id="btnFollow" hidden>Seguir</button>
                 <!-- Perfil de outra pessoa, com sessão: "⋯" com Denunciar. -->
                 <div class="profile-more" id="profileMore" hidden>
                     <button type="button" class="profile-more-btn" id="profileMoreBtn"
@@ -58,6 +60,8 @@
             <div class="profile-tabs" id="profileTabs" role="tablist" hidden>
                 <button type="button" class="tab-btn active" role="tab" aria-selected="true" data-tab="posts">Posts</button>
                 <button type="button" class="tab-btn" role="tab" aria-selected="false" data-tab="comments">Respostas</button>
+                <!-- Só no próprio perfil: a lista de salvos é privada. -->
+                <button type="button" class="tab-btn" role="tab" aria-selected="false" data-tab="saved" id="tabSaved" hidden>Salvos</button>
             </div>
 
             <div class="profile-feed" id="profileFeed" role="tabpanel" hidden>

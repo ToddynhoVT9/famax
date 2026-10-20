@@ -6,6 +6,8 @@
     <title>FAMAX - Home</title>
     <link rel="stylesheet" href="../css/global.css">
     <link rel="stylesheet" href="../css/layout.css">
+    <!-- Posts da aba Seguindo: mesmo desenho do feed da comunidade. -->
+    <link rel="stylesheet" href="../css/community.css">
     <link rel="stylesheet" href="../css/home.css">
 </head>
 <body>
@@ -16,11 +18,27 @@
 
     <!-- Conteúdo Principal do Feed (renderizado por home.ts) -->
     <main class="main-content" id="main-content">
-        <!-- Filtro por categoria (home.ts); a escolha vai para ?categoryId= -->
-        <div class="home-chips" id="homeChips" role="group" aria-label="Filtrar por categoria"></div>
-        <div id="homeFeed">
-            <div class="feed-status">Carregando comunidades...</div>
+        <!-- Abas: Comunidades / Seguindo (só com sessão). ?tab=following na URL. -->
+        <div class="home-tabs" id="homeTabs" role="tablist" aria-label="O que ver" hidden>
+            <button type="button" class="home-tab active" role="tab" id="homeTabCommunities"
+                data-tab="communities" aria-selected="true" aria-controls="homeCommunities">Comunidades</button>
+            <button type="button" class="home-tab" role="tab" id="homeTabFollowing"
+                data-tab="following" aria-selected="false" aria-controls="homeFollowing" tabindex="-1">Seguindo</button>
         </div>
+
+        <section id="homeCommunities" role="tabpanel" aria-labelledby="homeTabCommunities">
+            <!-- Filtro por categoria (home.ts); a escolha vai para ?categoryId= -->
+            <div class="home-chips" id="homeChips" role="group" aria-label="Filtrar por categoria"></div>
+            <div id="homeFeed">
+                <div class="feed-status">Carregando comunidades...</div>
+            </div>
+        </section>
+
+        <!-- Posts recentes de quem você segue (GET /api/feed/following) -->
+        <section class="home-following" id="homeFollowing" role="tabpanel" aria-labelledby="homeTabFollowing" hidden>
+            <div class="tf-posts-list" id="followingList"></div>
+            <button type="button" class="tf-load-more" id="followingMore" hidden>Carregar mais</button>
+        </section>
     </main>
 
     <script type="module" src="../script/home.ts"></script>

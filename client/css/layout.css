@@ -949,3 +949,144 @@
     flex-shrink: 0;
     margin-top: 6px;
 }
+
+
+/* ----- SEGUIR (shared/follow.ts) ----- */
+.follow-btn {
+    background-color: #ffffff;
+    color: #222222;
+    border: 1px solid #ffffff;
+    padding: 10px 20px;
+    border-radius: 20px;
+    font-size: 1rem;
+    font-weight: 600;
+    cursor: pointer;
+    min-width: 110px;
+    transition: background-color 0.2s, color 0.2s, border-color 0.2s;
+}
+
+.follow-btn.is-following {
+    background-color: transparent;
+    color: #ffffff;
+}
+
+.follow-btn.is-following:hover {
+    border-color: #e74c3c;
+    color: #e74c3c;
+}
+
+.follow-btn:disabled {
+    opacity: 0.6;
+    cursor: wait;
+}
+
+.follow-btn--small {
+    padding: 6px 12px;
+    font-size: 0.85rem;
+    min-width: 92px;
+}
+
+.follow-list-box {
+    width: 460px;
+    max-height: 80vh;
+    display: flex;
+    flex-direction: column;
+}
+
+.follow-list-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.follow-list-close {
+    background: none;
+    border: none;
+    color: #ffffff;
+    font-size: 1.6rem;
+    line-height: 1;
+    cursor: pointer;
+}
+
+.follow-list-subtitle {
+    color: #bbbbbb;
+    margin: 0 0 12px;
+    font-size: 0.9rem;
+}
+
+.follow-list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.follow-list-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.follow-list-user {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex: 1;
+    min-width: 0;
+    color: #ffffff;
+    text-decoration: none;
+}
+
+.follow-list-user:hover strong {
+    text-decoration: underline;
+}
+
+.follow-list-avatar {
+    width: 40px;
+    height: 40px;
+    flex-shrink: 0;
+    border-radius: 50%;
+    overflow: hidden;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #ffffff;
+    font-weight: 700;
+}
+
+.follow-list-avatar img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.follow-list-names {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+}
+
+.follow-list-names strong,
+.follow-list-username {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.follow-list-username {
+    color: #aaaaaa;
+    font-size: 0.85rem;
+}
+
+.follow-list-status {
+    color: #bbbbbb;
+    margin: 8px 0 0;
+}
+
+.follow-list-more {
+    margin-top: 12px;
+    align-self: center;
+}

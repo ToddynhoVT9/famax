@@ -19,7 +19,6 @@ export type NotificationType =
   | "post_like"
   | "content_removed"
   | "community_role"
-  // Prompt de engajamento: já aceitos pelo CHECK da tabela.
   | "mention"
   | "follow"
   | "event";
@@ -30,6 +29,8 @@ const PREFERENCE_COLUMN: Partial<Record<NotificationType, string>> = {
   post_comment: "notify_comments",
   comment_reply: "notify_replies",
   mention: "notify_replies",
+  follow: "notify_follows",
+  event: "notify_events",
 };
 
 export interface NotifyInput {
@@ -56,12 +57,15 @@ export async function notify(client: PoolClient, input: NotifyInput): Promise<bo
     : "TRUE";
 
   // Curtidas: uma linha por post. A curtida nova vira a "última" e volta a
-  // contar como não lida.
+  // contar como não lida. Seguidor: uma linha por par de pessoas.
   const conflict =
     input.type === "post_like"
       ? `ON CONFLICT (user_id, post_id) WHERE type = 'post_like' DO UPDATE
            SET actor_id = EXCLUDED.actor_id, read_at = NULL, created_at = NOW()`
-      : "";
+      : input.type === "follow"
+        ? `ON CONFLICT (user_id, actor_id) WHERE type = 'follow' DO UPDATE
+             SET read_at = NULL, created_at = NOW()`
+        : "";
 
   const { rowCount } = await client.query(
     `INSERT INTO notifications
@@ -95,7 +99,7 @@ export async function unnotifyLike(client: PoolClient, postId: string, likerId: 
     `UPDATE notifications n
      SET actor_id = (
        SELECT r.user_id FROM post_reactions r
-       WHERE r.post_id = n.post_id AND r.type = 'like' AND r.user_id <> n.user_id
+       WHERE r.post_id = n.post_id AND r.user_id <> n.user_id
        ORDER BY r.created_at DESC
        LIMIT 1
      )
@@ -107,8 +111,33 @@ export async function unnotifyLike(client: PoolClient, postId: string, likerId: 
      WHERE n.type = 'post_like' AND n.post_id = $1
        AND NOT EXISTS (
          SELECT 1 FROM post_reactions r
-         WHERE r.post_id = n.post_id AND r.type = 'like' AND r.user_id <> n.user_id
+         WHERE r.post_id = n.post_id AND r.user_id <> n.user_id
        )`,
     [postId],
   );
+}
+
+/**
+ * "Novo evento": um aviso para cada membro da comunidade, menos quem criou,
+ * num INSERT só (uma comunidade grande não vira N idas ao banco). Mesmas
+ * regras do notify(): conta excluída fica de fora e a preferência
+ * notify_events é respeitada. Devolve quantos avisos foram gravados.
+ */
+export async function notifyEventToMembers(
+  client: PoolClient,
+  input: { communityId: string; eventId: string; actorId: string; title: string },
+): Promise<number> {
+  const { rowCount } = await client.query(
+    `INSERT INTO notifications
+       (notification_id, user_id, type, actor_id, community_id, event_id, data)
+     SELECT gen_random_uuid(), m.user_id, 'event', $2, $1, $3, $4::jsonb
+     FROM community_members m
+     INNER JOIN users u          ON u.user_id = m.user_id AND u.deleted_at IS NULL
+     LEFT  JOIN user_settings us ON us.user_id = m.user_id
+     WHERE m.community_id = $1
+       AND m.user_id <> $2
+       AND COALESCE(us.notify_events, TRUE)`,
+    [input.communityId, input.actorId, input.eventId, JSON.stringify({ title: input.title })],
+  );
+  return rowCount ?? 0;
 }

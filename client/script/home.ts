@@ -1,15 +1,22 @@
 /**
  * FAMAX — Home Page Script
  *
- * Monta o feed a partir de GET /api/communities, agrupando por categoria, com
+ * Duas abas (com sessão): "Comunidades" e "Seguindo" (?tab=following).
+ *
+ * Comunidades: o feed de GET /api/communities, agrupado por categoria, com
  * chips para filtrar uma categoria só (?categoryId=, refletido na URL). Cada
  * card mostra a capa — ou um gradiente com a inicial —, membros e o começo
  * da descrição.
+ *
+ * Seguindo: posts recentes de quem o usuário segue (GET /api/feed/following),
+ * desenhados por shared/post-thread.ts como no feed da comunidade.
  */
-import { api } from "./shared/api.js";
+import { api, getToken } from "./shared/api.js";
 import { initLayout } from "./shared/layout.js";
 import { communityUrl } from "./shared/pages.js";
 import { avatarColor, escapeHtml, truncate } from "./shared/dom.js";
+import { toast } from "./shared/dialog.js";
+import { createPostThread, type Post } from "./shared/post-thread.js";
 
 initLayout();
 
@@ -70,8 +77,10 @@ function showStatus(message: string, isError = false): void {
 
 function syncUrl(): void {
     const url = new URL(window.location.href);
-    if (categoryFilter) url.searchParams.set("categoryId", categoryFilter);
+    if (categoryFilter && tab === "communities") url.searchParams.set("categoryId", categoryFilter);
     else url.searchParams.delete("categoryId");
+    if (tab === "following") url.searchParams.set("tab", "following");
+    else url.searchParams.delete("tab");
     history.replaceState(null, "", url);
 }
 
@@ -164,6 +173,105 @@ chipsEl?.addEventListener("click", (event) => {
     syncUrl();
     void loadFeed();
 });
+
+// ===========================================================================
+// Aba "Seguindo"
+// ===========================================================================
+
+type HomeTab = "communities" | "following";
+
+const tabsEl = document.getElementById("homeTabs");
+const communitiesPanel = document.getElementById("homeCommunities");
+const followingPanel = document.getElementById("homeFollowing");
+const followingList = document.getElementById("followingList");
+const followingMore = document.getElementById("followingMore") as HTMLButtonElement | null;
+const FOLLOWING_PER_PAGE = 10;
+
+const loggedIn = Boolean(getToken());
+let tab: HomeTab =
+    loggedIn && new URLSearchParams(window.location.search).get("tab") === "following" ? "following" : "communities";
+let followingPage = 0;
+let followingLoaded = false;
+
+const followingThread = followingList ? createPostThread(followingList, { showCommunity: true }) : null;
+
+function followingStatus(message: string, isError = false): void {
+    if (!followingList) return;
+    followingList.innerHTML = `<div class="tf-feed-status${isError ? " error" : ""}"></div>`;
+    const el = followingList.querySelector(".tf-feed-status");
+    if (el) el.textContent = message;
+}
+
+async function loadFollowing(reset: boolean): Promise<void> {
+    if (!followingList || !followingMore || !followingThread) return;
+    if (reset) {
+        followingPage = 0;
+        followingThread.clear();
+        followingStatus("Carregando posts de quem você segue...");
+        followingMore.hidden = true;
+    }
+    followingMore.disabled = true;
+    try {
+        const result = await api<{ data: Post[]; pagination: { totalPages: number } }>(
+            `/feed/following?page=${followingPage + 1}&limit=${FOLLOWING_PER_PAGE}`,
+        );
+        followingPage += 1;
+        if (reset) followingList.innerHTML = "";
+        followingThread.add(result.data);
+        if (followingThread.posts.size === 0) {
+            followingStatus(
+                "Nada por aqui ainda. Siga pessoas pelo perfil delas para ver aqui o que elas publicam.",
+            );
+        }
+        followingMore.hidden = followingPage >= result.pagination.totalPages;
+        followingLoaded = true;
+    } catch (err) {
+        const message = err instanceof Error ? err.message : "erro";
+        if (reset) followingStatus(`Não foi possível carregar: ${message}`, true);
+        else toast(message, "error");
+    } finally {
+        followingMore.disabled = false;
+    }
+}
+
+function renderHomeTabs(): void {
+    tabsEl?.querySelectorAll<HTMLButtonElement>(".home-tab").forEach((button) => {
+        const active = button.dataset.tab === tab;
+        button.classList.toggle("active", active);
+        button.setAttribute("aria-selected", String(active));
+        button.tabIndex = active ? 0 : -1;
+    });
+    if (communitiesPanel) communitiesPanel.hidden = tab !== "communities";
+    if (followingPanel) followingPanel.hidden = tab !== "following";
+}
+
+function selectHomeTab(next: HomeTab): void {
+    tab = next;
+    renderHomeTabs();
+    syncUrl();
+    if (tab === "following" && !followingLoaded) void loadFollowing(true);
+}
+
+tabsEl?.addEventListener("click", (event) => {
+    const button = (event.target as Element).closest<HTMLButtonElement>(".home-tab");
+    const next = button?.dataset.tab as HomeTab | undefined;
+    if (next && next !== tab) selectHomeTab(next);
+});
+
+tabsEl?.addEventListener("keydown", (event) => {
+    if (event.key !== "ArrowLeft" && event.key !== "ArrowRight") return;
+    event.preventDefault();
+    const next: HomeTab = tab === "communities" ? "following" : "communities";
+    selectHomeTab(next);
+    tabsEl.querySelector<HTMLButtonElement>(`.home-tab[data-tab="${next}"]`)?.focus();
+});
+
+followingMore?.addEventListener("click", () => void loadFollowing(false));
+
+// Visitante não segue ninguém: sem abas, só as comunidades.
+if (tabsEl) tabsEl.hidden = !loggedIn;
+renderHomeTabs();
+if (tab === "following") void loadFollowing(true);
 
 void loadCategories();
 void loadFeed();

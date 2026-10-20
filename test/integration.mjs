@@ -1608,19 +1608,24 @@ check(
     JSON.stringify(editForeignCategory.body),
 );
 
-// Filtro unanswered: o post do bob ainda não tem comentário.
+// Filtro unanswered ("Ajudar os outros"): perguntas sem resposta aceita. A
+// Alice aceita a resposta do Bob; o post do Bob segue sem resposta aceita.
 const alicePost6 = await call("POST", "/posts", {
     token: aliceToken,
     body: { communityId: c6Id, title: "Post da Alice", content: "Vai ter comentário" },
 });
 const alicePost6Id = alicePost6.body?.post?.post_id;
-await call("POST", `/posts/${alicePost6Id}/comments`, {
+const bobAnswer6 = await call("POST", `/posts/${alicePost6Id}/comments`, {
     token: bobToken,
     body: { content: "Respondendo a Alice" },
 });
+await call("PUT", `/posts/${alicePost6Id}/resolution`, {
+    token: aliceToken,
+    body: { commentId: bobAnswer6.body?.comment?.comment_id },
+});
 const unanswered = await call("GET", `/communities/${c6Id}/posts?unanswered=true`);
 check(
-    "filtro unanswered traz só posts sem comentário",
+    "filtro unanswered traz só posts sem resposta aceita",
     unanswered.status === 200 &&
         unanswered.body?.data?.length === 1 &&
         unanswered.body.data[0].post_id === bobPost6Id &&
@@ -2563,6 +2568,911 @@ check(
     "avisos de post apagado somem (a curtida no post removido)",
     !thirdList.some((n) => n.type === "post_like" && n.post_id === thirdPostId),
     JSON.stringify(thirdList.map((n) => n.type)),
+);
+
+console.log("\n[Engajamento A] Leaderboard");
+resetRateLimits();
+
+const lbOwner = await newUser("lbdona");
+const lbAuthor = await newUser("lbautor");
+const lbFan = await newUser("lbfa");
+const lbCommunity = await call("POST", "/communities", {
+    token: lbOwner.token,
+    body: { name: `Ranking ${stamp}`, categoryId },
+});
+const lbCid = lbCommunity.body?.community?.communityId;
+await call("POST", `/communities/${lbCid}/join`, { token: lbAuthor.token });
+await call("POST", `/communities/${lbCid}/join`, { token: lbFan.token });
+
+const board = async (period = "week") =>
+    (await call("GET", `/communities/${lbCid}/leaderboard?period=${period}`)).body;
+const pointsOf = async (u, period = "week") =>
+    (await board(period))?.data?.find((row) => row.user_id === u.id)?.points ?? 0;
+const dbPoints = async (u) =>
+    (
+        await db.query(
+            "SELECT COALESCE(SUM(points), 0)::int AS n FROM leaderboard_points WHERE user_id = $1 AND community_id = $2",
+            [u.id, lbCid],
+        )
+    ).rows[0].n;
+
+check("ranking vazio numa comunidade nova", (await board())?.data?.length === 0, JSON.stringify(await board()));
+
+const lbPost = await call("POST", "/posts", {
+    token: lbAuthor.token,
+    body: { communityId: lbCid, title: "Post do ranking", content: "conteúdo" },
+});
+const lbPostId = lbPost.body?.post?.post_id;
+check("publicar post rende 5 pontos", (await pointsOf(lbAuthor)) === 5);
+
+await call("POST", `/posts/${lbPostId}/reactions`, { token: lbFan.token });
+check("curtida recebida rende 2", (await pointsOf(lbAuthor)) === 7);
+await call("POST", `/posts/${lbPostId}/comments`, { token: lbOwner.token, body: { content: "bom" } });
+check("comentário recebido rende 1", (await pointsOf(lbAuthor)) === 8);
+await call("POST", `/posts/${lbPostId}/reactions`, { token: lbAuthor.token });
+await call("POST", `/posts/${lbPostId}/comments`, { token: lbAuthor.token, body: { content: "eu mesmo" } });
+check("curtir e comentar o próprio post não rende", (await pointsOf(lbAuthor)) === 8);
+await call("POST", `/posts/${lbPostId}/reactions`, { token: lbAuthor.token }); // desfaz
+
+const weekBoard = await board();
+check(
+    "ranking semanal com posição, nome e pontos",
+    weekBoard?.data?.[0]?.user_id === lbAuthor.id &&
+        weekBoard.data[0].rank === 1 &&
+        weekBoard.data[0].points === 8 &&
+        weekBoard.data[0].username === `lbautor${stamp}`.slice(0, 30) &&
+        /^\d{4}-\d{2}-\d{2}$/.test(weekBoard.weekStart),
+    JSON.stringify(weekBoard),
+);
+
+await call("POST", `/posts/${lbPostId}/reactions`, { token: lbFan.token }); // descurte
+check("descurtir devolve os 2 pontos", (await pointsOf(lbAuthor)) === 6);
+
+const lbPost2 = await call("POST", "/posts", {
+    token: lbAuthor.token,
+    body: { communityId: lbCid, title: "Post que vai sumir", content: "x" },
+});
+const lbPost2Id = lbPost2.body?.post?.post_id;
+await call("POST", `/posts/${lbPost2Id}/comments`, { token: lbFan.token, body: { content: "oi" } });
+await call("POST", `/posts/${lbPost2Id}/reactions`, { token: lbFan.token });
+check("segundo post soma tudo", (await pointsOf(lbAuthor)) === 6 + 5 + 1 + 2);
+await call("DELETE", `/posts/${lbPost2Id}`, { token: lbAuthor.token });
+check("excluir o post devolve publicação, curtida e comentário", (await pointsOf(lbAuthor)) === 6);
+
+// Curtida de uma semana anterior: o ponto saiu daquela semana, não desta.
+await call("POST", `/posts/${lbPostId}/reactions`, { token: lbFan.token });
+await db.query(
+    "UPDATE post_reactions SET created_at = NOW() - INTERVAL '8 days' WHERE post_id = $1 AND user_id = $2",
+    [lbPostId, lbFan.id],
+);
+await db.query(
+    `UPDATE leaderboard_points SET points = points - 2
+     WHERE user_id = $1 AND community_id = $2 AND period_start = famax_week_start(NOW())`,
+    [lbAuthor.id, lbCid],
+);
+await db.query(
+    `INSERT INTO leaderboard_points (leaderboard_id, user_id, community_id, points, period_start, period_end)
+     VALUES (gen_random_uuid(), $1, $2, 2, famax_week_start(NOW() - INTERVAL '8 days'), famax_week_start(NOW() - INTERVAL '8 days') + 6)`,
+    [lbAuthor.id, lbCid],
+);
+check(
+    "todos os tempos soma as semanas",
+    (await pointsOf(lbAuthor, "all")) === 8 && (await pointsOf(lbAuthor, "week")) === 6,
+);
+await call("POST", `/posts/${lbPostId}/reactions`, { token: lbFan.token }); // descurte
+check(
+    "desfazer devolve na semana em que o ponto foi ganho",
+    (await pointsOf(lbAuthor, "week")) === 6 && (await pointsOf(lbAuthor, "all")) === 6,
+    `${await pointsOf(lbAuthor, "week")} / ${await pointsOf(lbAuthor, "all")}`,
+);
+
+// Moderação: o comentário removido custa −10 a quem escreveu e tira o ponto do
+// autor do post; o post removido devolve o que rendeu e custa −10.
+const lbFanComment = await call("POST", `/posts/${lbPostId}/comments`, {
+    token: lbFan.token,
+    body: { content: "comentário ruim" },
+});
+check("comentário do fã rende 1 ao autor", (await pointsOf(lbAuthor)) === 7);
+await call("DELETE", `/comments/${lbFanComment.body?.comment?.comment_id}`, { token: lbOwner.token });
+check(
+    "comentário removido pela moderação: −1 ao autor do post, −10 a quem comentou",
+    (await pointsOf(lbAuthor)) === 6 && (await dbPoints(lbFan)) === -10,
+    `${await pointsOf(lbAuthor)} / ${await dbPoints(lbFan)}`,
+);
+check("pontuação negativa não aparece no ranking", !(await board()).data.some((r) => r.user_id === lbFan.id));
+
+await call("DELETE", `/posts/${lbPostId}`, { token: lbOwner.token });
+check(
+    "post removido pela moderação: devolve o que rendeu e custa −10",
+    (await dbPoints(lbAuthor)) === -10 && (await board()).data.length === 0,
+    `${await dbPoints(lbAuthor)} / ${JSON.stringify((await board()).data)}`,
+);
+
+check("period inválido → 400", (await call("GET", `/communities/${lbCid}/leaderboard?period=ano`)).status === 400);
+check(
+    "comunidade inexistente → 404",
+    (await call("GET", "/communities/00000000-0000-4000-8000-000000000000/leaderboard")).status === 404,
+);
+
+console.log("\n[Engajamento B] Seguir usuários");
+resetRateLimits();
+
+const fAna = await newUser("fana");
+const fBia = await newUser("fbia");
+const fCid = await newUser("fcid");
+const fDeb = await newUser("fdeb");
+const fEva = await newUser("feva");
+
+const follow = (u, target) => call("POST", `/users/${target.id}/follow`, { token: u.token });
+const unfollow = (u, target) => call("DELETE", `/users/${target.id}/follow`, { token: u.token });
+const profileOf = async (target, viewer) =>
+    (await call("GET", `/users/${target.id}`, { token: viewer?.token })).body?.user;
+const followNotifs = async (u) =>
+    (await call("GET", "/notifications", { token: u.token })).body?.data?.filter((n) => n.type === "follow") ?? [];
+
+const firstFollow = await follow(fAna, fBia);
+check(
+    "seguir devolve o estado e a contagem",
+    firstFollow.status === 200 && firstFollow.body?.following === true && firstFollow.body.followersCount === 1,
+    JSON.stringify(firstFollow.body),
+);
+const againFollow = await follow(fAna, fBia);
+check("seguir de novo é idempotente", againFollow.status === 200 && againFollow.body?.followersCount === 1);
+check("seguir a si mesmo → 400", (await follow(fAna, fAna)).status === 400);
+check(
+    "seguir conta inexistente → 404",
+    (await follow(fAna, { id: "00000000-0000-4000-8000-000000000000" })).status === 404,
+);
+check("seguir exige login", (await call("POST", `/users/${fBia.id}/follow`)).status === 401);
+
+let biaNotifs = await followNotifs(fBia);
+check(
+    "seguir gera notificação follow",
+    biaNotifs.length === 1 && biaNotifs[0].actor_id === fAna.id,
+    JSON.stringify(biaNotifs),
+);
+
+const biaSeenByAna = await profileOf(fBia, fAna);
+const biaSeenByCid = await profileOf(fBia, fCid);
+const anaSeenBySelf = await profileOf(fAna, fAna);
+check(
+    "perfil mostra seguidores, seguindo e se quem vê segue",
+    biaSeenByAna?.stats?.followers === 1 &&
+        biaSeenByAna.stats.following === 0 &&
+        biaSeenByAna.followedByMe === true &&
+        biaSeenByCid?.followedByMe === false &&
+        anaSeenBySelf?.stats?.following === 1,
+    JSON.stringify(biaSeenByAna?.stats),
+);
+
+const biaFollowers = await call("GET", `/users/${fBia.id}/followers`, { token: fCid.token });
+const anaFollowing = await call("GET", `/users/${fAna.id}/following`);
+check(
+    "listas de seguidores e seguindo",
+    biaFollowers.status === 200 &&
+        biaFollowers.body?.data?.length === 1 &&
+        biaFollowers.body.data[0].user_id === fAna.id &&
+        biaFollowers.body.data[0].followed_by_me === false &&
+        anaFollowing.body?.data?.[0]?.user_id === fBia.id,
+    JSON.stringify(biaFollowers.body),
+);
+
+const unfollowed = await unfollow(fAna, fBia);
+check(
+    "deixar de seguir zera a contagem e apaga o aviso",
+    unfollowed.status === 200 &&
+        unfollowed.body?.following === false &&
+        unfollowed.body.followersCount === 0 &&
+        (await followNotifs(fBia)).length === 0,
+    JSON.stringify(unfollowed.body),
+);
+await follow(fAna, fBia);
+await unfollow(fAna, fBia);
+await follow(fAna, fBia);
+check("seguir, sair e seguir de novo deixa um aviso só", (await followNotifs(fBia)).length === 1);
+
+// Paginação das listas.
+await follow(fCid, fBia);
+await follow(fDeb, fBia);
+const followersA = await call("GET", `/users/${fBia.id}/followers?limit=2`);
+const followersB = await call("GET", `/users/${fBia.id}/followers?limit=2&cursor=${followersA.body?.nextCursor}`);
+check(
+    "lista paginada por cursor sem repetir",
+    followersA.body?.data?.length === 2 &&
+        Boolean(followersA.body.nextCursor) &&
+        followersB.body?.data?.length === 1 &&
+        !followersB.body.data.some((u) => followersA.body.data.some((v) => v.user_id === u.user_id)) &&
+        followersA.body.data[0].user_id === fDeb.id,
+    JSON.stringify(followersA.body),
+);
+
+// Perfil privado: pode ser seguido, mas as listas ficam fechadas para os outros.
+await call("PATCH", "/me/settings", { token: fCid.token, body: { isPrivate: true } });
+const followPrivate = await follow(fAna, fCid);
+check("perfil privado pode ser seguido", followPrivate.status === 200 && followPrivate.body?.followersCount === 1);
+check(
+    "cartão do perfil privado diz se quem vê segue",
+    (await profileOf(fCid, fAna))?.followedByMe === true && (await profileOf(fCid, fAna))?.stats === undefined,
+);
+check(
+    "listas de perfil privado → 403 para os outros, 200 para o dono",
+    (await call("GET", `/users/${fCid.id}/followers`, { token: fAna.token })).status === 403 &&
+        (await call("GET", `/users/${fCid.id}/following`)).status === 403 &&
+        (await call("GET", `/users/${fCid.id}/followers`, { token: fCid.token })).status === 200,
+);
+
+// Preferência: sem aviso de novo seguidor.
+await call("PATCH", "/me/settings", { token: fDeb.token, body: { notifyFollows: false } });
+await follow(fAna, fDeb);
+check(
+    "preferência desligada não gera aviso de seguidor",
+    (await followNotifs(fDeb)).length === 0 &&
+        (await call("GET", "/me", { token: fDeb.token })).body?.user?.notifyFollows === false,
+);
+
+// Feed "Seguindo".
+const fCommunity = await call("POST", "/communities", {
+    token: fBia.token,
+    body: { name: `Seguindo ${stamp}`, categoryId },
+});
+const fCommunityId = fCommunity.body?.community?.communityId;
+const biaPost = await call("POST", "/posts", {
+    token: fBia.token,
+    body: { communityId: fCommunityId, title: "Post da Bia", content: "para quem segue" },
+});
+const biaGone = await call("POST", "/posts", {
+    token: fBia.token,
+    body: { communityId: fCommunityId, title: "Post apagado da Bia", content: "x" },
+});
+await call("DELETE", `/posts/${biaGone.body?.post?.post_id}`, { token: fBia.token });
+
+const anaFeed = await call("GET", "/feed/following", { token: fAna.token });
+const evaFeed = await call("GET", "/feed/following", { token: fEva.token });
+check(
+    "feed Seguindo traz posts de quem a pessoa segue",
+    anaFeed.status === 200 &&
+        anaFeed.body?.data?.some((p) => p.post_id === biaPost.body?.post?.post_id) &&
+        anaFeed.body.data.every((p) => p.author_id === fBia.id || p.author_id === fCid.id) &&
+        anaFeed.body.data[0].community_name === `Seguindo ${stamp}`,
+    JSON.stringify(anaFeed.body).slice(0, 300),
+);
+check(
+    "feed Seguindo não traz post apagado",
+    !anaFeed.body?.data?.some((p) => p.post_id === biaGone.body?.post?.post_id),
+);
+check(
+    "feed Seguindo só de quem se segue",
+    evaFeed.status === 200 && evaFeed.body?.data?.length === 0 && evaFeed.body?.pagination?.total === 0,
+    JSON.stringify(evaFeed.body),
+);
+check("feed Seguindo exige login", (await call("GET", "/feed/following")).status === 401);
+
+console.log("\n[Engajamento C] Ordenação do feed");
+resetRateLimits();
+
+const sOwner = await newUser("sdono");
+const sCommunity = await call("POST", "/communities", {
+    token: sOwner.token,
+    body: { name: `Ordenação ${stamp}`, categoryId },
+});
+const sCid = sCommunity.body?.community?.communityId;
+
+// Contadores e idades fixados direto no banco: a ordem esperada fica exata.
+//   hot = (2×reações + comentários + 1) / (horas + 2)^1.5
+//   P1: 1h,  0/0  → 1/3^1.5   ≈ 0,19
+//   P2: 48h, 10/1 → 22/50^1.5 ≈ 0,062
+//   P3: 2h,  2/5  → 10/4^1.5  = 1,25
+//   P4: 40h, 1/8  → 11/42^1.5 ≈ 0,040
+const sorted = {};
+for (const [label, hours, likes, comments] of [
+    ["P1", 1, 0, 0],
+    ["P2", 48, 10, 1],
+    ["P3", 2, 2, 5],
+    ["P4", 40, 1, 8],
+]) {
+    const created = await call("POST", "/posts", {
+        token: sOwner.token,
+        body: { communityId: sCid, title: `Post ${label}`, content: "x" },
+    });
+    const id = created.body?.post?.post_id;
+    sorted[id] = label;
+    await db.query(
+        `UPDATE posts SET likes_count = $2, comments_count = $3,
+                created_at = NOW() - make_interval(hours => $4)
+         WHERE post_id = $1`,
+        [id, likes, comments, hours],
+    );
+}
+
+const orderOf = async (sort) => {
+    const query = sort ? `?sort=${sort}` : "";
+    const res = await call("GET", `/communities/${sCid}/posts${query}`);
+    return (res.body?.data ?? []).map((p) => sorted[p.post_id]).join(",");
+};
+
+check("padrão: mais recentes", (await orderOf()) === "P1,P3,P4,P2", await orderOf());
+check("sort=new", (await orderOf("new")) === "P1,P3,P4,P2", await orderOf("new"));
+check("sort=top: mais reações", (await orderOf("top")) === "P2,P3,P4,P1", await orderOf("top"));
+check("sort=comments: mais comentados", (await orderOf("comments")) === "P4,P3,P2,P1", await orderOf("comments"));
+check("sort=hot: interação com decaimento", (await orderOf("hot")) === "P3,P1,P2,P4", await orderOf("hot"));
+const sortEcho = await call("GET", `/communities/${sCid}/posts?sort=top&limit=2&page=2`);
+check(
+    "ordenação vale na paginação e volta na resposta",
+    sortEcho.body?.sort === "top" &&
+        sortEcho.body.data.map((p) => sorted[p.post_id]).join(",") === "P4,P1",
+    JSON.stringify(sortEcho.body?.data?.map((p) => sorted[p.post_id])),
+);
+check("sort inválido → 400", (await call("GET", `/communities/${sCid}/posts?sort=aleatorio`)).status === 400);
+
+console.log("\n[Engajamento D] Fixar e resolver");
+resetRateLimits();
+
+const pOwner = await newUser("pdono");
+const pMod = await newUser("pmod");
+const pMember = await newUser("pmembro");
+const pCommunity = await call("POST", "/communities", {
+    token: pOwner.token,
+    body: { name: `Fixados ${stamp}`, categoryId },
+});
+const pCid = pCommunity.body?.community?.communityId;
+await call("POST", `/communities/${pCid}/join`, { token: pMod.token });
+await call("POST", `/communities/${pCid}/join`, { token: pMember.token });
+await call("PATCH", `/communities/${pCid}/members/${pMod.id}`, {
+    token: pOwner.token,
+    body: { role: "moderator" },
+});
+
+const pPosts = [];
+for (let i = 1; i <= 5; i++) {
+    const created = await call("POST", "/posts", {
+        token: pMember.token,
+        body: { communityId: pCid, title: `Pergunta ${i}`, content: "Alguém sabe?" },
+    });
+    pPosts.push(created.body?.post?.post_id);
+}
+const pin = (u, postId) => call("POST", `/posts/${postId}/pin`, { token: u.token });
+const unpin = (u, postId) => call("DELETE", `/posts/${postId}/pin`, { token: u.token });
+const feedIds = async (query = "") =>
+    ((await call("GET", `/communities/${pCid}/posts${query}`)).body?.data ?? []).map((p) => p.post_id);
+
+check("membro comum não fixa → 403", (await pin(pMember, pPosts[0])).status === 403);
+const pinned1 = await pin(pMod, pPosts[0]);
+check(
+    "moderador fixa e o post volta com pinned_at",
+    pinned1.status === 200 && Boolean(pinned1.body?.post?.pinned_at),
+    JSON.stringify(pinned1.body).slice(0, 200),
+);
+await pin(pMod, pPosts[1]);
+await pin(pOwner, pPosts[2]);
+const fourth = await pin(pOwner, pPosts[3]);
+check("limite de 3 fixados por comunidade → 409", fourth.status === 409, JSON.stringify(fourth.body));
+check("fixar de novo o que já está fixado é aceito", (await pin(pOwner, pPosts[0])).status === 200);
+
+const pinnedOrder = await feedIds();
+check(
+    "fixados no topo, o mais recente primeiro",
+    pinnedOrder.slice(0, 3).join() === [pPosts[2], pPosts[1], pPosts[0]].join() &&
+        pinnedOrder.slice(3).join() === [pPosts[4], pPosts[3]].join(),
+    pinnedOrder.join(),
+);
+check(
+    "fixados no topo também em outra ordenação",
+    (await feedIds("?sort=top")).slice(0, 3).sort().join() === [pPosts[0], pPosts[1], pPosts[2]].sort().join(),
+);
+
+const pUnpinned = await unpin(pMod, pPosts[1]);
+check(
+    "desafixar libera a vaga",
+    pUnpinned.status === 200 && pUnpinned.body?.post?.pinned_at === null && (await pin(pOwner, pPosts[3])).status === 200,
+);
+await call("DELETE", `/posts/${pPosts[2]}`, { token: pMember.token });
+check("post fixado excluído não ocupa vaga", (await pin(pOwner, pPosts[4])).status === 200);
+check("membro comum não desafixa → 403", (await unpin(pMember, pPosts[0])).status === 403);
+
+// Resposta aceita.
+const pAnswer = await call("POST", `/posts/${pPosts[0]}/comments`, {
+    token: pMod.token,
+    body: { content: "Faz assim, ó." },
+});
+const answerId = pAnswer.body?.comment?.comment_id;
+const otherPostComment = await call("POST", `/posts/${pPosts[1]}/comments`, {
+    token: pMod.token,
+    body: { content: "Outro post" },
+});
+const resolve = (u, postId, commentId) =>
+    call("PUT", `/posts/${postId}/resolution`, { token: u.token, body: { commentId } });
+
+check("só o autor marca a resposta aceita → 404 para os outros", (await resolve(pOwner, pPosts[0], answerId)).status === 404);
+check(
+    "comentário de outro post não pode ser a resposta → 400",
+    (await resolve(pMember, pPosts[0], otherPostComment.body?.comment?.comment_id)).status === 400,
+);
+const pResolved = await resolve(pMember, pPosts[0], answerId);
+check(
+    "autor marca a resposta aceita",
+    pResolved.status === 200 && pResolved.body?.post?.resolved_comment_id === answerId,
+    JSON.stringify(pResolved.body).slice(0, 200),
+);
+check(
+    "\"Ajudar os outros\" deixa de fora o post resolvido",
+    !(await feedIds("?unanswered=true")).includes(pPosts[0]) && (await feedIds("?unanswered=true")).includes(pPosts[1]),
+);
+const pUnresolved = await call("DELETE", `/posts/${pPosts[0]}/resolution`, { token: pMember.token });
+check(
+    "autor desmarca a resposta aceita",
+    pUnresolved.status === 200 && pUnresolved.body?.post?.resolved_comment_id === null &&
+        (await feedIds("?unanswered=true")).includes(pPosts[0]),
+);
+await resolve(pMember, pPosts[0], answerId);
+await call("DELETE", `/comments/${answerId}`, { token: pMod.token });
+const pAfterDelete = await call("GET", `/posts/${pPosts[0]}`);
+check(
+    "excluir a resposta aceita reabre a pergunta",
+    pAfterDelete.body?.post?.resolved_comment_id === null,
+    JSON.stringify(pAfterDelete.body?.post?.resolved_comment_id),
+);
+
+console.log("\n[Engajamento E] Mais reações");
+resetRateLimits();
+
+const rOwner = await newUser("rdono");
+const rFan = await newUser("rfa");
+const rOther = await newUser("routro");
+const rCommunity = await call("POST", "/communities", {
+    token: rOwner.token,
+    body: { name: `Reações ${stamp}`, categoryId },
+});
+const rCid = rCommunity.body?.community?.communityId;
+await call("POST", `/communities/${rCid}/join`, { token: rFan.token });
+await call("POST", `/communities/${rCid}/join`, { token: rOther.token });
+const rPost = await call("POST", "/posts", {
+    token: rOwner.token,
+    body: { communityId: rCid, title: "Reaja a isto", content: "x" },
+});
+const rPostId = rPost.body?.post?.post_id;
+const react = (u, type) =>
+    call("POST", `/posts/${rPostId}/reactions`, { token: u.token, body: type ? { type } : undefined });
+const ownerPoints = async () =>
+    (await call("GET", `/communities/${rCid}/leaderboard`)).body?.data?.find((r) => r.user_id === rOwner.id)?.points;
+const likeNotifs = async () =>
+    (await call("GET", "/notifications", { token: rOwner.token })).body?.data?.filter((n) => n.type === "post_like") ?? [];
+
+const loved = await react(rFan, "love");
+check(
+    "reagir com outro tipo",
+    loved.status === 200 &&
+        loved.body?.reaction === "love" &&
+        loved.body.liked === true &&
+        loved.body.likesCount === 1 &&
+        loved.body.reactionCounts?.love === 1,
+    JSON.stringify(loved.body),
+);
+const swapped = await react(rFan, "haha");
+check(
+    "trocar de reação substitui a anterior",
+    swapped.body?.reaction === "haha" &&
+        swapped.body.likesCount === 1 &&
+        swapped.body.reactionCounts?.haha === 1 &&
+        swapped.body.reactionCounts.love === undefined,
+    JSON.stringify(swapped.body),
+);
+check(
+    "trocar não dá pontos nem avisa de novo",
+    (await ownerPoints()) === 7 && (await likeNotifs()).length === 1,
+    `${await ownerPoints()} / ${(await likeNotifs()).length}`,
+);
+const fanView = await call("GET", `/posts/${rPostId}`, { token: rFan.token });
+check(
+    "post traz my_reaction e reaction_counts",
+    fanView.body?.post?.my_reaction === "haha" &&
+        fanView.body.post.liked_by_me === true &&
+        fanView.body.post.reaction_counts?.haha === 1,
+    JSON.stringify(fanView.body?.post).slice(0, 300),
+);
+
+await react(rOther, "sad");
+const both = await call("GET", `/posts/${rPostId}`);
+check(
+    "contagem por tipo e total de reações",
+    both.body?.post?.likes_count === 2 &&
+        both.body.post.reaction_counts?.sad === 1 &&
+        both.body.post.reaction_counts.haha === 1 &&
+        both.body.post.my_reaction === null,
+    JSON.stringify(both.body?.post?.reaction_counts),
+);
+check(
+    "aviso agrupado conta todas as reações",
+    (await likeNotifs())[0]?.likes_count === 2 && (await likeNotifs())[0]?.actor_id === rOther.id,
+    JSON.stringify(await likeNotifs()),
+);
+
+const undone = await react(rFan);
+check(
+    "botão sem tipo desfaz qualquer reação e devolve os pontos",
+    undone.body?.reaction === null &&
+        undone.body.liked === false &&
+        undone.body.likesCount === 1 &&
+        (await ownerPoints()) === 7,
+    JSON.stringify(undone.body),
+);
+await react(rFan, "wow");
+const wowAgain = await react(rFan, "wow");
+check("mesma reação de novo desfaz", wowAgain.body?.reaction === null && wowAgain.body.likesCount === 1);
+const plainLike = await react(rFan);
+check("botão sem tipo, sem reação, curte", plainLike.body?.reaction === "like" && plainLike.body.likesCount === 2);
+
+check("tipo inválido → 400", (await react(rFan, "raiva")).status === 400);
+let duplicateBlocked = false;
+try {
+    await db.query(
+        "INSERT INTO post_reactions (reaction_id, post_id, user_id, type) VALUES (gen_random_uuid(), $1, $2, 'love')",
+        [rPostId, rFan.id],
+    );
+} catch (err) {
+    duplicateBlocked = err.code === "23505";
+}
+check("banco garante uma reação por pessoa por post", duplicateBlocked);
+
+console.log("\n[Engajamento F] Salvos");
+resetRateLimits();
+
+const svAuthor = await newUser("svautor");
+const svReader = await newUser("svleitor");
+const svCommunity = await call("POST", "/communities", {
+    token: svAuthor.token,
+    body: { name: `Salvos ${stamp}`, categoryId },
+});
+const svCid = svCommunity.body?.community?.communityId;
+const svPosts = [];
+for (const title of ["Guarde este", "E este também", "Este vai sumir"]) {
+    const created = await call("POST", "/posts", {
+        token: svAuthor.token,
+        body: { communityId: svCid, title, content: "x" },
+    });
+    svPosts.push(created.body?.post?.post_id);
+}
+const save = (u, postId) => call("POST", `/posts/${postId}/save`, { token: u.token });
+const savedList = async (u, query = "") => (await call("GET", `/me/saved${query}`, { token: u.token })).body;
+
+const firstSave = await save(svReader, svPosts[0]);
+check("salvar post sem ser membro", firstSave.status === 200 && firstSave.body?.saved === true, JSON.stringify(firstSave.body));
+check("salvar de novo é idempotente", (await save(svReader, svPosts[0])).status === 200);
+check("salvar exige login", (await call("POST", `/posts/${svPosts[0]}/save`)).status === 401);
+check(
+    "salvar post inexistente → 404",
+    (await save(svReader, "00000000-0000-4000-8000-000000000000")).status === 404,
+);
+await save(svReader, svPosts[1]);
+await save(svReader, svPosts[2]);
+
+let readerSaved = await savedList(svReader);
+check(
+    "lista de salvos, mais recentes primeiro, com saved_by_me",
+    readerSaved?.data?.map((p) => p.post_id).join() === [svPosts[2], svPosts[1], svPosts[0]].join() &&
+        readerSaved.data.every((p) => p.saved_by_me === true) &&
+        readerSaved.pagination?.total === 3,
+    JSON.stringify(readerSaved?.pagination),
+);
+check(
+    "post traz saved_by_me para quem salvou, e só para ele",
+    (await call("GET", `/posts/${svPosts[0]}`, { token: svReader.token })).body?.post?.saved_by_me === true &&
+        (await call("GET", `/posts/${svPosts[0]}`, { token: svAuthor.token })).body?.post?.saved_by_me === false,
+);
+check("salvos são de cada um", (await savedList(svAuthor))?.data?.length === 0);
+
+await call("DELETE", `/posts/${svPosts[2]}`, { token: svAuthor.token });
+readerSaved = await savedList(svReader);
+check("post apagado some dos salvos", readerSaved?.data?.length === 2 && readerSaved.pagination.total === 2);
+
+const unsaved = await call("DELETE", `/posts/${svPosts[0]}/save`, { token: svReader.token });
+check(
+    "tirar dos salvos",
+    unsaved.status === 200 && unsaved.body?.saved === false && (await savedList(svReader))?.data?.length === 1,
+);
+check("lista de salvos exige login", (await call("GET", "/me/saved")).status === 401);
+
+console.log("\n[Engajamento G] Menções e imagens");
+resetRateLimits();
+
+const mAuthor = await newUser("mautor");
+const mFriend = await newUser("mamigo");
+const mThird = await newUser("mterc");
+const mFriendName = `mamigo${stamp}`.slice(0, 30);
+const mThirdName = `mterc${stamp}`.slice(0, 30);
+const mAuthorName = `mautor${stamp}`.slice(0, 30);
+const mCommunity = await call("POST", "/communities", {
+    token: mAuthor.token,
+    body: { name: `Menções ${stamp}`, categoryId },
+});
+const mCid = mCommunity.body?.community?.communityId;
+await call("POST", `/communities/${mCid}/join`, { token: mThird.token });
+
+const mentionsOf = async (u) =>
+    (await call("GET", "/notifications", { token: u.token })).body?.data?.filter((n) => n.type === "mention") ?? [];
+
+const mPost = await call("POST", "/posts", {
+    token: mAuthor.token,
+    body: {
+        communityId: mCid,
+        title: "Chamando a galera",
+        content: `Oi @${mFriendName.toUpperCase()}, veja isto. Contato: fulano@${mThirdName}.com, @naoexiste${stamp} e eu mesmo @${mAuthorName}`,
+    },
+});
+const mPostId = mPost.body?.post?.post_id;
+let friendMentions = await mentionsOf(mFriend);
+check(
+    "menção no post avisa a pessoa (sem diferenciar maiúsculas)",
+    friendMentions.length === 1 &&
+        friendMentions[0].post_id === mPostId &&
+        friendMentions[0].actor_id === mAuthor.id &&
+        friendMentions[0].comment_id === null,
+    JSON.stringify(friendMentions),
+);
+check(
+    "e-mail não é menção, e ninguém é avisado de se mencionar",
+    (await mentionsOf(mThird)).length === 0 && (await mentionsOf(mAuthor)).length === 0,
+);
+
+await call("POST", "/posts", {
+    token: mAuthor.token,
+    body: { communityId: mCid, title: "Código", content: "Use `@" + mThirdName + "` no código\n```\n@" + mThirdName + "\n```" },
+});
+check("menção dentro de código não conta", (await mentionsOf(mThird)).length === 0);
+
+await call("PATCH", `/posts/${mPostId}`, {
+    token: mAuthor.token,
+    body: { content: `Oi @${mFriendName}, veja isto. E você também, @${mThirdName}!` },
+});
+check(
+    "editar avisa só as menções novas",
+    (await mentionsOf(mFriend)).length === 1 && (await mentionsOf(mThird)).length === 1,
+);
+
+// Comentários: quem já recebe "respondeu" não recebe também "mencionou".
+const mRoot = await call("POST", `/posts/${mPostId}/comments`, {
+    token: mAuthor.token,
+    body: { content: "Comentário do autor" },
+});
+await call("POST", `/posts/${mPostId}/comments`, {
+    token: mThird.token,
+    body: { content: `@${mAuthorName} concordo! @${mFriendName} o que acha?`, parentCommentId: mRoot.body?.comment?.comment_id },
+});
+const authorNotifs = (await call("GET", "/notifications", { token: mAuthor.token })).body?.data ?? [];
+friendMentions = await mentionsOf(mFriend);
+check(
+    "menção em comentário avisa com o comentário, sem aviso duplo para o respondido",
+    friendMentions.length === 2 &&
+        Boolean(friendMentions[0].comment_id) &&
+        authorNotifs.filter((n) => n.type === "comment_reply").length === 1 &&
+        authorNotifs.filter((n) => n.type === "mention").length === 0,
+    JSON.stringify(authorNotifs.map((n) => n.type)),
+);
+
+const mThirdComment = await call("POST", `/posts/${mPostId}/comments`, {
+    token: mThird.token,
+    body: { content: "sem menção" },
+});
+await call("PATCH", "/me/settings", { token: mFriend.token, body: { notifyReplies: false } });
+await call("PATCH", `/comments/${mThirdComment.body?.comment?.comment_id}`, {
+    token: mThird.token,
+    body: { content: `agora com @${mFriendName}` },
+});
+check("menção respeita a preferência de respostas", (await mentionsOf(mFriend)).length === 2);
+await call("PATCH", "/me/settings", { token: mFriend.token, body: { notifyReplies: true } });
+await call("PATCH", `/comments/${mThirdComment.body?.comment?.comment_id}`, {
+    token: mThird.token,
+    body: { content: `agora com @${mFriendName} e @${mAuthorName}` },
+});
+check(
+    "editar comentário avisa a menção nova",
+    (await mentionsOf(mAuthor)).length === 1 && (await mentionsOf(mFriend)).length === 2,
+);
+
+const lookup = await call("GET", `/users/by-username/${mFriendName.toUpperCase()}`);
+check(
+    "@username resolve para o id do perfil",
+    lookup.status === 200 && lookup.body?.user?.userId === mFriend.id &&
+        (await call("GET", `/users/by-username/naoexiste${stamp}`)).status === 404 &&
+        (await call("GET", "/users/by-username/a b")).status === 400,
+);
+
+// --- Imagens -----------------------------------------------------------------
+
+const png = Buffer.concat([Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]), Buffer.alloc(64)]);
+const imageForm = (count, buffer = png) => {
+    const form = new FormData();
+    for (let i = 0; i < count; i++) form.append("images", new Blob([buffer], { type: "image/png" }), `img${i}.png`);
+    return form;
+};
+const upload = (u, form) => call("POST", `/posts/${mPostId}/images`, { token: u.token, body: form, raw: true });
+
+check("imagens: só o autor anexa → 404", (await upload(mThird, imageForm(1))).status === 404);
+check("imagens: sem arquivo → 400", (await upload(mAuthor, new FormData())).status === 400);
+check(
+    "imagens: arquivo que não é imagem → 400",
+    (await upload(mAuthor, imageForm(1, Buffer.from("isto não é uma imagem de verdade")))).status === 400,
+);
+check("imagens: mais de 4 de uma vez → 400", (await upload(mAuthor, imageForm(5))).status === 400);
+const noStorage = await upload(mAuthor, imageForm(1));
+check(
+    "imagens: sem Storage configurado → 503 (validado antes)",
+    noStorage.status === 503,
+    JSON.stringify(noStorage.body),
+);
+
+// Com o Storage desligado no teste, as linhas entram direto no banco.
+for (let i = 0; i < 3; i++) {
+    await db.query(
+        "INSERT INTO post_images (image_id, post_id, url, position) VALUES (gen_random_uuid(), $1, $2, $3)",
+        [mPostId, `https://cdn.test/img${i}.png`, i],
+    );
+}
+const withImages = await call("GET", `/posts/${mPostId}`);
+check(
+    "post traz as imagens em ordem",
+    withImages.body?.post?.images?.map((i) => i.url).join() ===
+        ["https://cdn.test/img0.png", "https://cdn.test/img1.png", "https://cdn.test/img2.png"].join(),
+    JSON.stringify(withImages.body?.post?.images),
+);
+const overLimit = await upload(mAuthor, imageForm(2));
+check("imagens: limite de 4 por post contando as que já existem → 400", overLimit.status === 400, JSON.stringify(overLimit.body));
+
+const firstImage = withImages.body?.post?.images?.[0]?.image_id;
+check(
+    "imagens: só o autor remove → 404",
+    (await call("DELETE", `/posts/${mPostId}/images/${firstImage}`, { token: mThird.token })).status === 404,
+);
+const removedImage = await call("DELETE", `/posts/${mPostId}/images/${firstImage}`, { token: mAuthor.token });
+check(
+    "imagens: autor remove uma",
+    removedImage.status === 200 && removedImage.body?.post?.images?.length === 2,
+    JSON.stringify(removedImage.body?.post?.images),
+);
+
+console.log("\n[Engajamento H] Eventos da comunidade");
+resetRateLimits();
+
+const eOwner = await newUser("edona");
+const eMod = await newUser("emod");
+const eMember = await newUser("emembro");
+const eQuiet = await newUser("equieto");
+const eOutsider = await newUser("efora");
+const eCommunity = await call("POST", "/communities", {
+    token: eOwner.token,
+    body: { name: `Eventos ${stamp}`, categoryId },
+});
+const eCid = eCommunity.body?.community?.communityId;
+for (const u of [eMod, eMember, eQuiet]) await call("POST", `/communities/${eCid}/join`, { token: u.token });
+await call("PATCH", `/communities/${eCid}/members/${eMod.id}`, { token: eOwner.token, body: { role: "moderator" } });
+await call("PATCH", "/me/settings", { token: eQuiet.token, body: { notifyEvents: false } });
+
+const inDays = (days, hours = 0) => new Date(Date.now() + days * 86_400_000 + hours * 3_600_000).toISOString();
+const createEvent = (u, body) => call("POST", `/communities/${eCid}/events`, { token: u.token, body });
+const eventNotifs = async (u) =>
+    (await call("GET", "/notifications", { token: u.token })).body?.data?.filter((n) => n.type === "event") ?? [];
+
+check(
+    "membro comum não cria evento → 403",
+    (await createEvent(eMember, { title: "Encontro", startsAt: inDays(2) })).status === 403,
+);
+check(
+    "quem não é membro não cria evento → 403",
+    (await createEvent(eOutsider, { title: "Encontro", startsAt: inDays(2) })).status === 403,
+);
+check(
+    "início no passado → 400",
+    (await createEvent(eOwner, { title: "Encontro", startsAt: inDays(-1) })).status === 400,
+);
+check(
+    "fim antes do início → 400",
+    (await createEvent(eOwner, { title: "Encontro", startsAt: inDays(2), endsAt: inDays(1) })).status === 400,
+);
+
+const later = await createEvent(eOwner, {
+    title: "Degustação de cafés",
+    description: "Traga sua caneca.",
+    startsAt: inDays(5),
+    endsAt: inDays(5, 2),
+    location: "https://meet.example.com/cafe",
+});
+const sooner = await createEvent(eMod, { title: "Live com barista", startsAt: inDays(1) });
+const laterId = later.body?.event?.event_id;
+const soonerId = sooner.body?.event?.event_id;
+check(
+    "dono e moderador criam evento",
+    later.status === 201 &&
+        sooner.status === 201 &&
+        later.body.event.title === "Degustação de cafés" &&
+        later.body.event.location === "https://meet.example.com/cafe" &&
+        later.body.event.attendees_count === 0 &&
+        later.body.event.creator_id === eOwner.id,
+    JSON.stringify(later.body).slice(0, 300),
+);
+
+const memberEventNotifs = await eventNotifs(eMember);
+check(
+    "evento novo avisa os membros",
+    memberEventNotifs.length === 2 &&
+        memberEventNotifs.some((n) => n.event_id === laterId && n.event_title === "Degustação de cafés"),
+    JSON.stringify(memberEventNotifs),
+);
+check(
+    "quem criou não é avisado; preferência desligada não recebe",
+    (await eventNotifs(eOwner)).length === 1 &&
+        (await eventNotifs(eMod)).length === 1 &&
+        (await eventNotifs(eQuiet)).length === 0 &&
+        (await eventNotifs(eOutsider)).length === 0,
+);
+
+// Evento que já aconteceu, direto no banco (a API não aceita início no passado).
+await db.query(
+    `INSERT INTO community_events (event_id, community_id, created_by, title, starts_at)
+     VALUES (gen_random_uuid(), $1, $2, 'Encontro antigo', NOW() - INTERVAL '3 days')`,
+    [eCid, eOwner.id],
+);
+const upcoming = await call("GET", `/communities/${eCid}/events`);
+const past = await call("GET", `/communities/${eCid}/events?scope=past`);
+check(
+    "próximos eventos em ordem de data; anteriores à parte",
+    upcoming.body?.data?.map((e) => e.event_id).join() === [soonerId, laterId].join() &&
+        past.body?.data?.length === 1 &&
+        past.body.data[0].title === "Encontro antigo" &&
+        past.body.data[0].is_past === true,
+    JSON.stringify(upcoming.body?.data?.map((e) => e.title)),
+);
+check(
+    "widget pede só o próximo",
+    (await call("GET", `/communities/${eCid}/events?limit=1`)).body?.data?.[0]?.event_id === soonerId,
+);
+
+// "Vou"
+const attend = (u, id) => call("POST", `/events/${id}/attend`, { token: u.token });
+const going = await attend(eMember, laterId);
+check(
+    "membro marca presença",
+    going.status === 200 && going.body?.attending === true && going.body.attendeesCount === 1,
+    JSON.stringify(going.body),
+);
+check("marcar de novo é idempotente", (await attend(eMember, laterId)).body?.attendeesCount === 1);
+check(
+    "evento mostra a presença de quem vê",
+    (await call("GET", `/events/${laterId}`, { token: eMember.token })).body?.event?.attending === true &&
+        (await call("GET", `/events/${laterId}`, { token: eMod.token })).body?.event?.attending === false &&
+        (await call("GET", `/events/${laterId}`)).body?.event?.attendees_count === 1,
+);
+check("quem não é membro não marca presença → 403", (await attend(eOutsider, laterId)).status === 403);
+check("evento que já terminou não aceita presença → 400", (await attend(eMember, past.body?.data?.[0]?.event_id)).status === 400);
+const notGoing = await call("DELETE", `/events/${laterId}/attend`, { token: eMember.token });
+check("desmarcar presença", notGoing.body?.attending === false && notGoing.body.attendeesCount === 0);
+
+// Editar e cancelar
+const edited = await call("PATCH", `/events/${laterId}`, {
+    token: eMod.token,
+    body: { title: "Degustação de cafés especiais", location: null },
+});
+check(
+    "moderador edita o evento",
+    edited.status === 200 && edited.body?.event?.title === "Degustação de cafés especiais" && edited.body.event.location === null,
+    JSON.stringify(edited.body).slice(0, 200),
+);
+check(
+    "membro comum não edita → 403",
+    (await call("PATCH", `/events/${laterId}`, { token: eMember.token, body: { title: "Hack" } })).status === 403,
+);
+check(
+    "edição com fim antes do início → 400",
+    (await call("PATCH", `/events/${laterId}`, { token: eOwner.token, body: { endsAt: inDays(4) } })).status === 400,
+);
+check(
+    "membro comum não cancela → 403",
+    (await call("DELETE", `/events/${laterId}`, { token: eMember.token })).status === 403,
+);
+const cancelled = await call("DELETE", `/events/${laterId}`, { token: eOwner.token });
+check(
+    "dono cancela: evento some e o aviso também",
+    cancelled.status === 204 &&
+        (await call("GET", `/events/${laterId}`)).status === 404 &&
+        !(await eventNotifs(eMember)).some((n) => n.event_id === laterId),
 );
 
 // ---------------------------------------------------------------------------

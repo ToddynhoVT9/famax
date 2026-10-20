@@ -34,6 +34,9 @@ export interface AppNotification {
     post_id: string | null;
     comment_id: string | null;
     community_id: string | null;
+    event_id?: string | null;
+    event_title?: string | null;
+    event_starts_at?: string | null;
     data: { role?: string; kind?: string; title?: string; excerpt?: string } | null;
     actor_id: string | null;
     actor_username: string | null;
@@ -87,8 +90,8 @@ function describe(n: AppNotification): Part[] {
         case "post_like": {
             const others = Math.max(0, (n.likes_count ?? 1) - 1);
             return others > 0
-                ? [actor, ` e mais ${others} ${others === 1 ? "pessoa curtiram" : "pessoas curtiram"} `, title]
-                : [actor, " curtiu ", title];
+                ? [actor, ` e mais ${others} ${others === 1 ? "pessoa reagiram a" : "pessoas reagiram a"} `, title]
+                : [actor, " reagiu a ", title];
         }
         case "content_removed":
             return n.data?.kind === "comment"
@@ -103,7 +106,12 @@ function describe(n: AppNotification): Part[] {
         case "follow":
             return [actor, " começou a seguir você"];
         case "event":
-            return ["Novo evento em ", { strong: n.community_name ?? "uma comunidade" }];
+            return [
+                "Novo evento em ",
+                { strong: n.community_name ?? "uma comunidade" },
+                ": ",
+                quoted(n.event_title ?? n.data?.title),
+            ];
         default:
             return ["Nova notificação"];
     }
@@ -120,8 +128,10 @@ export function notificationHref(n: AppNotification): string {
             return n.post_id ? postUrl(n.post_id) : pages.home;
         case "follow":
             return n.actor_id ? profileUrl(n.actor_id) : pages.home;
+        case "event":
+            return n.community_id ? communityUrl(n.community_id, "events") : pages.home;
         default:
-            // Conteúdo removido (o post não existe mais), papel e eventos.
+            // Conteúdo removido (o post não existe mais) e papel.
             return n.community_id ? communityUrl(n.community_id) : pages.home;
     }
 }

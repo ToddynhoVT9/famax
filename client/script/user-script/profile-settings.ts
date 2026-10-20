@@ -69,6 +69,8 @@ const togglePrivate = $<HTMLButtonElement>("togglePrivate");
 const toggleNotifyComments = $<HTMLButtonElement>("toggleNotifyComments");
 const toggleNotifyReplies = $<HTMLButtonElement>("toggleNotifyReplies");
 const toggleNotifyLikes = $<HTMLButtonElement>("toggleNotifyLikes");
+const toggleNotifyFollows = $<HTMLButtonElement>("toggleNotifyFollows");
+const toggleNotifyEvents = $<HTMLButtonElement>("toggleNotifyEvents");
 const socialCount = $("socialCount");
 
 function setToggle(button: HTMLButtonElement | null, on: boolean): void {
@@ -128,6 +130,8 @@ function render(user: Me): void {
     setToggle(toggleNotifyComments, user.notifyComments);
     setToggle(toggleNotifyReplies, user.notifyReplies);
     setToggle(toggleNotifyLikes, user.notifyLikes);
+    setToggle(toggleNotifyFollows, user.notifyFollows);
+    setToggle(toggleNotifyEvents, user.notifyEvents);
 
     if (socialCount) {
         const n = user.socialLinks.length;
@@ -178,7 +182,14 @@ identityForm?.addEventListener("submit", async (event) => {
 
 const settingsStatus = $("settingsStatus");
 
-type ToggleKey = "isAdult" | "isPrivate" | "notifyComments" | "notifyReplies" | "notifyLikes";
+type ToggleKey =
+    | "isAdult"
+    | "isPrivate"
+    | "notifyComments"
+    | "notifyReplies"
+    | "notifyLikes"
+    | "notifyFollows"
+    | "notifyEvents";
 
 function bindToggle(button: HTMLButtonElement | null, key: ToggleKey): void {
     button?.addEventListener("click", async () => {
@@ -207,6 +218,8 @@ bindToggle(togglePrivate, "isPrivate");
 bindToggle(toggleNotifyComments, "notifyComments");
 bindToggle(toggleNotifyReplies, "notifyReplies");
 bindToggle(toggleNotifyLikes, "notifyLikes");
+bindToggle(toggleNotifyFollows, "notifyFollows");
+bindToggle(toggleNotifyEvents, "notifyEvents");
 
 // ===========================================================================
 // Avatar e banner

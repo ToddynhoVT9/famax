@@ -19,12 +19,14 @@ const VISIBLE = `
      (n.post_id IS NULL OR p.deleted_at IS NULL)
      AND (n.comment_id IS NULL OR c.deleted_at IS NULL)
      AND (n.community_id IS NULL OR cm.deleted_at IS NULL)
+     AND (n.event_id IS NULL OR ev.deleted_at IS NULL)
   ))`;
 
 const JOINS = `
-  LEFT JOIN posts p        ON p.post_id = n.post_id
-  LEFT JOIN comments c     ON c.comment_id = n.comment_id
-  LEFT JOIN communities cm ON cm.community_id = n.community_id`;
+  LEFT JOIN posts p             ON p.post_id = n.post_id
+  LEFT JOIN comments c          ON c.comment_id = n.comment_id
+  LEFT JOIN communities cm      ON cm.community_id = n.community_id
+  LEFT JOIN community_events ev ON ev.event_id = n.event_id`;
 
 /** Cursor opaco: created_at exato (texto, com microssegundos) + id. */
 function encodeCursor(createdAt: string, id: string): string {
@@ -81,6 +83,9 @@ router.get("/notifications", requireAuth, async (req, res, next) => {
          n.post_id,
          n.comment_id,
          n.community_id,
+         n.event_id,
+         ev.title          AS event_title,
+         ev.starts_at      AS event_starts_at,
          n.data,
          a.user_id         AS actor_id,
          a.username        AS actor_username,
@@ -91,7 +96,7 @@ router.get("/notifications", requireAuth, async (req, res, next) => {
          CASE WHEN c.deleted_at IS NULL THEN LEFT(c.content, 140) END AS comment_excerpt,
          CASE WHEN n.type = 'post_like' THEN (
            SELECT COUNT(*)::int FROM post_reactions r
-           WHERE r.post_id = n.post_id AND r.type = 'like' AND r.user_id <> n.user_id
+           WHERE r.post_id = n.post_id AND r.user_id <> n.user_id
          ) END AS likes_count
        FROM notifications n
        ${JOINS}

@@ -51,7 +51,7 @@ export function profileUrl(userId?: string): string {
 }
 
 /** Vistas da página da comunidade além das discussões (?view=). */
-export type CommunityView = "rules" | "members";
+export type CommunityView = "rules" | "members" | "events";
 
 export function communityUrl(communityId: string, view?: CommunityView): string {
   const params = new URLSearchParams({ id: communityId });

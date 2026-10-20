@@ -159,3 +159,36 @@
 .feed-status.error {
     color: #ff9aa4;
 }
+
+/* ----- Abas Comunidades / Seguindo ----- */
+.home-tabs {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 20px;
+    border-bottom: 1px solid #444444;
+}
+
+.home-tab {
+    background: none;
+    border: none;
+    border-bottom: 3px solid transparent;
+    color: #bbbbbb;
+    font-size: 1.05rem;
+    font-weight: 600;
+    padding: 10px 14px;
+    cursor: pointer;
+}
+
+.home-tab:hover {
+    color: #ffffff;
+}
+
+.home-tab.active {
+    color: #ffffff;
+    border-bottom-color: #ffffff;
+}
+
+.home-following {
+    width: 100%;
+    max-width: 820px;
+}

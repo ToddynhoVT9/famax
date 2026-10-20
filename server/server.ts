@@ -18,6 +18,9 @@ import searchRoutes from "./routes/search.routes.js";
 import moderationRoutes from "./routes/moderation.routes.js";
 import reportsRoutes from "./routes/reports.routes.js";
 import notificationsRoutes from "./routes/notifications.routes.js";
+import leaderboardRoutes from "./routes/leaderboard.routes.js";
+import followsRoutes from "./routes/follows.routes.js";
+import eventsRoutes from "./routes/events.routes.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const publicDir = path.join(__dirname, "public");
@@ -92,6 +95,9 @@ app.use("/api", searchRoutes);
 app.use("/api", moderationRoutes);
 app.use("/api", reportsRoutes);
 app.use("/api", notificationsRoutes);
+app.use("/api", leaderboardRoutes);
+app.use("/api", followsRoutes);
+app.use("/api", eventsRoutes);
 app.use("/api/conversations", chatRoutes);
 
 // FRONTEND ESTÁTICO
