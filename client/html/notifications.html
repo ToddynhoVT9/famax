@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FAMAX - Notificações</title>
+    <link rel="stylesheet" href="../css/global.css">
+    <link rel="stylesheet" href="../css/layout.css">
+    <link rel="stylesheet" href="../css/notifications.css">
+</head>
+<body>
+    <!-- Header e sidebar: montados por script/shared/layout.ts -->
+    <header id="app-header" class="header"></header>
+    <aside id="app-sidebar" class="sidebar"></aside>
+
+    <main class="main-content" id="main-content">
+        <div class="notif-page">
+            <div class="notif-page-head">
+                <h1 class="notif-page-title">Notificações</h1>
+                <button type="button" class="notif-page-btn" id="btnMarkAll" disabled>Marcar todas como lidas</button>
+            </div>
+            <p class="notif-page-hint">
+                Escolha o que avisar em <a id="settingsLink" href="user-pages/profile-settings.html">Configurações</a>.
+            </p>
+
+            <!-- Avisos desenhados por shared/notifications.ts -->
+            <div class="notif-page-list" id="notifList" aria-live="polite"></div>
+            <button type="button" class="notif-page-more" id="btnMore" hidden>Carregar mais</button>
+        </div>
+    </main>
+
+    <script type="module" src="../script/notifications.ts"></script>
+    <script type="module" src="../script/shared/chat-widget.ts"></script>
+</body>
+</html>

@@ -39,6 +39,7 @@ export default defineConfig({
         post: resolvePath("./client/html/post.html"),
         moderation: resolvePath("./client/html/community/moderation.html"),
         adminReports: resolvePath("./client/html/admin/reports.html"),
+        notifications: resolvePath("./client/html/notifications.html"),
       },
     },
   },

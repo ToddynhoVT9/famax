@@ -22,6 +22,7 @@ export const pages = {
   post: `${BASE}html/post.html`,
   moderation: `${BASE}html/community/moderation.html`,
   adminReports: `${BASE}html/admin/reports.html`,
+  notifications: `${BASE}html/notifications.html`,
 } as const;
 
 export type SearchType = "all" | "communities" | "users" | "posts";
@@ -33,9 +34,13 @@ export function searchUrl(q: string, type: SearchType = "all"): string {
   return `${pages.search}?${params}`;
 }
 
-/** Página individual de um post. */
-export function postUrl(postId: string): string {
-  return `${pages.post}?id=${encodeURIComponent(postId)}`;
+/**
+ * Página individual de um post. Com commentId, a âncora #comment-<id> faz a
+ * página rolar até o comentário (carregando mais páginas se preciso).
+ */
+export function postUrl(postId: string, commentId?: string | null): string {
+  const url = `${pages.post}?id=${encodeURIComponent(postId)}`;
+  return commentId ? `${url}#comment-${encodeURIComponent(commentId)}` : url;
 }
 
 /** Perfil de alguém; sem id, o próprio. */

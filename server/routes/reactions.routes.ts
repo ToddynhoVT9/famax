@@ -5,6 +5,7 @@ import { pool } from "../db.js";
 import { requireAuth } from "../middleware/auth.js";
 import { requirePostMembership } from "../middleware/membership.js";
 import { rateLimit } from "../lib/rate-limit.js";
+import { notify, unnotifyLike } from "../lib/notify.js";
 
 const router = Router();
 
@@ -52,6 +53,22 @@ router.post(
            ON CONFLICT (post_id, user_id, type) DO NOTHING`,
           [randomUUID(), postId, req.userId],
         );
+        const { rows: post } = await client.query<{ author_id: string; community_id: string }>(
+          "SELECT author_id, community_id FROM posts WHERE post_id = $1",
+          [postId],
+        );
+        if (post[0]) {
+          await notify(client, {
+            userId: post[0].author_id,
+            type: "post_like",
+            actorId: req.userId!,
+            postId,
+            communityId: post[0].community_id,
+          });
+        }
+      } else {
+        // Descurtir não deixa "Fulano curtiu" de uma curtida que não existe.
+        await unnotifyLike(client, postId, req.userId!);
       }
 
       const { rows } = await client.query(

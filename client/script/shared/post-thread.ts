@@ -226,7 +226,9 @@ function renderCommentMain(comment: Comment, viewerRole: CommunityRole | null = 
 }
 
 function renderComment(comment: Comment, depth: number, viewerRole: CommunityRole | null): string {
+    // id: âncora #comment-<id> dos links de notificação.
     return `<div class="tf-comment-item${comment.is_deleted ? " is-deleted" : ""}"
+                 id="comment-${escapeHtml(comment.comment_id)}"
                  data-comment-id="${escapeHtml(comment.comment_id)}" data-depth="${depth}">
                 ${renderCommentMain(comment, viewerRole)}
                 <div class="tf-comment-replies"></div>
@@ -248,6 +250,11 @@ export interface PostThread {
     clear(): void;
     /** Busca a primeira página de comentários de um post na tela. */
     loadComments(postId: string): Promise<void>;
+    /**
+     * Rola até um comentário e o destaca, carregando mais páginas enquanto
+     * ele não aparece. Devolve false se não achou (apagado, por exemplo).
+     */
+    revealComment(postId: string, commentId: string): Promise<boolean>;
 }
 
 export function createPostThread(container: HTMLElement, options: PostThreadOptions = {}): PostThread {
@@ -713,6 +720,23 @@ export function createPostThread(container: HTMLElement, options: PostThreadOpti
         async loadComments(postId) {
             const el = postElement(postId);
             if (el) await loadComments(el);
+        },
+        async revealComment(postId, commentId) {
+            const postEl = postElement(postId);
+            if (!postEl) return false;
+            const find = () =>
+                postEl.querySelector<HTMLElement>(`.tf-comment-item[data-comment-id="${cssId(commentId)}"]`);
+            // Limite de páginas: um link velho para um comentário apagado não
+            // pode carregar a conversa inteira.
+            for (let i = 0; i < 10 && !find() && commentCursors.get(postId); i++) {
+                await loadComments(postEl, true);
+            }
+            const target = find();
+            if (!target) return false;
+            target.scrollIntoView({ behavior: "smooth", block: "center" });
+            target.classList.add("is-highlighted");
+            window.setTimeout(() => target.classList.remove("is-highlighted"), 2500);
+            return true;
         },
     };
 }

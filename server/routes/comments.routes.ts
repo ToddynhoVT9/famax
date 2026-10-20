@@ -6,6 +6,7 @@ import { requireAuth } from "../middleware/auth.js";
 import { requirePostMembership } from "../middleware/membership.js";
 import { rateLimit } from "../lib/rate-limit.js";
 import { removeComment } from "../lib/moderation.js";
+import { notify } from "../lib/notify.js";
 
 const router = Router();
 
@@ -260,6 +261,30 @@ router.post(
          WHERE post_id = $1`,
         [postId],
       );
+
+      // Avisos na mesma transação. Quem foi respondido recebe "respondeu";
+      // o autor do post recebe "comentou" — uma vez só, se for a mesma pessoa.
+      const { rows: targets } = await client.query<{
+        post_author: string;
+        community_id: string;
+        parent_author: string | null;
+      }>(
+        `SELECT p.author_id AS post_author, p.community_id,
+                (SELECT c.author_id FROM comments c WHERE c.comment_id = $2) AS parent_author
+         FROM posts p WHERE p.post_id = $1`,
+        [postId, data.parentCommentId ?? null],
+      );
+      const target = targets[0];
+      if (target) {
+        const base = { actorId: req.userId!, postId, commentId, communityId: target.community_id };
+        if (target.parent_author) {
+          await notify(client, { ...base, userId: target.parent_author, type: "comment_reply" });
+        }
+        if (target.post_author !== target.parent_author) {
+          await notify(client, { ...base, userId: target.post_author, type: "post_comment" });
+        }
+      }
+
       await client.query("COMMIT");
 
       // Já devolve autor resolvido para o frontend renderizar sem novo fetch.

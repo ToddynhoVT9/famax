@@ -2,6 +2,7 @@ import { randomUUID } from "node:crypto";
 import type { PoolClient } from "pg";
 import { pool } from "../db.js";
 import { outranks, type CommunityRole } from "../middleware/community-role.js";
+import { notify } from "./notify.js";
 
 /**
  * Remoção de conteúdo e banimento, compartilhados entre as rotas diretas
@@ -53,11 +54,15 @@ export async function removePost(
 ): Promise<{ ok: true; byModerator: boolean } | Failure> {
   const { rows } = await pool.query<{
     author_id: string;
+    community_id: string;
+    title: string;
     actor_role: CommunityRole | null;
     author_role: CommunityRole | null;
   }>(
     `SELECT
        p.author_id,
+       p.community_id,
+       p.title,
        (SELECT role FROM community_members
         WHERE community_id = p.community_id AND user_id = $2) AS actor_role,
        (SELECT role FROM community_members
@@ -93,6 +98,15 @@ export async function removePost(
     }
     if (!isAuthor) {
       await closeOpenReports(client, "post", postId, actor.userId, "remove_content");
+      // O autor fica sabendo; o aviso não diz quem da moderação removeu.
+      await notify(client, {
+        userId: post.author_id,
+        type: "content_removed",
+        actorId: null,
+        postId,
+        communityId: post.community_id,
+        data: { kind: "post", title: post.title },
+      });
     }
     await client.query("COMMIT");
     return { ok: true, byModerator: !isAuthor };
@@ -114,11 +128,17 @@ export async function removeComment(
 ): Promise<{ ok: true; byModerator: boolean } | Failure> {
   const { rows } = await pool.query<{
     author_id: string;
+    post_id: string;
+    community_id: string;
+    content: string;
     actor_role: CommunityRole | null;
     author_role: CommunityRole | null;
   }>(
     `SELECT
        c.author_id,
+       c.post_id,
+       p.community_id,
+       c.content,
        (SELECT role FROM community_members
         WHERE community_id = p.community_id AND user_id = $2) AS actor_role,
        (SELECT role FROM community_members
@@ -167,6 +187,15 @@ export async function removeComment(
     );
     if (!isAuthor) {
       await closeOpenReports(client, "comment", commentId, actor.userId, "remove_content");
+      await notify(client, {
+        userId: comment.author_id,
+        type: "content_removed",
+        actorId: null,
+        postId: comment.post_id,
+        commentId,
+        communityId: comment.community_id,
+        data: { kind: "comment", excerpt: comment.content.slice(0, 140) },
+      });
     }
     await client.query("COMMIT");
     return { ok: true, byModerator: !isAuthor };

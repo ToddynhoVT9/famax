@@ -234,7 +234,8 @@
 }
 
 .tf-comment-item strong {
-    display: block;
+    /* inline-block: o selo de papel fica ao lado do nome. */
+    display: inline-block;
     font-size: 0.9rem;
     margin-bottom: 6px;
     color: #111;
@@ -1203,4 +1204,10 @@ button.tf-tab:focus-visible {
         justify-content: flex-start;
         padding-left: 56px;
     }
+}
+
+/* Comentário aberto por link de notificação (#comment-<id>). */
+.tf-comment-item.is-highlighted {
+    background-color: #fff6d6;
+    border-color: #e8c96a;
 }

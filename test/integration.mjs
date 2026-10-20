@@ -2362,6 +2362,209 @@ check(
     (await call("POST", `/communities/${modCid}/leave`, { token: owner.token })).status === 200,
 );
 
+console.log("\n[Notificações]");
+resetRateLimits();
+
+const nAuthor = await newUser("nautor");
+const nFan = await newUser("nfa");
+const nThird = await newUser("nterc");
+const nCommunity = await call("POST", "/communities", {
+    token: nAuthor.token,
+    body: { name: `Avisos ${stamp}`, categoryId },
+});
+const nCid = nCommunity.body?.community?.communityId;
+await call("POST", `/communities/${nCid}/join`, { token: nFan.token });
+await call("POST", `/communities/${nCid}/join`, { token: nThird.token });
+
+const nPost = await call("POST", "/posts", {
+    token: nAuthor.token,
+    body: { communityId: nCid, title: "Post com avisos", content: "conteúdo" },
+});
+const nPostId = nPost.body?.post?.post_id;
+
+const notifsOf = async (u, query = "") => (await call("GET", `/notifications${query}`, { token: u.token })).body;
+const unreadOf = async (u) => (await call("GET", "/notifications/unread-count", { token: u.token })).body?.unread;
+
+check("sem notificações no começo", (await unreadOf(nAuthor)) === 0);
+check("rota exige login", (await call("GET", "/notifications")).status === 401);
+
+// --- Comentário e resposta --------------------------------------------------
+
+const fanComment = await call("POST", `/posts/${nPostId}/comments`, {
+    token: nFan.token,
+    body: { content: "Ótimo post!" },
+});
+const fanCommentId = fanComment.body?.comment?.comment_id;
+let authorList = await notifsOf(nAuthor);
+check(
+    "comentar no post avisa o autor (post_comment)",
+    authorList?.data?.length === 1 &&
+        authorList.data[0].type === "post_comment" &&
+        authorList.data[0].actor_id === nFan.id &&
+        authorList.data[0].post_id === nPostId &&
+        authorList.data[0].comment_id === fanCommentId &&
+        authorList.data[0].post_title === "Post com avisos" &&
+        authorList.data[0].comment_excerpt === "Ótimo post!" &&
+        authorList.unread === 1,
+    JSON.stringify(authorList).slice(0, 300),
+);
+check("quem comentou não recebe aviso", (await unreadOf(nFan)) === 0);
+
+await call("POST", `/posts/${nPostId}/comments`, {
+    token: nAuthor.token,
+    body: { content: "comentário no próprio post" },
+});
+check("comentar no próprio post não avisa ninguém", (await unreadOf(nAuthor)) === 1);
+
+await call("POST", `/posts/${nPostId}/comments`, {
+    token: nAuthor.token,
+    body: { content: "Obrigado!", parentCommentId: fanCommentId },
+});
+const fanList = await notifsOf(nFan);
+check(
+    "resposta avisa quem foi respondido (comment_reply)",
+    fanList?.data?.length === 1 &&
+        fanList.data[0].type === "comment_reply" &&
+        fanList.data[0].actor_id === nAuthor.id,
+    JSON.stringify(fanList).slice(0, 200),
+);
+check("o autor do post que respondeu não é avisado", (await unreadOf(nAuthor)) === 1);
+
+await call("POST", `/posts/${nPostId}/comments`, {
+    token: nThird.token,
+    body: { content: "Concordo", parentCommentId: fanCommentId },
+});
+check(
+    "resposta de terceiro avisa o respondido e o autor do post",
+    (await unreadOf(nFan)) === 2 && (await notifsOf(nAuthor)).data[0].type === "post_comment",
+);
+
+// --- Curtidas agrupadas ------------------------------------------------------
+
+await call("POST", `/posts/${nPostId}/reactions`, { token: nAuthor.token });
+check("curtir o próprio post não avisa", !(await notifsOf(nAuthor)).data.some((n) => n.type === "post_like"));
+await call("POST", `/posts/${nPostId}/reactions`, { token: nAuthor.token }); // desfaz
+
+await call("POST", `/posts/${nPostId}/reactions`, { token: nFan.token });
+await call("POST", `/posts/${nPostId}/reactions`, { token: nThird.token });
+let likes = (await notifsOf(nAuthor)).data.filter((n) => n.type === "post_like");
+check(
+    "curtidas viram um aviso só, com a última pessoa e o total",
+    likes.length === 1 && likes[0].actor_id === nThird.id && likes[0].likes_count === 2,
+    JSON.stringify(likes),
+);
+
+await call("POST", `/posts/${nPostId}/reactions`, { token: nThird.token }); // descurte
+likes = (await notifsOf(nAuthor)).data.filter((n) => n.type === "post_like");
+check(
+    "descurtir passa o aviso para a curtida anterior",
+    likes.length === 1 && likes[0].actor_id === nFan.id && likes[0].likes_count === 1,
+    JSON.stringify(likes),
+);
+await call("POST", `/posts/${nPostId}/reactions`, { token: nFan.token }); // descurte
+likes = (await notifsOf(nAuthor)).data.filter((n) => n.type === "post_like");
+check("like seguido de unlike não deixa aviso órfão", likes.length === 0, JSON.stringify(likes));
+
+// --- Marcar como lida --------------------------------------------------------
+
+const beforeRead = await notifsOf(nAuthor);
+const firstId = beforeRead.data[0].notification_id;
+const otherRead = await call("POST", "/notifications/read", {
+    token: nFan.token,
+    body: { ids: [firstId] },
+});
+check(
+    "marcar ids de outra pessoa não afeta nada",
+    otherRead.status === 200 && (await unreadOf(nAuthor)) === beforeRead.unread,
+);
+const readOne = await call("POST", "/notifications/read", {
+    token: nAuthor.token,
+    body: { ids: [firstId] },
+});
+check(
+    "marcar uma como lida",
+    readOne.body?.unread === beforeRead.unread - 1 &&
+        Boolean((await notifsOf(nAuthor)).data.find((n) => n.notification_id === firstId)?.read_at),
+    JSON.stringify(readOne.body),
+);
+const readAll = await call("POST", "/notifications/read", { token: nAuthor.token, body: {} });
+check("marcar todas como lidas", readAll.body?.unread === 0 && (await unreadOf(nAuthor)) === 0);
+check(
+    "ids inválidos → 400",
+    (await call("POST", "/notifications/read", { token: nAuthor.token, body: { ids: ["x"] } })).status === 400,
+);
+
+// Curtida nova depois de lida volta a contar como não lida.
+await call("POST", `/posts/${nPostId}/reactions`, { token: nFan.token });
+check("curtida nova reabre o aviso agrupado", (await unreadOf(nAuthor)) === 1);
+
+// --- Paginação ---------------------------------------------------------------
+
+const pageA = await notifsOf(nAuthor, "?limit=2");
+const pageB = await notifsOf(nAuthor, `?limit=2&cursor=${pageA.nextCursor}`);
+check(
+    "paginação por cursor sem repetir",
+    pageA.data.length === 2 &&
+        Boolean(pageA.nextCursor) &&
+        pageB.data.length >= 1 &&
+        !pageB.data.some((n) => pageA.data.some((m) => m.notification_id === n.notification_id)),
+    `${pageA.data.length} / ${pageB.data?.length}`,
+);
+check("cursor inválido → 400", (await call("GET", "/notifications?cursor=lixo", { token: nAuthor.token })).status === 400);
+
+// --- Preferências ------------------------------------------------------------
+
+const prefs = await call("PATCH", "/me/settings", {
+    token: nAuthor.token,
+    body: { notifyLikes: false, notifyComments: false },
+});
+check(
+    "preferências salvas e devolvidas no /me",
+    prefs.status === 200 &&
+        prefs.body?.user?.notifyLikes === false &&
+        prefs.body.user.notifyComments === false &&
+        prefs.body.user.notifyReplies === true,
+    JSON.stringify(prefs.body?.user).slice(0, 200),
+);
+await call("POST", "/notifications/read", { token: nAuthor.token, body: {} });
+await call("POST", `/posts/${nPostId}/reactions`, { token: nThird.token });
+await call("POST", `/posts/${nPostId}/comments`, { token: nThird.token, body: { content: "mais um" } });
+check("preferência desligada não gera aviso", (await unreadOf(nAuthor)) === 0);
+await call("PATCH", "/me/settings", { token: nAuthor.token, body: { notifyLikes: true, notifyComments: true } });
+
+// --- Moderação e papel --------------------------------------------------------
+
+await call("PATCH", `/communities/${nCid}/members/${nFan.id}`, {
+    token: nAuthor.token,
+    body: { role: "moderator" },
+});
+const roleNotif = (await notifsOf(nFan)).data.find((n) => n.type === "community_role");
+check(
+    "virar moderador avisa (community_role)",
+    roleNotif?.data?.role === "moderator" && roleNotif.community_name === `Avisos ${stamp}`,
+    JSON.stringify(roleNotif),
+);
+
+const thirdPost = await call("POST", "/posts", {
+    token: nThird.token,
+    body: { communityId: nCid, title: "Post que será removido", content: "x" },
+});
+const thirdPostId = thirdPost.body?.post?.post_id;
+await call("POST", `/posts/${thirdPostId}/reactions`, { token: nFan.token });
+await call("DELETE", `/posts/${thirdPostId}`, { token: nFan.token });
+const thirdList = (await notifsOf(nThird)).data;
+const removedNotif = thirdList.find((n) => n.type === "content_removed");
+check(
+    "remoção pela moderação avisa o autor, sem dizer quem removeu",
+    removedNotif?.data?.title === "Post que será removido" && removedNotif.actor_id === null,
+    JSON.stringify(removedNotif),
+);
+check(
+    "avisos de post apagado somem (a curtida no post removido)",
+    !thirdList.some((n) => n.type === "post_like" && n.post_id === thirdPostId),
+    JSON.stringify(thirdList.map((n) => n.type)),
+);
+
 // ---------------------------------------------------------------------------
 
 console.log(`\n${"=".repeat(60)}`);

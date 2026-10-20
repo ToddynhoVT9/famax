@@ -114,6 +114,10 @@ export type Me = {
   twoFactorEnabled: boolean;
   /** Admin do site: vê a fila de denúncias de usuários. */
   isAdmin: boolean;
+  /** Preferências de notificação (configurações). */
+  notifyLikes: boolean;
+  notifyComments: boolean;
+  notifyReplies: boolean;
   createdAt: string;
   socialLinks: SocialLink[];
 };

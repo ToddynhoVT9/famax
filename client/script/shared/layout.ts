@@ -22,6 +22,7 @@ import { communityUrl, loginUrlReturningHere, pages } from "./pages.js";
 import { avatarColor, initials } from "./dom.js";
 import { initHeaderDropdowns } from "./header-dropdowns.js";
 import { initSidebar } from "./sidebar.js";
+import { createNotificationBell } from "./notifications.js";
 
 export interface SidebarLink {
     label: string;
@@ -130,8 +131,13 @@ function renderAvatar(me: Me): HTMLElement {
     return el("span", `user-avatar ${avatarColor(me.userId)}`, initials(name));
 }
 
+/** Uma instância por página: o header redesenha, o sininho (e o polling) fica. */
+let notificationBell: HTMLElement | null = null;
+
 function renderUserArea(area: HTMLElement, me: Me): void {
     area.replaceChildren();
+    notificationBell ??= createNotificationBell();
+    area.append(notificationBell);
 
     const menu = el("div", "user-menu");
 

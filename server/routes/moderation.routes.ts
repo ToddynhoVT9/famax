@@ -8,6 +8,7 @@ import {
 } from "../middleware/community-role.js";
 import { rateLimit } from "../lib/rate-limit.js";
 import { banUser } from "../lib/moderation.js";
+import { notify } from "../lib/notify.js";
 
 /**
  * Membros, papéis, transferência de dono e banimentos de uma comunidade.
@@ -127,6 +128,7 @@ router.patch(
   requireAuth,
   requireCommunityRole(["owner"], fromParams),
   async (req, res, next) => {
+    const client = await pool.connect();
     try {
       const { communityId, userId } = memberParams.parse(req.params);
       const { role } = roleSchema.parse(req.body ?? {});
@@ -137,21 +139,40 @@ router.patch(
           .json({ error: "Para deixar de ser dono, transfira a comunidade" });
       }
 
+      await client.query("BEGIN");
       // role <> 'owner' no WHERE: o papel do dono só muda pela transferência.
-      const { rows } = await pool.query(
-        `UPDATE community_members SET role = $3
-         WHERE community_id = $1 AND user_id = $2 AND role <> 'owner'
-         RETURNING user_id, role, joined_at`,
+      // previous_role: só avisa quem de fato virou moderador agora.
+      const { rows } = await client.query(
+        `UPDATE community_members cm SET role = $3
+         FROM (SELECT role AS previous_role FROM community_members
+               WHERE community_id = $1 AND user_id = $2) prev
+         WHERE cm.community_id = $1 AND cm.user_id = $2 AND cm.role <> 'owner'
+         RETURNING cm.user_id, cm.role, cm.joined_at, prev.previous_role`,
         [communityId, userId, role],
       );
       if (rows.length === 0) {
+        await client.query("ROLLBACK");
         return res.status(404).json({ error: "Essa pessoa não participa da comunidade" });
       }
+      if (role === "moderator" && rows[0].previous_role !== "moderator") {
+        await notify(client, {
+          userId,
+          type: "community_role",
+          actorId: req.userId!,
+          communityId,
+          data: { role: "moderator" },
+        });
+      }
+      await client.query("COMMIT");
 
-      res.json({ member: rows[0] });
+      const { previous_role: _previous, ...member } = rows[0];
+      res.json({ member });
     } catch (err) {
+      await client.query("ROLLBACK").catch(() => {});
       if (err instanceof z.ZodError) return zodError(res, err);
       next(err);
+    } finally {
+      client.release();
     }
   },
 );
@@ -212,6 +233,13 @@ router.post(
         "UPDATE communities SET owner_id = $2 WHERE community_id = $1",
         [communityId, userId],
       );
+      await notify(client, {
+        userId,
+        type: "community_role",
+        actorId: req.userId!,
+        communityId,
+        data: { role: "owner" },
+      });
       await client.query("COMMIT");
 
       res.json({ transferred: true, ownerId: userId });

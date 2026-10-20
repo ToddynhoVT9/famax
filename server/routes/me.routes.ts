@@ -60,7 +60,10 @@ async function loadMe(userId: string) {
        up.nickname,
        up.birth_date::text AS birth_date,
        up.gender,
-       us.is_private
+       us.is_private,
+       us.notify_likes,
+       us.notify_comments,
+       us.notify_replies
      FROM users u
      LEFT JOIN user_profiles up ON up.user_id = u.user_id
      LEFT JOIN user_settings us ON us.user_id = u.user_id
@@ -88,6 +91,10 @@ async function loadMe(userId: string) {
     twoFactorEnabled: row.two_factor_enabled,
     // Admin do site: o header mostra o link da fila de denúncias de usuários.
     isAdmin: row.is_admin === true,
+    // Preferências de notificação; sem linha de settings, tudo ligado.
+    notifyLikes: row.notify_likes ?? true,
+    notifyComments: row.notify_comments ?? true,
+    notifyReplies: row.notify_replies ?? true,
     createdAt: row.created_at,
     socialLinks: await loadSocialLinks(userId),
   };
@@ -224,6 +231,9 @@ const settingsSchema = z
   .object({
     isPrivate: z.boolean().optional(),
     isAdult: z.boolean().optional(),
+    notifyLikes: z.boolean().optional(),
+    notifyComments: z.boolean().optional(),
+    notifyReplies: z.boolean().optional(),
   })
   .strict()
   .refine((data) => Object.keys(data).length > 0, "Nada para atualizar");
@@ -252,14 +262,27 @@ router.patch("/me/settings", requireAuth, async (req, res, next) => {
       ]);
     }
 
-    if (data.isPrivate !== undefined) {
+    // Colunas de user_settings: nomes fixos aqui, nunca vindos da requisição.
+    const settingsColumns: Array<[string, boolean | undefined]> = [
+      ["is_private", data.isPrivate],
+      ["notify_likes", data.notifyLikes],
+      ["notify_comments", data.notifyComments],
+      ["notify_replies", data.notifyReplies],
+    ];
+    const changed = settingsColumns.filter(([, value]) => value !== undefined);
+    if (changed.length > 0) {
       // Upsert: todo cadastro cria a linha, mas uma conta antiga sem ela não
-      // pode ficar presa sem conseguir mudar a privacidade.
+      // pode ficar presa sem conseguir mudar as configurações. Uma conta sem
+      // linha nasce privada (o padrão antigo), como lê o loadMe.
+      const columns = changed.map(([column]) => column);
+      const values = changed.map(([, value]) => value);
+      const hasPrivate = columns.includes("is_private");
       await pool.query(
-        `INSERT INTO user_settings (settings_id, user_id, is_private)
-         VALUES ($1, $2, $3)
-         ON CONFLICT (user_id) DO UPDATE SET is_private = EXCLUDED.is_private`,
-        [randomUUID(), req.userId, data.isPrivate],
+        `INSERT INTO user_settings (settings_id, user_id, ${columns.join(", ")}${hasPrivate ? "" : ", is_private"})
+         VALUES ($1, $2, ${values.map((_, i) => `$${i + 3}`).join(", ")}${hasPrivate ? "" : ", TRUE"})
+         ON CONFLICT (user_id) DO UPDATE SET
+           ${columns.map((column) => `${column} = EXCLUDED.${column}`).join(", ")}`,
+        [randomUUID(), req.userId, ...values],
       );
     }
 

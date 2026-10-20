@@ -66,6 +66,9 @@ const emailValue = $("emailValue");
 const usernameValue = $("usernameValue");
 const toggleAdult = $<HTMLButtonElement>("toggleAdult");
 const togglePrivate = $<HTMLButtonElement>("togglePrivate");
+const toggleNotifyComments = $<HTMLButtonElement>("toggleNotifyComments");
+const toggleNotifyReplies = $<HTMLButtonElement>("toggleNotifyReplies");
+const toggleNotifyLikes = $<HTMLButtonElement>("toggleNotifyLikes");
 const socialCount = $("socialCount");
 
 function setToggle(button: HTMLButtonElement | null, on: boolean): void {
@@ -122,6 +125,9 @@ function render(user: Me): void {
 
     setToggle(toggleAdult, user.isAdult);
     setToggle(togglePrivate, user.isPrivate);
+    setToggle(toggleNotifyComments, user.notifyComments);
+    setToggle(toggleNotifyReplies, user.notifyReplies);
+    setToggle(toggleNotifyLikes, user.notifyLikes);
 
     if (socialCount) {
         const n = user.socialLinks.length;
@@ -167,12 +173,14 @@ identityForm?.addEventListener("submit", async (event) => {
 });
 
 // ===========================================================================
-// Toggles: conteúdo adulto e perfil privado
+// Toggles: conteúdo adulto, perfil privado e preferências de notificação
 // ===========================================================================
 
 const settingsStatus = $("settingsStatus");
 
-function bindToggle(button: HTMLButtonElement | null, key: "isAdult" | "isPrivate"): void {
+type ToggleKey = "isAdult" | "isPrivate" | "notifyComments" | "notifyReplies" | "notifyLikes";
+
+function bindToggle(button: HTMLButtonElement | null, key: ToggleKey): void {
     button?.addEventListener("click", async () => {
         if (!me) return;
         const next = !me[key];
@@ -196,6 +204,9 @@ function bindToggle(button: HTMLButtonElement | null, key: "isAdult" | "isPrivat
 
 bindToggle(toggleAdult, "isAdult");
 bindToggle(togglePrivate, "isPrivate");
+bindToggle(toggleNotifyComments, "notifyComments");
+bindToggle(toggleNotifyReplies, "notifyReplies");
+bindToggle(toggleNotifyLikes, "notifyLikes");
 
 // ===========================================================================
 // Avatar e banner

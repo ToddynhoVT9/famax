@@ -109,6 +109,12 @@ async function init(): Promise<void> {
         thread.add([post]);
         if (copyBtn) copyBtn.disabled = false;
         await thread.loadComments(post.post_id);
+
+        // Link de notificação: #comment-<id> rola até o comentário.
+        const anchor = window.location.hash.match(/^#comment-([0-9a-f-]{36})$/i);
+        if (anchor && !(await thread.revealComment(post.post_id, anchor[1]))) {
+            toast("Esse comentário não está mais disponível.");
+        }
     } catch (err) {
         showStatus(err instanceof Error ? err.message : "Não foi possível carregar a discussão.", true);
     }
