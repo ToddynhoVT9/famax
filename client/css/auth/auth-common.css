@@ -21,12 +21,6 @@ body {
     text-decoration: none;
 }
 
-.header-mark {
-    width: 56px;
-    height: 56px;
-    flex-shrink: 0;
-}
-
 .header-name {
     font-size: 3rem;
     font-weight: 700;
@@ -92,11 +86,6 @@ body {
         position: static;
         justify-content: center;
         margin: var(--space-6) auto var(--space-4);
-    }
-
-    .header-mark {
-        width: 40px;
-        height: 40px;
     }
 
     .header-name {

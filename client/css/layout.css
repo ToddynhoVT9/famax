@@ -1133,11 +1133,6 @@
 }
 
 /* ----- Marca e tema no menu do usuário ----- */
-.logo-mark {
-    width: 40px;
-    height: 40px;
-    flex-shrink: 0;
-}
 
 .user-dropdown-group {
     border-top: 1px solid var(--color-paper-border);
@@ -1262,11 +1257,6 @@
         margin-top: 64px;
     }
 
-    .logo-mark {
-        width: 32px;
-        height: 32px;
-    }
-
     .logo-text {
         font-size: 1.6rem;
     }
@@ -1305,8 +1295,8 @@
 }
 
 @media (max-width: 480px) {
-    /* Só a marca: o nome não cabe ao lado da lupa e do avatar. */
+    /* Nome menor para caber ao lado da lupa e do avatar. */
     .logo-text {
-        display: none;
+        font-size: 1.3rem;
     }
 }

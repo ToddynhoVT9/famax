@@ -56,7 +56,6 @@ export interface LayoutOptions {
 // o header-dropdowns.ts procura.
 const HEADER_HTML = `
     <a class="logo-container" data-nav="home" aria-label="FAMAX — página inicial">
-        <img class="logo-mark" src="/favicon.svg" alt="" width="40" height="40">
         <span class="logo-text">FAMAX</span>
     </a>
 

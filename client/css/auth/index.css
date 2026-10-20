@@ -67,25 +67,8 @@ h1 {
     background-color: var(--color-chrome-warm-hover);
 }
 
-/* Marca ao lado do nome. */
-.brand-title {
-    display: flex;
-    align-items: center;
-    gap: var(--space-4);
-}
-
-.brand-mark {
-    width: 96px;
-    height: 96px;
-}
-
 @media (max-width: 480px) {
     h1 {
         font-size: 3.5rem;
-    }
-
-    .brand-mark {
-        width: 56px;
-        height: 56px;
     }
 }
