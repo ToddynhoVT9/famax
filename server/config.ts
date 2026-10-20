@@ -33,6 +33,12 @@ if (DB_MODE !== "external" && DB_MODE !== "embedded") {
 
 const PGLITE_PORT = Number(process.env.PGLITE_PORT ?? 55500);
 
+const REALTIME_BUS = (process.env.REALTIME_BUS ??
+  (DB_MODE === "embedded" ? "memory" : "postgres")) as "postgres" | "memory";
+if (REALTIME_BUS !== "postgres" && REALTIME_BUS !== "memory") {
+  throw new Error(`REALTIME_BUS inválido: "${REALTIME_BUS}". Use "postgres" ou "memory".`);
+}
+
 /**
  * Valor do app.set("trust proxy") do Express. Sem ele, atrás do proxy reverso
  * da hospedagem, req.ip é sempre o IP do proxy — e o rate limit por IP do
@@ -137,4 +143,19 @@ export const config = {
 
   // Avatar e banner dos usuários (migration 008).
   SUPABASE_USER_MEDIA_BUCKET: process.env.SUPABASE_USER_MEDIA_BUCKET ?? "user-media",
+
+  // Barramento do tempo real (lib/realtime.ts). "postgres" usa LISTEN/NOTIFY
+  // e funciona com várias instâncias; "memory" entrega só no próprio
+  // processo. O banco embarcado não comporta uma conexão de LISTEN parada
+  // (o socket do PGlite atende uma conexão por vez), então lá o padrão é
+  // memory.
+  REALTIME_BUS,
+  // O LISTEN precisa de conexão de sessão. Se a DATABASE_URL for o pooler do
+  // Supabase em modo transação (porta 6543), aponte esta para a conexão
+  // direta ou para o pooler em modo sessão (porta 5432).
+  REALTIME_DATABASE_URL:
+    process.env.REALTIME_DATABASE_URL ||
+    (DB_MODE === "embedded"
+      ? `postgresql://postgres:postgres@127.0.0.1:${PGLITE_PORT}/postgres`
+      : process.env.DATABASE_URL ?? ""),
 };

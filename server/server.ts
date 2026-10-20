@@ -21,6 +21,7 @@ import notificationsRoutes from "./routes/notifications.routes.js";
 import leaderboardRoutes from "./routes/leaderboard.routes.js";
 import followsRoutes from "./routes/follows.routes.js";
 import eventsRoutes from "./routes/events.routes.js";
+import streamRoutes from "./routes/stream.routes.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const publicDir = path.join(__dirname, "public");
@@ -98,6 +99,7 @@ app.use("/api", notificationsRoutes);
 app.use("/api", leaderboardRoutes);
 app.use("/api", followsRoutes);
 app.use("/api", eventsRoutes);
+app.use("/api", streamRoutes);
 app.use("/api/conversations", chatRoutes);
 
 // FRONTEND ESTÁTICO
@@ -192,6 +194,11 @@ async function initDatabase() {
   }
 
   dbState.ready = true;
+
+  // Tempo real (SSE): sobe depois do banco. Não derruba a API se falhar —
+  // cai para o barramento em memória (ver lib/realtime.ts).
+  const { startRealtimeBus } = await import("./lib/realtime.js");
+  await startRealtimeBus();
 
   // Mantém o dbState honesto depois do boot: sem isto, um banco externo que
   // caísse deixava a aplicação liberando rotas que respondiam 500 em vez do

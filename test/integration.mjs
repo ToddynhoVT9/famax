@@ -78,6 +78,10 @@ process.env.DATABASE_SSL = "false";
 process.env.JWT_SECRET = "segredo-de-teste-com-mais-de-32-caracteres-ok";
 process.env.PORT = String(API_PORT);
 process.env.NODE_ENV = "development";
+// O socket do PGlite atende uma conexão por vez: um LISTEN parado nela
+// travaria a suíte. O barramento em memória cobre o mesmo caminho (ver
+// lib/realtime.ts).
+process.env.REALTIME_BUS = "memory";
 
 console.log("Subindo a API...");
 await import("../server/server.js");
@@ -3474,6 +3478,365 @@ check(
         (await call("GET", `/events/${laterId}`)).status === 404 &&
         !(await eventNotifs(eMember)).some((n) => n.event_id === laterId),
 );
+
+console.log("\n[Chat] Histórico, exclusão, visto, tempo real e grupos");
+resetRateLimits();
+
+const chA = await newUser("cha");
+const chB = await newUser("chb");
+const chC = await newUser("chc");
+const chD = await newUser("chd");
+
+const ch_openDm = async (u, other) =>
+    (await call("POST", "/conversations", { token: u.token, body: { userId: other.id } })).body?.conversationId;
+const ch_send = (u, conversationId, content) =>
+    call("POST", `/conversations/${conversationId}/messages`, { token: u.token, body: { content } });
+const ch_messagesOf = async (u, conversationId, query = "") =>
+    (await call("GET", `/conversations/${conversationId}/messages${query}`, { token: u.token })).body;
+
+// --- Histórico com before ----------------------------------------------------
+
+const dmAB = await ch_openDm(chA, chB);
+const ch_sent = [];
+for (let i = 1; i <= 5; i++) ch_sent.push((await ch_send(chA, dmAB, `mensagem ${i}`)).body?.message);
+const ch_latest = await ch_messagesOf(chA, dmAB, "?limit=2");
+check(
+    "últimas mensagens com hasMore",
+    ch_latest?.data?.map((m) => m.content).join() === "mensagem 4,mensagem 5" && ch_latest.hasMore === true,
+    JSON.stringify(ch_latest),
+);
+const ch_older = await ch_messagesOf(chA, dmAB, `?limit=2&beforeId=${ch_latest.data[0].message_id}`);
+check(
+    "histórico com beforeId traz as anteriores, sem repetir",
+    ch_older?.data?.map((m) => m.content).join() === "mensagem 2,mensagem 3" && ch_older.hasMore === true,
+    JSON.stringify(ch_older?.data?.map((m) => m.content)),
+);
+const ch_oldest = await ch_messagesOf(chA, dmAB, `?limit=5&before=${encodeURIComponent(ch_older.data[0].created_at)}`);
+check(
+    "histórico com before (timestamp) chega ao começo",
+    ch_oldest?.data?.map((m) => m.content).join() === "mensagem 1" && ch_oldest.hasMore === false,
+    JSON.stringify(ch_oldest),
+);
+
+// --- Excluir mensagem própria -------------------------------------------------
+
+const ch_target = ch_sent[4];
+check(
+    "só o autor apaga a mensagem → 404 para o outro",
+    (await call("DELETE", `/conversations/${dmAB}/messages/${ch_target.message_id}`, { token: chB.token })).status === 404,
+);
+check(
+    "quem não participa não apaga → 404",
+    (await call("DELETE", `/conversations/${dmAB}/messages/${ch_target.message_id}`, { token: chC.token })).status === 404,
+);
+check(
+    "autor apaga a própria mensagem",
+    (await call("DELETE", `/conversations/${dmAB}/messages/${ch_target.message_id}`, { token: chA.token })).status === 204,
+);
+const ch_afterDelete = (await ch_messagesOf(chB, dmAB)).data.find((m) => m.message_id === ch_target.message_id);
+check(
+    "mensagem apagada vira placeholder sem conteúdo",
+    ch_afterDelete?.is_deleted === true && ch_afterDelete.content === null,
+    JSON.stringify(ch_afterDelete),
+);
+check(
+    "apagar de novo → 404",
+    (await call("DELETE", `/conversations/${dmAB}/messages/${ch_target.message_id}`, { token: chA.token })).status === 404,
+);
+const ch_listAfterDelete = await call("GET", "/conversations", { token: chB.token });
+check(
+    "prévia da conversa ignora a mensagem apagada e conta as não lidas",
+    ch_listAfterDelete.body?.data?.[0]?.last_message_content === "mensagem 4" &&
+        ch_listAfterDelete.body.data[0].unread_count === 4 &&
+        ch_listAfterDelete.body.unreadTotal === 4,
+    JSON.stringify(ch_listAfterDelete.body?.data?.[0]),
+);
+
+// --- Visto ---------------------------------------------------------------------
+
+await call("POST", `/conversations/${dmAB}/read`, { token: chB.token });
+const ch_detail = await call("GET", `/conversations/${dmAB}`, { token: chA.token });
+const ch_bRead = ch_detail.body?.participants?.find((p) => p.user_id === chB.id)?.last_read_at;
+check(
+    "detalhe da conversa expõe o last_read_at do outro (visto)",
+    ch_detail.status === 200 &&
+        ch_detail.body.conversation.is_group === false &&
+        new Date(ch_bRead) >= new Date(ch_sent[3].created_at),
+    JSON.stringify(ch_detail.body),
+);
+check(
+    "detalhe de conversa alheia → 404",
+    (await call("GET", `/conversations/${dmAB}`, { token: chC.token })).status === 404,
+);
+
+// --- Paginação da lista de conversas ------------------------------------------
+
+await ch_openDm(chA, chC);
+await ch_send(chA, await ch_openDm(chA, chC), "oi C");
+await ch_send(chA, await ch_openDm(chA, chD), "oi D");
+const ch_convPage1 = await call("GET", "/conversations?limit=2", { token: chA.token });
+const ch_convPage2 = await call("GET", `/conversations?limit=2&cursor=${ch_convPage1.body?.nextCursor}`, { token: chA.token });
+check(
+    "lista de conversas paginada por cursor",
+    ch_convPage1.body?.data?.length === 2 &&
+        Boolean(ch_convPage1.body.nextCursor) &&
+        ch_convPage2.body?.data?.length === 1 &&
+        ch_convPage2.body.nextCursor === null &&
+        ch_convPage2.body.data[0].conversation_id === dmAB,
+    JSON.stringify(ch_convPage2.body),
+);
+check("cursor inválido → 400", (await call("GET", "/conversations?cursor=lixo", { token: chA.token })).status === 400);
+
+// --- Tempo real (SSE) ------------------------------------------------------------
+
+/** Abre o stream como o navegador faria e junta os eventos recebidos. */
+async function ch_openStream(u, ticketOverride) {
+    const ticket = ticketOverride ?? (await call("POST", "/stream/ticket", { token: u.token })).body?.ticket;
+    const controller = new AbortController();
+    const res = await fetch(`${BASE}/stream?ticket=${encodeURIComponent(ticket)}`, { signal: controller.signal });
+    const events = [];
+    if (res.ok) {
+        (async () => {
+            const reader = res.body.getReader();
+            const decoder = new TextDecoder();
+            let buffer = "";
+            try {
+                for (;;) {
+                    const { value, done } = await reader.read();
+                    if (done) break;
+                    buffer += decoder.decode(value, { stream: true });
+                    let index;
+                    while ((index = buffer.indexOf("\n\n")) >= 0) {
+                        const block = buffer.slice(0, index);
+                        buffer = buffer.slice(index + 2);
+                        const type = /^event: (.+)$/m.exec(block)?.[1];
+                        const data = /^data: (.+)$/m.exec(block)?.[1];
+                        if (type) events.push({ type, data: data ? JSON.parse(data) : null });
+                    }
+                }
+            } catch {
+                /* abortado */
+            }
+        })();
+    }
+    const waitFor = async (predicate, ms = 1500) => {
+        const until = Date.now() + ms;
+        while (Date.now() < until) {
+            const found = events.find(predicate);
+            if (found) return found;
+            await new Promise((r) => setTimeout(r, 25));
+        }
+        return null;
+    };
+    return { status: res.status, ticket, events, waitFor, close: () => controller.abort() };
+}
+
+const ch_ticketRes = await call("POST", "/stream/ticket", { token: chA.token });
+check(
+    "ticket do stream exige login e vem com validade curta",
+    (await call("POST", "/stream/ticket")).status === 401 &&
+        ch_ticketRes.status === 200 &&
+        typeof ch_ticketRes.body?.ticket === "string" &&
+        ch_ticketRes.body.expiresIn === 60,
+    JSON.stringify(ch_ticketRes.body),
+);
+const streamA = await ch_openStream(chA, ch_ticketRes.body.ticket);
+check(
+    "stream abre com o ticket e manda ready",
+    streamA.status === 200 && Boolean(await streamA.waitFor((e) => e.type === "ready")),
+);
+const ch_reused = await ch_openStream(chA, ch_ticketRes.body.ticket);
+check("ticket é de uso único → 401 na segunda vez", ch_reused.status === 401);
+check("ticket inválido → 401", (await ch_openStream(chA, "x".repeat(43))).status === 401);
+
+const { createHash } = await import("node:crypto");
+const ch_expiredTicket = "ticket-vencido-de-teste-com-tamanho-suficiente";
+const { rows: chASession } = await db.query(
+    "SELECT session_id FROM user_sessions WHERE user_id = $1 AND revoked_at IS NULL LIMIT 1",
+    [chA.id],
+);
+await db.query(
+    `INSERT INTO stream_tickets (ticket_hash, user_id, session_id, expires_at)
+     VALUES ($1, $2, $3, NOW() - INTERVAL '1 second')`,
+    [createHash("sha256").update(ch_expiredTicket).digest("hex"), chA.id, chASession[0].session_id],
+);
+check("ticket vencido → 401", (await ch_openStream(chA, ch_expiredTicket)).status === 401);
+check(
+    "ticket fica só como hash no banco",
+    (await db.query("SELECT 1 FROM stream_tickets WHERE ticket_hash = $1", [ch_ticketRes.body.ticket])).rows.length === 0,
+);
+
+const streamB = await ch_openStream(chB);
+const streamC = await ch_openStream(chC);
+await streamB.waitFor((e) => e.type === "ready");
+await streamC.waitFor((e) => e.type === "ready");
+
+const ch_liveStart = Date.now();
+const ch_live = await ch_send(chA, dmAB, "chegou em tempo real?");
+const ch_liveId = ch_live.body?.message?.message_id;
+const bGotMessage = await streamB.waitFor((e) => e.type === "message:new" && e.data.messageId === ch_liveId);
+const ch_liveMs = Date.now() - ch_liveStart;
+check(
+    "mensagem nova chega por SSE ao outro participante (< 1 s)",
+    Boolean(bGotMessage) && bGotMessage.data.conversationId === dmAB && ch_liveMs < 1000,
+    `${ch_liveMs} ms`,
+);
+check(
+    "quem envia também recebe (outras abas)",
+    Boolean(await streamA.waitFor((e) => e.type === "message:new" && e.data.messageId === ch_liveId)),
+);
+
+await call("POST", `/conversations/${dmAB}/typing`, { token: chA.token });
+const bTyping = await streamB.waitFor((e) => e.type === "typing");
+check(
+    "digitando chega ao outro, com o nome",
+    bTyping?.data?.conversationId === dmAB && bTyping.data.userId === chA.id && bTyping.data.name === "cha",
+    JSON.stringify(bTyping),
+);
+await call("POST", `/conversations/${dmAB}/read`, { token: chB.token });
+check(
+    "visto chega ao outro participante",
+    Boolean(await streamA.waitFor((e) => e.type === "conversation:read" && e.data.userId === chB.id)),
+);
+await call("DELETE", `/conversations/${dmAB}/messages/${ch_liveId}`, { token: chA.token });
+check(
+    "exclusão chega por SSE",
+    Boolean(await streamB.waitFor((e) => e.type === "message:deleted" && e.data.messageId === ch_liveId)),
+);
+await call("POST", `/users/${chA.id}/follow`, { token: chC.token });
+check(
+    "notificação nova chega por SSE",
+    Boolean(await streamA.waitFor((e) => e.type === "notification:new" && e.data.type === "follow")),
+);
+check(
+    "quem não participa da conversa não recebe nada dela",
+    !streamC.events.some((e) => e.data?.conversationId === dmAB) &&
+        !streamA.events.some((e) => e.type === "typing"),
+    JSON.stringify(streamC.events.map((e) => e.type)),
+);
+
+// --- Grupos ---------------------------------------------------------------------
+
+const ch_group = await call("POST", "/conversations/groups", {
+    token: chA.token,
+    body: { title: "Turma do café", userIds: [chB.id, chC.id] },
+});
+const ch_groupId = ch_group.body?.conversationId;
+const ch_groupDetail = await call("GET", `/conversations/${ch_groupId}`, { token: chA.token });
+const ch_groupMessages = await ch_messagesOf(chB, ch_groupId);
+check(
+    "cria grupo: criador admin, participantes e mensagem de sistema",
+    ch_group.status === 201 &&
+        ch_groupDetail.body?.conversation?.is_group === true &&
+        ch_groupDetail.body.conversation.title === "Turma do café" &&
+        ch_groupDetail.body.conversation.my_role === "admin" &&
+        ch_groupDetail.body.participants.length === 3 &&
+        ch_groupMessages?.data?.[0]?.kind === "system" &&
+        ch_groupMessages.data[0].content === "cha criou o grupo “Turma do café”",
+    JSON.stringify(ch_groupMessages?.data),
+);
+check(
+    "grupo avisa os participantes por SSE",
+    Boolean(await streamC.waitFor((e) => e.type === "conversation:updated" && e.data.conversationId === ch_groupId)),
+);
+check(
+    "grupo sem ninguém → 400; com conta inexistente → 404",
+    (await call("POST", "/conversations/groups", { token: chA.token, body: { title: "X", userIds: [] } })).status === 400 &&
+        (
+            await call("POST", "/conversations/groups", {
+                token: chA.token,
+                body: { title: "X", userIds: ["00000000-0000-4000-8000-000000000000"] },
+            })
+        ).status === 404,
+);
+
+check(
+    "membro não renomeia → 403",
+    (await call("PATCH", `/conversations/${ch_groupId}`, { token: chB.token, body: { title: "Hack" } })).status === 403,
+);
+const ch_renamed = await call("PATCH", `/conversations/${ch_groupId}`, { token: chA.token, body: { title: "Café & cia" } });
+check("admin renomeia", ch_renamed.status === 200 && ch_renamed.body?.title === "Café & cia");
+check(
+    "renomear conversa 1:1 → 400",
+    (await call("PATCH", `/conversations/${dmAB}`, { token: chA.token, body: { title: "x" } })).status === 400,
+);
+
+check(
+    "membro não adiciona → 403",
+    (await call("POST", `/conversations/${ch_groupId}/participants`, { token: chB.token, body: { userIds: [chD.id] } })).status === 403,
+);
+const ch_addD = await call("POST", `/conversations/${ch_groupId}/participants`, { token: chA.token, body: { userIds: [chD.id] } });
+check("admin adiciona pessoa", ch_addD.status === 201 && ch_addD.body?.added?.[0] === chD.id, JSON.stringify(ch_addD.body));
+check(
+    "adicionar quem já está → 400",
+    (await call("POST", `/conversations/${ch_groupId}/participants`, { token: chA.token, body: { userIds: [chB.id] } })).status === 400,
+);
+const ch_tooMany = Array.from({ length: 17 }, (_, i) => `00000000-0000-4000-8000-${String(i).padStart(12, "0")}`);
+check(
+    "limite de 20 pessoas por grupo → 400",
+    (await call("POST", `/conversations/${ch_groupId}/participants`, { token: chA.token, body: { userIds: ch_tooMany } })).status === 400,
+);
+
+check(
+    "membro não remove outra pessoa → 403",
+    (await call("DELETE", `/conversations/${ch_groupId}/participants/${chC.id}`, { token: chB.token })).status === 403,
+);
+check(
+    "admin remove pessoa, que perde o acesso",
+    (await call("DELETE", `/conversations/${ch_groupId}/participants/${chC.id}`, { token: chA.token })).status === 204 &&
+        (await call("GET", `/conversations/${ch_groupId}/messages`, { token: chC.token })).status === 404,
+);
+check(
+    "quem foi removido é avisado por SSE",
+    Boolean(
+        await streamC.waitFor(
+            (e) => e.type === "conversation:updated" && e.data.conversationId === ch_groupId && streamC.events.filter((x) => x.data?.conversationId === ch_groupId).length >= 3,
+        ),
+    ),
+);
+check(
+    "membro sai do grupo",
+    (await call("DELETE", `/conversations/${ch_groupId}/participants/${chB.id}`, { token: chB.token })).status === 204,
+);
+await call("DELETE", `/conversations/${ch_groupId}/participants/${chA.id}`, { token: chA.token });
+const ch_dDetail = await call("GET", `/conversations/${ch_groupId}`, { token: chD.token });
+const ch_systemTexts = (await ch_messagesOf(chD, ch_groupId)).data.filter((m) => m.kind === "system").map((m) => m.content);
+check(
+    "admin sai: o mais antigo que sobrou assume",
+    ch_dDetail.body?.conversation?.my_role === "admin" && ch_dDetail.body.participants.length === 1,
+    JSON.stringify(ch_dDetail.body),
+);
+check(
+    "mensagens de sistema contam a história do grupo",
+    ch_systemTexts.join(" | ") ===
+        [
+            "cha criou o grupo “Turma do café”",
+            "cha renomeou o grupo para “Café & cia”",
+            "cha adicionou chd ao grupo",
+            "cha removeu chc do grupo",
+            "chb saiu do grupo",
+            "cha saiu do grupo",
+        ].join(" | "),
+    ch_systemTexts.join(" | "),
+);
+const ch_dList = await call("GET", "/conversations", { token: chD.token });
+check(
+    "mensagem de sistema não conta como não lida",
+    ch_dList.body?.data?.find((c) => c.conversation_id === ch_groupId)?.unread_count === 0,
+    JSON.stringify(ch_dList.body?.data),
+);
+check(
+    "mensagem de sistema não pode ser apagada",
+    (
+        await call("DELETE", `/conversations/${ch_groupId}/messages/${(await ch_messagesOf(chD, ch_groupId)).data[0].message_id}`, {
+            token: chA.token,
+        })
+    ).status === 404,
+);
+
+streamA.close();
+streamB.close();
+streamC.close();
 
 // ---------------------------------------------------------------------------
 

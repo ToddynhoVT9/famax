@@ -1,5 +1,6 @@
 import { randomUUID } from "node:crypto";
 import type { PoolClient } from "pg";
+import { publish } from "./realtime.js";
 
 /**
  * Criação de notificações. Sempre chamado com o `client` da transação da
@@ -11,6 +12,10 @@ import type { PoolClient } from "pg";
  *  - conta excluída não recebe nada;
  *  - tipos com preferência (curtidas, comentários, respostas) respeitam o
  *    user_settings; sem linha de settings, vale o padrão (ligado).
+ *
+ * Cada aviso gravado também vira um evento notification:new no tempo real
+ * (lib/realtime.ts), entregue só no COMMIT da mesma transação: o sininho
+ * atualiza na hora, sem esperar o polling.
  */
 
 export type NotificationType =
@@ -67,13 +72,14 @@ export async function notify(client: PoolClient, input: NotifyInput): Promise<bo
              SET read_at = NULL, created_at = NOW()`
         : "";
 
-  const { rowCount } = await client.query(
+  const { rows } = await client.query<{ notification_id: string }>(
     `INSERT INTO notifications
        (notification_id, user_id, type, actor_id, post_id, comment_id, community_id, data)
      SELECT $1, $2, $3, $4, $5, $6, $7, $8::jsonb
      WHERE ${wants}
        AND EXISTS (SELECT 1 FROM users WHERE user_id = $2 AND deleted_at IS NULL)
-     ${conflict}`,
+     ${conflict}
+     RETURNING notification_id`,
     [
       randomUUID(),
       input.userId,
@@ -85,7 +91,12 @@ export async function notify(client: PoolClient, input: NotifyInput): Promise<bo
       JSON.stringify(input.data ?? {}),
     ],
   );
-  return (rowCount ?? 0) > 0;
+  if (rows.length === 0) return false;
+  await publish(client, [input.userId], "notification:new", {
+    notificationId: rows[0].notification_id,
+    type: input.type,
+  });
+  return true;
 }
 
 /**
@@ -127,7 +138,7 @@ export async function notifyEventToMembers(
   client: PoolClient,
   input: { communityId: string; eventId: string; actorId: string; title: string },
 ): Promise<number> {
-  const { rowCount } = await client.query(
+  const { rows } = await client.query<{ user_id: string }>(
     `INSERT INTO notifications
        (notification_id, user_id, type, actor_id, community_id, event_id, data)
      SELECT gen_random_uuid(), m.user_id, 'event', $2, $1, $3, $4::jsonb
@@ -136,8 +147,17 @@ export async function notifyEventToMembers(
      LEFT  JOIN user_settings us ON us.user_id = m.user_id
      WHERE m.community_id = $1
        AND m.user_id <> $2
-       AND COALESCE(us.notify_events, TRUE)`,
+       AND COALESCE(us.notify_events, TRUE)
+     RETURNING user_id`,
     [input.communityId, input.actorId, input.eventId, JSON.stringify({ title: input.title })],
   );
-  return rowCount ?? 0;
+  // Em lotes dentro do publish: comunidade grande não estoura os 8000 bytes
+  // do NOTIFY.
+  await publish(
+    client,
+    rows.map((r) => r.user_id),
+    "notification:new",
+    { type: "event" },
+  );
+  return rows.length;
 }

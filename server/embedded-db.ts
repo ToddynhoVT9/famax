@@ -86,6 +86,127 @@ async function applySchema(instance: PGlite): Promise<void> {
   if (count > 0) console.log(`${count} migration(s) aplicada(s).`);
 }
 
+// ---------------------------------------------------------------------------
+// Correção da fila do pglite-socket (até a 0.2.13, a última publicada)
+// ---------------------------------------------------------------------------
+
+/** O pedaço da fila interna do PGLiteSocketServer que a correção usa. */
+interface QueueEntry {
+  handlerId: number;
+  message: Uint8Array;
+  resolve: (bytes: number) => void;
+  reject: (err: unknown) => void;
+  onData: (data: Uint8Array) => void;
+}
+
+interface SocketQueue {
+  queue: QueueEntry[];
+  processing: boolean;
+  lastHandlerId: number | null;
+  db: PGlite;
+  processQueue: () => Promise<void>;
+  clearQueueForHandler: (handlerId: number) => void;
+}
+
+const STARTUP_PROTOCOL = 196608;
+// Mensagens que fecham um lote do protocolo: Sync, Query simples, Terminate
+// e PasswordMessage. As demais (Parse, Bind, Describe, Execute...) são o
+// meio de um lote.
+const BATCH_END = new Set(["S", "Q", "X", "p"].map((c) => c.charCodeAt(0)));
+
+function endsBatch(message: Uint8Array): boolean {
+  if (message.length >= 8) {
+    const view = new DataView(message.buffer, message.byteOffset, message.byteLength);
+    if (view.getInt32(4) === STARTUP_PROTOCOL) return true; // StartupMessage
+  }
+  return BATCH_END.has(message[0]);
+}
+
+/**
+ * O PGlite é UMA sessão de Postgres; o socket multiplexa as conexões do pool
+ * numa fila, uma mensagem do protocolo por vez. Só que o node-pg manda cada
+ * query como um lote (Parse, Bind, Describe, Execute, Sync), e a fila
+ * original só mantém junta a TRANSAÇÃO de uma conexão, não o lote: se a
+ * conexão A faz BEGIN entre o Parse e o Bind da conexão B, o próximo Parse de
+ * A sobrescreve o statement sem nome de B, e o Bind de B roda contra a query
+ * errada — "bind message supplies 3 parameters, but prepared statement
+ * requires 4", ou pior, uma consulta de sessão que volta vazia e vira 401
+ * (logout sem motivo). Aparecia com escritas em transação concorrendo com
+ * leituras — o chat em tempo real deixou isso frequente.
+ *
+ * A correção troca o processQueue da fila: além da transação, um lote
+ * começado também "reserva" a sessão para a mesma conexão até o Sync. Se a
+ * conexão dona do lote some no meio, a reserva é liberada.
+ *
+ * Mexe em detalhe interno da biblioteca: se a forma da fila mudar numa
+ * versão nova, só avisa no log e segue com o comportamento original.
+ */
+function keepProtocolBatchesTogether(server: PGLiteSocketServer): void {
+  const queue = (server as unknown as { queryQueue?: SocketQueue }).queryQueue;
+  if (
+    !queue ||
+    !Array.isArray(queue.queue) ||
+    typeof queue.processQueue !== "function" ||
+    typeof queue.clearQueueForHandler !== "function"
+  ) {
+    console.warn("⚠️  pglite-socket mudou: correção da fila de mensagens não aplicada.");
+    return;
+  }
+
+  let batchOwner: number | null = null;
+
+  queue.processQueue = async function (this: SocketQueue): Promise<void> {
+    if (this.processing || this.queue.length === 0) return;
+    this.processing = true;
+    try {
+      while (this.queue.length > 0) {
+        const owner = this.db.isInTransaction() && this.lastHandlerId !== null ? this.lastHandlerId : batchOwner;
+        let entry: QueueEntry | undefined;
+        if (owner !== null) {
+          const index = this.queue.findIndex((q) => q.handlerId === owner);
+          // A próxima mensagem do dono ainda não chegou: espera por ela (o
+          // enqueue dela chama processQueue de novo).
+          if (index === -1) break;
+          entry = this.queue.splice(index, 1)[0];
+        } else {
+          entry = this.queue.shift();
+        }
+        if (!entry) break;
+
+        let bytes = 0;
+        try {
+          await this.db.runExclusive(() =>
+            this.db.execProtocolRawStream(entry!.message, {
+              onRawData: (data: Uint8Array) => {
+                bytes += data.length;
+                entry!.onData(data);
+              },
+            }),
+          );
+        } catch (err) {
+          batchOwner = null;
+          entry.reject(err);
+          continue;
+        }
+        this.lastHandlerId = entry.handlerId;
+        batchOwner = endsBatch(entry.message) ? null : entry.handlerId;
+        entry.resolve(bytes);
+      }
+    } finally {
+      this.processing = false;
+    }
+  };
+
+  const clearQueueForHandler = queue.clearQueueForHandler.bind(queue);
+  queue.clearQueueForHandler = (handlerId: number) => {
+    clearQueueForHandler(handlerId);
+    if (batchOwner === handlerId) {
+      batchOwner = null;
+      void queue.processQueue();
+    }
+  };
+}
+
 /**
  * Resolve o diretório de dados para um caminho absoluto.
  *
@@ -158,6 +279,7 @@ export async function startEmbeddedDatabase(): Promise<DbRole> {
     // segunda conexão que o pool abrisse ficaria pendurada.
     maxConnections: 10,
   });
+  keepProtocolBatchesTogether(server);
 
   try {
     await server.start();

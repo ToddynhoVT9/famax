@@ -5,9 +5,10 @@
  * contador no título da aba e o desenho de cada aviso, que a página
  * html/notifications.html reaproveita.
  *
- * Polling a cada 30 s, no mesmo espírito do chat-widget: pausa com a aba
- * oculta e consulta na hora quando ela volta. (O prompt de tempo real troca
- * o polling por push.)
+ * Tempo real: o evento notification:new do stream SSE (shared/realtime.ts)
+ * atualiza o badge (e o dropdown aberto) na hora. O polling ficou de
+ * reserva: só roda enquanto o stream está fora, a cada 60 s, pausado com a
+ * aba oculta e com uma consulta na hora quando ela volta.
  *
  * Tudo entra por textContent / createElement: nome, título e trecho de
  * comentário são texto de usuário.
@@ -15,6 +16,7 @@
 import { api, getToken } from "./api.js";
 import { communityUrl, pages, postUrl, profileUrl } from "./pages.js";
 import { avatarColor, initials, timeAgo, truncate } from "./dom.js";
+import { isRealtimeOpen, onRealtime, onRealtimeStatus } from "./realtime.js";
 
 export type NotificationType =
     | "post_comment"
@@ -54,7 +56,8 @@ export interface NotificationPage {
     unread: number;
 }
 
-const POLL_MS = 30_000;
+/** Polling de reserva, só enquanto o stream SSE está fora. */
+const FALLBACK_POLL_MS = 60_000;
 
 function el<K extends keyof HTMLElementTagNameMap>(tag: K, className = "", text?: string) {
     const node = document.createElement(tag);
@@ -287,12 +290,15 @@ async function refreshCount(): Promise<void> {
 
 function schedulePoll(): void {
     window.clearTimeout(pollTimer);
-    if (document.hidden) return;
+    if (document.hidden || isRealtimeOpen()) return;
     pollTimer = window.setTimeout(async () => {
         await refreshCount();
         schedulePoll();
-    }, POLL_MS);
+    }, FALLBACK_POLL_MS);
 }
+
+/** Avisados a cada notificação nova (o dropdown aberto se recarrega). */
+const newNotificationListeners = new Set<() => void>();
 
 function startPolling(): void {
     if (polling) return;
@@ -300,6 +306,15 @@ function startPolling(): void {
     watchTitle();
     void refreshCount();
     schedulePoll();
+    onRealtime("notification:new", () => {
+        void refreshCount();
+        for (const listener of newNotificationListeners) listener();
+    });
+    onRealtimeStatus((open) => {
+        // Voltou: acerta o que pode ter chegado enquanto estava fora.
+        if (open) void refreshCount();
+        schedulePoll();
+    });
     document.addEventListener("visibilitychange", () => {
         if (document.hidden) {
             window.clearTimeout(pollTimer);
@@ -407,6 +422,10 @@ export function createNotificationBell(): HTMLElement {
         } catch {
             markAll.disabled = false;
         }
+    });
+
+    newNotificationListeners.add(() => {
+        if (!panel.hidden) void load();
     });
 
     startPolling();

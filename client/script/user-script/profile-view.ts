@@ -21,6 +21,7 @@ import { SOCIAL_PLATFORM_LABELS, isSafeLink } from "../shared/social.js";
 import { openReportDialog } from "../shared/moderation.js";
 import { bindFollowButton, openFollowList } from "../shared/follow.js";
 import { markdownToText } from "../shared/markdown.js";
+import { openChatWith } from "../shared/chat-bus.js";
 
 // Visitante pode ver o perfil público de alguém; o próprio perfil exige conta.
 const requestedId = queryParam("id");
@@ -434,6 +435,13 @@ void init();
 // ===========================================================================
 
 function setupFollowButton(profile: PublicProfile): void {
+    const message = document.getElementById("btnMessage") as HTMLButtonElement | null;
+    if (message && !profile.isOwner && !message.dataset.ready) {
+        message.dataset.ready = "true";
+        message.hidden = false;
+        message.addEventListener("click", () => openChatWith(profile.userId));
+    }
+
     const button = document.getElementById("btnFollow") as HTMLButtonElement | null;
     if (!button || profile.isOwner || button.dataset.ready) return;
     button.dataset.ready = "true";
