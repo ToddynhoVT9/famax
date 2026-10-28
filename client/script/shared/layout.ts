@@ -73,7 +73,7 @@ const HEADER_HTML = `
                autocomplete="off" maxlength="80" aria-label="Pesquisar"
                role="combobox" aria-autocomplete="list" aria-expanded="false"
                aria-controls="searchSuggestions">
-        <div class="search-suggestions" id="searchSuggestions" role="listbox" aria-label="Sugestões"></div>
+        <div class="fx-menu" id="searchSuggestions" role="listbox" aria-label="Sugestões"></div>
     </form>
 
     <div class="header-actions">
@@ -119,10 +119,10 @@ function el<K extends keyof HTMLElementTagNameMap>(
 function renderGuestArea(area: HTMLElement): void {
     area.replaceChildren();
 
-    const login = el("a", "header-auth-btn", "Entrar");
+    const login = el("a", "fx-btn fx-btn--on-chrome-outline", "Entrar");
     login.href = loginUrlReturningHere();
 
-    const register = el("a", "header-auth-btn header-auth-btn--primary", "Criar conta");
+    const register = el("a", "fx-btn fx-btn--on-chrome", "Criar conta");
     register.href = pages.register;
 
     area.append(login, register);
@@ -131,13 +131,13 @@ function renderGuestArea(area: HTMLElement): void {
 /** Círculo do avatar: a foto, ou as iniciais na cor estável do usuário. */
 function renderAvatar(me: Me): HTMLElement {
     if (me.avatarUrl) {
-        const img = el("img", "user-avatar");
+        const img = el("img", "fx-avatar fx-avatar--md");
         img.src = me.avatarUrl;
         img.alt = "";
         return img;
     }
     const name = me.displayName ?? me.username;
-    return el("span", `user-avatar ${avatarColor(me.userId)}`, initials(name));
+    return el("span", `fx-avatar fx-avatar--md ${avatarColor(me.userId)}`, initials(name));
 }
 
 /** Uma instância por página: o header redesenha, o sininho (e o polling) fica. */
@@ -156,19 +156,19 @@ function renderUserArea(area: HTMLElement, me: Me): void {
     button.setAttribute("aria-expanded", "false");
     button.append(renderAvatar(me), el("span", "user-name", me.displayName ?? me.username));
 
-    const dropdown = el("div", "user-dropdown");
+    const dropdown = el("div", "fx-menu");
     dropdown.setAttribute("role", "menu");
     dropdown.hidden = true;
 
-    const profile = el("a", "user-dropdown-item", "Meu perfil");
+    const profile = el("a", "fx-menu-item", "Meu perfil");
     profile.href = pages.profile;
-    const settings = el("a", "user-dropdown-item", "Configurações");
+    const settings = el("a", "fx-menu-item", "Configurações");
     settings.href = pages.settings;
-    const signOut = el("button", "user-dropdown-item", "Sair");
+    const signOut = el("button", "fx-menu-item", "Sair");
     signOut.type = "button";
     const items: HTMLElement[] = [profile, settings];
     if (me.isAdmin) {
-        const admin = el("a", "user-dropdown-item", "Denúncias de usuários");
+        const admin = el("a", "fx-menu-item", "Denúncias de usuários");
         admin.href = pages.adminReports;
         items.push(admin);
     }
@@ -176,12 +176,12 @@ function renderUserArea(area: HTMLElement, me: Me): void {
     signOut.setAttribute("role", "menuitem");
 
     // Tema: escolha manual (fica neste navegador) ou o do sistema.
-    const themeGroup = el("div", "user-dropdown-group");
+    const themeGroup = el("div");
     themeGroup.setAttribute("role", "group");
     themeGroup.setAttribute("aria-label", "Tema");
-    themeGroup.append(el("span", "user-dropdown-label", "Tema"));
+    themeGroup.append(el("span", "fx-menu-label", "Tema"));
     const themeButtons = (Object.keys(THEME_LABELS) as ThemePref[]).map((pref) => {
-        const option = el("button", "user-dropdown-item user-dropdown-item--option", THEME_LABELS[pref]);
+        const option = el("button", "fx-menu-item", THEME_LABELS[pref]);
         option.type = "button";
         option.setAttribute("role", "menuitemradio");
         option.dataset.theme = pref;
@@ -200,7 +200,7 @@ function renderUserArea(area: HTMLElement, me: Me): void {
     renderThemeChecks();
     themeGroup.append(...themeButtons);
 
-    dropdown.append(...items, themeGroup, signOut);
+    dropdown.append(...items, el("div", "fx-menu-sep"), themeGroup, el("div", "fx-menu-sep"), signOut);
     menu.append(button, dropdown);
     area.append(menu);
 
@@ -249,14 +249,14 @@ function renderVerifyBanner(me: Me): void {
     document.getElementById("verifyBanner")?.remove();
     if (!main || me.emailVerified || window.location.pathname === pages.verifyEmail) return;
 
-    const banner = el("div", "verify-banner");
+    const banner = el("div", "fx-banner fx-banner--warning");
     banner.id = "verifyBanner";
     banner.setAttribute("role", "status");
-    const text = el("span", "verify-banner-text");
+    const text = el("span", "fx-banner-text");
     text.append("Confirme seu e-mail ", el("strong", "", me.email), " para criar comunidades e mandar mensagens.");
-    const resend = el("button", "verify-banner-btn", "Reenviar link");
+    const resend = el("button", "fx-btn fx-btn--sm", "Reenviar link");
     resend.type = "button";
-    const settings = el("a", "verify-banner-link", "Trocar e-mail");
+    const settings = el("a", "fx-banner-link", "Trocar e-mail");
     settings.href = pages.settings;
     banner.append(text, resend, settings);
 
@@ -325,7 +325,7 @@ function renderHeader(header: HTMLElement): void {
 
     // Reserva o lugar do avatar enquanto o /me responde — sem isto a área
     // nasceria vazia e "pularia" quando o nome chegasse.
-    area.replaceChildren(el("span", "user-avatar user-avatar--loading"));
+    area.replaceChildren(el("span", "fx-avatar fx-avatar--md fx-avatar--loading"));
     area.setAttribute("aria-busy", "true");
 
     getMe()
@@ -416,7 +416,7 @@ function renderSidebar(sidebar: HTMLElement, options: LayoutOptions): void {
             // Recurso que ainda não existe: visível, mas sem fingir que é link.
             const disabled = el("span", "sidebar-link sidebar-link--disabled");
             disabled.setAttribute("aria-disabled", "true");
-            disabled.append(link.label, el("span", "sidebar-badge", "Em breve"));
+            disabled.append(link.label, el("span", "fx-badge fx-badge--outline", "Em breve"));
             return disabled;
         }
         const anchor = sidebarLink(link.label, link.href);

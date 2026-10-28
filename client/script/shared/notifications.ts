@@ -106,17 +106,17 @@ export function notificationHref(n: AppNotification): string {
 function renderAvatar(n: AppNotification): HTMLElement {
     // Aviso do sistema (moderação): sem pessoa, um ícone.
     if (!n.actorId || n.type === "content_removed") {
-        const icon = el("span", "notif-avatar notif-avatar--system", "!");
+        const icon = el("span", "fx-avatar fx-avatar--md notif-avatar--system", "!");
         icon.setAttribute("aria-hidden", "true");
         return icon;
     }
     if (n.actorAvatarUrl) {
-        const img = el("img", "notif-avatar");
+        const img = el("img", "fx-avatar fx-avatar--md");
         img.src = n.actorAvatarUrl;
         img.alt = "";
         return img;
     }
-    const span = el("span", `notif-avatar ${avatarColor(n.actorId)}`, initials(actorName(n)));
+    const span = el("span", `fx-avatar fx-avatar--md ${avatarColor(n.actorId)}`, initials(actorName(n)));
     span.setAttribute("aria-hidden", "true");
     return span;
 }
@@ -291,13 +291,13 @@ function startPolling(): void {
 export function createNotificationBell(): HTMLElement {
     const wrapper = el("div", "notif-bell");
 
-    const button = el("button", "notif-bell-btn");
+    const button = el("button", "fx-btn fx-btn--icon");
     button.type = "button";
     button.setAttribute("aria-haspopup", "true");
     button.setAttribute("aria-expanded", "false");
     const icon = el("span", "notif-bell-icon", "🔔");
     icon.setAttribute("aria-hidden", "true");
-    const badge = el("span", "notif-badge");
+    const badge = el("span", "fx-counter-badge");
     badge.hidden = true;
     button.append(icon, badge);
     // Notificação nova chegando (tempo real) é anunciada sem tirar o foco.

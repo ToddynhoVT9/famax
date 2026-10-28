@@ -28,12 +28,10 @@ body {
     letter-spacing: 1px;
 }
 
-/* Rótulo visível acima de cada campo (o placeholder some ao digitar). */
-.field-label {
+/* Rótulo visível acima de cada campo (fx-label; o placeholder some ao digitar). */
+.form-group .fx-label {
     align-self: stretch;
     margin-bottom: var(--space-1);
-    font-size: 0.85rem;
-    color: var(--color-text-soft);
 }
 
 /* Form group e input field compartilhados */
@@ -43,29 +41,10 @@ body {
     align-items: center;
 }
 
-.input-field {
-    width: 100%;
-    padding: 14px;
-    /* Com o --color-control novo o campo é um poço quase da cor do fundo:
-       quem marca o limite é a borda. */
-    border: 1px solid var(--color-border-strong);
-    border-radius: 6px;
-    background-color: var(--color-control);
-    color: var(--color-text);
-    font-size: 0.95rem;
-    box-sizing: border-box;
+/* Campos (fx-input) das telas de acesso: centralizados, como hoje. */
+.form-group .fx-input {
     text-align: center;
     margin-bottom: 15px;
-    font-family: inherit;
-}
-
-.input-field::placeholder {
-    color: var(--color-text-soft);
-}
-
-.input-field:focus {
-    outline: 2px solid var(--color-text);
-    background-color: var(--color-control-hover);
 }
 
 /* Mensagem de erro genérica */

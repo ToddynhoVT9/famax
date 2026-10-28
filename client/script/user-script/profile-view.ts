@@ -327,13 +327,12 @@ async function loadTab(tab: Tab, reset: boolean): Promise<void> {
 }
 
 tabsEl?.addEventListener("click", (event) => {
-    const button = (event.target as Element).closest<HTMLButtonElement>(".tab-btn");
+    const button = (event.target as Element).closest<HTMLButtonElement>('[role="tab"]');
     const tab = button?.dataset.tab as Tab | undefined;
     if (!button || !tab || tab === currentTab) return;
 
-    tabsEl.querySelectorAll<HTMLButtonElement>(".tab-btn").forEach((b) => {
+    tabsEl.querySelectorAll<HTMLButtonElement>('[role="tab"]').forEach((b) => {
         const active = b === button;
-        b.classList.toggle("active", active);
         b.setAttribute("aria-selected", String(active));
     });
     void loadTab(tab, true);

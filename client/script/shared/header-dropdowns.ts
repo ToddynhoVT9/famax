@@ -200,14 +200,14 @@ export function initHeaderDropdowns(): void {
         let n = 0;
         for (const { group, items } of groups) {
             const heading = document.createElement("div");
-            heading.className = "suggestion-group";
+            heading.className = "fx-menu-label";
             heading.textContent = group;
             heading.setAttribute("role", "presentation");
             list.append(heading);
 
             for (const item of items) {
                 const option = document.createElement("a");
-                option.className = "suggestion-item";
+                option.className = "fx-menu-item suggestion-item";
                 option.id = `search-option-${n++}`;
                 option.href = item.href;
                 option.setAttribute("role", "option");
@@ -215,7 +215,7 @@ export function initHeaderDropdowns(): void {
 
                 if (item.badge) {
                     const badge = document.createElement("span");
-                    badge.className = `suggestion-badge ${avatarColor(item.badge.colorSeed)}`;
+                    badge.className = `fx-avatar fx-avatar--sm ${avatarColor(item.badge.colorSeed)}`;
                     badge.textContent = item.badge.text;
                     badge.setAttribute("aria-hidden", "true");
                     option.append(badge);
@@ -236,7 +236,7 @@ export function initHeaderDropdowns(): void {
 
         if (footer) {
             const option = document.createElement("a");
-            option.className = "suggestion-item suggestion-footer";
+            option.className = "fx-menu-item suggestion-item suggestion-footer";
             option.id = `search-option-${n++}`;
             option.href = footer.href;
             option.setAttribute("role", "option");

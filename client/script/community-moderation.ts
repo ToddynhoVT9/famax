@@ -76,7 +76,7 @@ async function loadBans(): Promise<void> {
                 info.append(link, el("span", "mod-ban-meta", meta.join(" · ")));
                 if (ban.reason) info.append(el("span", "mod-ban-reason", ban.reason));
 
-                const unban = el("button", "report-btn", "Desbanir");
+                const unban = el("button", "fx-btn fx-btn--sm fx-btn--pill fx-btn--outline-ink", "Desbanir");
                 unban.type = "button";
                 unban.dataset.action = "unban";
                 item.append(info, unban);

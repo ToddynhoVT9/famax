@@ -3,40 +3,9 @@
    =================================== */
 
 /* ----- TABS SUPERIORES ----- */
+/* Abas do feed (fx-tabs): só o espaço até a lista. */
 .tf-tabs {
-    display: flex;
-    gap: 20px;
-    border-bottom: 2px solid var(--color-border);
     margin-bottom: 30px;
-    padding: 0 10px;
-    position: relative;
-}
-
-.tf-tab {
-    color: var(--color-text-faint);
-    text-decoration: none;
-    font-size: 1.1rem;
-    font-weight: 500;
-    padding-bottom: 10px;
-    position: relative;
-    transition: color 0.2s;
-}
-
-.tf-tab:hover {
-    color: var(--color-text);
-}
-
-.tf-tab.active {
-    color: var(--color-text);
-}
-
-.tf-tab-indicator {
-    position: absolute;
-    bottom: -2px;
-    left: 0;
-    height: 2px;
-    background-color: var(--color-paper);
-    transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1), width 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 /* ----- LAYOUT GRID ----- */
@@ -87,23 +56,9 @@
     cursor: pointer;
 }
 
-.tf-post-avatar-container:hover .tf-avatar {
+.tf-post-avatar-container:hover .fx-avatar {
     filter: brightness(0.9);
 }
-
-.tf-avatar {
-    width: 48px;
-    height: 48px;
-    border-radius: 50%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    color: var(--color-on-accent);
-    font-weight: bold;
-    font-size: 1.1rem;
-}
-
-/* Cores de avatar (.bg-*): em layout.css, compartilhadas com o header. */
 
 .tf-post-body {
     display: flex;
@@ -191,19 +146,6 @@
     margin-left: auto;
 }
 
-.tf-avatar-small {
-    width: 24px;
-    height: 24px;
-    border-radius: 50%;
-    background-color: var(--color-ink-soft);
-    color: var(--color-on-accent);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 0.7rem;
-    font-weight: bold;
-}
-
 /* ----- COMENTÁRIOS ----- */
 .tf-post-comments {
     margin-top: 18px;
@@ -280,40 +222,10 @@
     margin-top: 12px;
 }
 
-.tf-comment-input {
+/* Campo (fx-input pílula) e "Enviar" (fx-btn dark) lado a lado. */
+.tf-comment-form > .fx-input {
     flex: 1;
     min-width: 0;
-    border: 1px solid var(--color-paper-border);
-    border-radius: 999px;
-    padding: 12px 16px;
-    font-size: 0.95rem;
-    color: var(--color-ink);
-    background: var(--color-paper);
-    font-family: inherit;
-}
-
-.tf-comment-input:focus {
-    border-color: var(--color-paper-border-strong);
-}
-
-.tf-comment-form button {
-    border: none;
-    border-radius: 999px;
-    background: var(--color-dark-2);
-    color: var(--color-on-accent);
-    padding: 12px 18px;
-    cursor: pointer;
-    font-weight: 600;
-    font-family: inherit;
-}
-
-.tf-comment-form button:hover {
-    background: var(--color-dark-1);
-}
-
-.tf-comment-form button:disabled {
-    opacity: 0.5;
-    cursor: not-allowed;
 }
 
 /* ----- ESTADOS DO FEED ----- */
@@ -356,28 +268,6 @@
     color: var(--color-ink);
 }
 
-.tf-btn-dark {
-    background-color: var(--color-dark-2);
-    color: var(--color-on-accent);
-    border: none;
-    padding: 12px 20px;
-    font-size: 1rem;
-    font-weight: 600;
-    border-radius: 6px;
-    cursor: pointer;
-    width: 100%;
-    margin-bottom: 5px;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    gap: 8px;
-    transition: background 0.2s;
-}
-
-.tf-btn-dark:hover {
-    background-color: var(--color-dark-1);
-}
-
 .tf-widget-title {
     font-size: 1.1rem;
     font-weight: 700;
@@ -386,98 +276,15 @@
 }
 
 /* ----- MODAL CRIAÇÃO DE POST ----- */
-.modal-overlay {
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 100vw;
-    height: 100vh;
-    background-color: rgba(0, 0, 0, 0.7);
-    z-index: 2000;
-    display: none;
-    align-items: center;
-    justify-content: center;
-}
-
-.modal-overlay.show {
-    display: flex;
-}
-
-.modal-box {
-    background-color: var(--color-surface-2);
-    width: 700px;
-    max-width: 90%;
-    padding: 30px 40px;
-    border-radius: 8px;
-    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.5);
-    color: var(--color-text);
-    position: relative;
-}
-
-.modal-title {
-    font-size: 1.8rem;
-    font-weight: 700;
-    margin-bottom: 0;
-}
-
-.modal-label {
-    font-size: 1.1rem;
-    font-weight: 600;
-    margin-bottom: 8px;
-    display: block;
-}
-
-.modal-input {
-    width: 100%;
-    background-color: var(--color-surface-5);
-    border: 1px solid var(--color-border);
-    border-radius: 6px;
-    padding: 12px 14px;
-    color: var(--color-text);
-    font-size: 1rem;
-    box-sizing: border-box;
-    font-family: inherit;
-}
-
-.modal-input:focus {
-    background-color: var(--color-surface-6);
-    border-color: var(--color-border-strong);
-}
-
-.modal-textarea {
-    width: 100%;
-    background-color: var(--color-surface-5);
-    border: 1px solid var(--color-border);
-    color: var(--color-text);
-    font-size: 1rem;
-    padding: 15px;
-    border-radius: 6px;
-    resize: vertical;
-    line-height: 1.5;
-    font-family: inherit;
+/* Conteúdo do post: mais alto que a área de texto padrão do Field. */
+.post-editor-content {
     min-height: 150px;
-    box-sizing: border-box;
-}
-
-.modal-textarea:focus {
-    background-color: var(--color-surface-6);
-    border-color: var(--color-border-strong);
 }
 
 /* ----- RESPONSIVIDADE ----- */
 @media (max-width: 1024px) {
     .tf-layout {
         grid-template-columns: 1fr;
-    }
-}
-
-@media (max-width: 768px) {
-    .tf-tabs {
-        gap: 10px;
-    }
-
-    .tf-tab {
-        font-size: 0.95rem;
     }
 }
 
@@ -501,44 +308,6 @@
     color: var(--color-text-faint);
     font-size: 0.95rem;
     margin: 0;
-}
-
-.tf-btn-join {
-    margin-left: auto;
-    border: none;
-    border-radius: 8px;
-    background-color: var(--color-paper);
-    color: var(--color-ink);
-    font-weight: 700;
-    font-size: 0.95rem;
-    padding: 10px 22px;
-    cursor: pointer;
-    font-family: inherit;
-}
-
-.tf-btn-join:hover {
-    background-color: var(--color-paper-2);
-}
-
-.tf-btn-join:disabled {
-    opacity: 0.6;
-    cursor: not-allowed;
-}
-
-/* Erro dentro do modal de criação de post (substitui o alert do protótipo). */
-.modal-error {
-    display: none;
-    background: rgba(220, 53, 69, 0.15);
-    border: 1px solid rgba(220, 53, 69, 0.5);
-    color: var(--color-danger-text);
-    border-radius: 8px;
-    padding: 10px 14px;
-    font-size: 0.9rem;
-    margin-bottom: 18px;
-}
-
-.modal-error.show {
-    display: block;
 }
 
 /* ===================================
@@ -600,21 +369,6 @@
     gap: 12px;
 }
 
-.tf-community-actions .tf-btn-join {
-    margin-left: 0;
-    text-decoration: none;
-}
-
-.tf-btn-joined {
-    background-color: transparent;
-    color: var(--color-text);
-    border: 1px solid var(--color-text);
-}
-
-.tf-btn-joined:hover {
-    background-color: rgba(255, 255, 255, 0.1);
-}
-
 .tf-owner-badge {
     font-size: 0.85rem;
     color: var(--color-text-muted);
@@ -626,68 +380,13 @@
     position: relative;
 }
 
-.tf-menu-list {
+/* Os menus (fx-menu) abrem sob o botão, alinhados à direita. */
+.tf-member-menu > .fx-menu,
+.tf-post-menu > .fx-menu {
     position: absolute;
     right: 0;
     top: calc(100% + 6px);
-    min-width: 170px;
-    background-color: var(--color-paper);
-    border-radius: 6px;
-    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.25);
-    padding: 6px 0;
-    z-index: 50;
-    display: flex;
-    flex-direction: column;
-}
-
-.tf-menu-item {
-    background: none;
-    border: none;
-    text-align: left;
-    padding: 9px 14px;
-    font: inherit;
-    font-size: 0.95rem;
-    color: var(--color-ink);
-    cursor: pointer;
-}
-
-.tf-menu-item:hover,
-.tf-menu-item:focus-visible {
-    background-color: var(--color-paper-2);
-}
-
-.tf-menu-item--danger {
-    color: var(--color-danger);
-}
-
-.tf-post-menu-btn {
-    background: none;
-    border: none;
-    font-size: 1.3rem;
-    line-height: 1;
-    padding: 2px 8px;
-    border-radius: 6px;
-    color: var(--color-ink-faint);
-    cursor: pointer;
-}
-
-.tf-post-menu-btn:hover,
-.tf-post-menu-btn[aria-expanded="true"] {
-    background-color: var(--color-paper-2);
-}
-
-/* ----- Abas como botões ----- */
-button.tf-tab {
-    background: none;
-    border: none;
-    font-family: inherit;
-    cursor: pointer;
-}
-
-button.tf-tab:focus-visible {
-    outline: 2px solid var(--color-text);
-    outline-offset: 4px;
-    border-radius: 4px;
+    z-index: var(--z-popover);
 }
 
 .tf-tab-hint {
@@ -701,29 +400,6 @@ button.tf-tab:focus-visible {
     flex-wrap: wrap;
     gap: 8px;
     margin-bottom: 16px;
-}
-
-.tf-chip {
-    background: none;
-    border: 1px solid var(--color-border-strong);
-    color: var(--color-text-soft);
-    border-radius: 16px;
-    padding: 6px 14px;
-    font: inherit;
-    font-size: 0.9rem;
-    cursor: pointer;
-}
-
-.tf-chip:hover {
-    border-color: var(--color-text);
-    color: var(--color-text);
-}
-
-.tf-chip[aria-pressed="true"] {
-    background-color: var(--color-paper);
-    border-color: var(--color-text);
-    color: var(--color-ink);
-    font-weight: 600;
 }
 
 /* ----- Lista de posts ----- */
@@ -788,32 +464,9 @@ button.tf-tab:focus-visible {
     text-decoration: underline;
 }
 
-.tf-load-more,
-.tf-comments-more {
-    display: block;
-    margin: 18px auto 0;
-    padding: 10px 26px;
-    border-radius: 20px;
-    border: 1px solid var(--color-text);
-    background: none;
-    color: var(--color-text);
-    font: inherit;
-    cursor: pointer;
-}
-
-.tf-load-more:disabled,
-.tf-comments-more:disabled {
-    opacity: 0.6;
-    cursor: default;
-}
-
-/* Dentro do card branco do post. */
-.tf-comments-more {
-    margin: 12px 0 0;
-    padding: 6px 14px;
-    border-color: var(--color-paper-border-strong);
-    color: var(--color-ink-soft);
-    font-size: 0.9rem;
+/* "Carregar mais comentários", dentro do card branco do post. */
+.tf-post-comments > [data-action="more-comments"] {
+    margin-top: 12px;
 }
 
 /* ----- Comentários em árvore ----- */
@@ -906,33 +559,12 @@ button.tf-tab:focus-visible {
     margin-top: 4px;
 }
 
-.tf-edit-input {
-    width: 100%;
-    border: 1px solid var(--color-paper-border-strong);
-    border-radius: 8px;
-    padding: 8px 10px;
-    font: inherit;
-    font-size: 0.92rem;
-    resize: vertical;
-}
-
 .tf-edit-actions {
     display: flex;
     justify-content: flex-end;
     align-items: center;
     gap: 12px;
     margin-top: 6px;
-}
-
-.tf-edit-save {
-    border: none;
-    border-radius: 6px;
-    padding: 6px 14px;
-    background-color: var(--color-dark-2);
-    color: var(--color-on-accent);
-    font: inherit;
-    font-size: 0.85rem;
-    cursor: pointer;
 }
 
 .tf-inline-error {
@@ -948,67 +580,6 @@ button.tf-tab:focus-visible {
     line-height: 1.5;
 }
 
-/* ----- Modal de post (estilos que eram inline) ----- */
-.modal-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 25px;
-}
-
-.modal-close {
-    background: none;
-    border: none;
-    color: var(--color-text-faint);
-    font-size: 1.8rem;
-    cursor: pointer;
-    transition: color 0.2s;
-}
-
-.modal-close:hover {
-    color: var(--color-text);
-}
-
-.modal-label--spaced {
-    margin-top: 20px;
-}
-
-.modal-select {
-    cursor: pointer;
-}
-
-.modal-actions {
-    display: flex;
-    justify-content: flex-end;
-    gap: 15px;
-    margin-top: 30px;
-}
-
-.modal-btn-secondary,
-.modal-btn-primary {
-    border: none;
-    border-radius: 6px;
-    padding: 12px 24px;
-    font: inherit;
-    font-size: 1rem;
-    cursor: pointer;
-    color: var(--color-on-accent);
-}
-
-.modal-btn-secondary {
-    background-color: var(--color-surface-5);
-}
-
-.modal-btn-primary {
-    background-color: var(--color-primary);
-    font-weight: 600;
-}
-
-.modal-btn-primary:disabled {
-    opacity: 0.6;
-    cursor: default;
-}
-
 @media (max-width: 768px) {
     .tf-community-banner {
         height: 110px;
@@ -1016,10 +587,6 @@ button.tf-tab:focus-visible {
 
     .tf-community-actions {
         width: 100%;
-    }
-
-    .modal-box {
-        padding: 20px;
     }
 }
 
@@ -1034,17 +601,6 @@ button.tf-tab:focus-visible {
 }
 
 /* ----- MODERAÇÃO: atalhos, ban e vistas Regras / Membros ----- */
-.tf-btn-secondary {
-    background-color: transparent;
-    color: var(--color-text);
-    border: 1px solid var(--color-text);
-    text-decoration: none;
-}
-
-.tf-btn-secondary:hover {
-    background-color: rgba(255, 255, 255, 0.1);
-}
-
 .tf-banned-badge {
     margin-left: auto;
     font-size: 0.9rem;
@@ -1117,26 +673,6 @@ button.tf-tab:focus-visible {
     border-bottom: none;
 }
 
-.tf-member-avatar {
-    width: 42px;
-    height: 42px;
-    border-radius: 50%;
-    flex-shrink: 0;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    color: var(--color-on-accent);
-    font-weight: 700;
-    text-decoration: none;
-    overflow: hidden;
-}
-
-.tf-member-avatar img {
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
-}
-
 .tf-member-info {
     flex: 1;
     min-width: 0;
@@ -1166,26 +702,6 @@ button.tf-tab:focus-visible {
     gap: 6px;
 }
 
-.tf-member-action {
-    background: none;
-    border: 1px solid var(--color-paper-border-strong);
-    border-radius: 14px;
-    padding: 5px 12px;
-    font: inherit;
-    font-size: 0.85rem;
-    color: var(--color-ink-soft);
-    cursor: pointer;
-}
-
-.tf-member-action:hover {
-    background-color: var(--color-paper-2);
-}
-
-.tf-member-action--danger {
-    border-color: var(--color-danger);
-    color: var(--color-danger);
-}
-
 @media (max-width: 600px) {
     .tf-member {
         flex-wrap: wrap;
@@ -1211,21 +727,9 @@ button.tf-tab:focus-visible {
     margin-bottom: 14px;
 }
 
-.tf-lb-tab {
+/* Chips de período (fx-chip--paper): dividem a largura do widget. */
+.tf-lb-tabs > .fx-chip {
     flex: 1;
-    padding: 6px 8px;
-    border: 1px solid var(--color-paper-border-strong);
-    border-radius: 999px;
-    background: var(--color-paper);
-    color: var(--color-ink-soft);
-    font-size: 0.85rem;
-    cursor: pointer;
-}
-
-.tf-lb-tab.active {
-    background: var(--color-dark-2);
-    border-color: var(--color-dark-2);
-    color: var(--color-on-accent);
 }
 
 .tf-lb-list {
@@ -1267,26 +771,6 @@ button.tf-tab:focus-visible {
 
 .tf-lb-user:hover .tf-lb-name {
     text-decoration: underline;
-}
-
-.tf-lb-avatar {
-    width: 32px;
-    height: 32px;
-    flex-shrink: 0;
-    border-radius: 50%;
-    overflow: hidden;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    color: var(--color-on-accent);
-    font-size: 0.75rem;
-    font-weight: 700;
-}
-
-.tf-lb-avatar img {
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
 }
 
 .tf-lb-name {
@@ -1342,41 +826,11 @@ button.tf-tab:focus-visible {
     font-size: 0.9rem;
 }
 
-.tf-sort select {
-    padding: 6px 10px;
-    border-radius: 6px;
-    border: 1px solid var(--color-border-strong);
-    background-color: var(--color-surface);
-    color: var(--color-text);
-    font: inherit;
-    cursor: pointer;
-}
-
 /* ----- Fixado, resolvido e resposta aceita ----- */
 .tf-post-badges {
     display: flex;
     gap: 6px;
     margin: 4px 0 2px;
-}
-
-.tf-badge {
-    display: inline-flex;
-    align-items: center;
-    gap: 4px;
-    padding: 2px 8px;
-    border-radius: 999px;
-    font-size: 0.75rem;
-    font-weight: 700;
-}
-
-.tf-badge--pinned {
-    background-color: var(--color-warning-surface);
-    color: var(--color-warning-strong);
-}
-
-.tf-badge--resolved {
-    background-color: var(--color-success-surface);
-    color: var(--color-success-strong);
 }
 
 .tf-comment-item.is-accepted > .tf-comment-main {
@@ -1386,15 +840,8 @@ button.tf-tab:focus-visible {
     border-radius: 4px;
 }
 
-.tf-accepted-badge {
-    display: inline-block;
+[data-accepted-badge] {
     margin-left: 8px;
-    padding: 1px 7px;
-    border-radius: 999px;
-    background-color: var(--color-success);
-    color: var(--color-on-accent);
-    font-size: 0.72rem;
-    font-weight: 700;
     vertical-align: middle;
 }
 
@@ -1417,7 +864,7 @@ button.tf-tab:focus-visible {
     position: absolute;
     bottom: calc(100% + 6px);
     left: 0;
-    z-index: 20;
+    z-index: var(--z-popover);
     display: flex;
     gap: 2px;
     padding: 4px 6px;
@@ -1619,7 +1066,7 @@ button.tf-tab:focus-visible {
 .lightbox {
     position: fixed;
     inset: 0;
-    z-index: 4000;
+    z-index: var(--z-lightbox);
     background-color: rgba(0, 0, 0, 0.88);
     display: flex;
     align-items: center;
@@ -1632,22 +1079,12 @@ button.tf-tab:focus-visible {
     object-fit: contain;
 }
 
-.lightbox-btn {
+/* Botões (fx-btn--icon) sobre a foto escura: um tom claro atrás do ícone. */
+.lightbox > .fx-btn {
     position: absolute;
-    border: none;
-    background-color: rgba(255, 255, 255, 0.12);
-    color: var(--color-on-accent);
-    width: 48px;
-    height: 48px;
-    border-radius: 50%;
+    background-color: var(--color-tint-chrome);
+    color: var(--color-on-chrome);
     font-size: 1.8rem;
-    line-height: 1;
-    cursor: pointer;
-}
-
-.lightbox-btn:hover,
-.lightbox-btn:focus-visible {
-    background-color: rgba(255, 255, 255, 0.28);
 }
 
 .lightbox-close { top: 16px; right: 16px; }
@@ -1664,12 +1101,6 @@ button.tf-tab:focus-visible {
 }
 
 /* ----- Editor: dica de markdown e imagens ----- */
-.modal-hint {
-    margin: 6px 0 0;
-    font-size: 0.8rem;
-    color: var(--color-text-muted);
-}
-
 .modal-images {
     display: flex;
     flex-wrap: wrap;
@@ -1707,10 +1138,9 @@ button.tf-tab:focus-visible {
     cursor: pointer;
 }
 
+/* "Adicionar imagens" (fx-btn secondary num <label>): não estica no Field. */
 .modal-add-images {
-    display: inline-block;
-    margin-bottom: 4px;
-    cursor: pointer;
+    align-self: flex-start;
 }
 
 .modal-add-images[hidden] {
@@ -1727,22 +1157,14 @@ button.tf-tab:focus-visible {
 }
 
 .tf-events-tabs {
-    margin-bottom: 0;
+    display: flex;
+    gap: 6px;
     max-width: 320px;
     flex: 1;
 }
 
-/* Mesmas abas do ranking, mas sobre o fundo escuro da página. */
-.tf-events-tabs .tf-lb-tab {
-    background-color: transparent;
-    border-color: var(--color-border-strong);
-    color: var(--color-text-soft);
-}
-
-.tf-events-tabs .tf-lb-tab.active {
-    background-color: var(--color-paper);
-    border-color: var(--color-text);
-    color: var(--color-ink);
+.tf-events-tabs > .fx-chip {
+    flex: 1;
 }
 
 .tf-events-list {
@@ -1844,22 +1266,6 @@ button.tf-tab:focus-visible {
     margin-right: auto;
 }
 
-.tf-event-going {
-    padding: 6px 16px;
-    border-radius: 999px;
-    border: 1px solid var(--color-border);
-    background-color: var(--color-paper);
-    color: var(--color-ink);
-    font-weight: 600;
-    cursor: pointer;
-}
-
-.tf-event-going.is-going {
-    background-color: var(--color-success);
-    border-color: var(--color-success);
-    color: var(--color-on-accent);
-}
-
 .tf-widget-head {
     display: flex;
     align-items: baseline;
@@ -1943,13 +1349,6 @@ button.tf-tab:focus-visible {
 }
 
 /* ----- Conteúdo de usuário bloqueado ----- */
-.tf-blocked-notice {
-    margin: 0;
-    color: var(--color-ink-faint);
-    font-size: 0.9rem;
-    font-style: italic;
-}
-
 .tf-blocked-show {
     border: none;
     background: none;
@@ -1969,79 +1368,13 @@ button.tf-tab:focus-visible {
 }
 
 /* ----- Conteúdo adulto (+18) ----- */
-.modal-checkbox {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    margin: 12px 0 4px;
-    font-size: 0.9rem;
-    color: var(--color-text-soft);
-    cursor: pointer;
-}
-
-.modal-checkbox[hidden] {
-    display: none;
-}
-
-.tf-badge--nsfw {
-    background-color: var(--color-danger-strong);
-    color: var(--color-on-accent);
-}
-
-.tf-nsfw-notice {
+/* Post +18 escondido (fx-banner neutro, dentro do cartão). */
+.tf-nsfw-hidden {
     margin: 4px 0 12px;
-    padding: 12px 14px;
-    border-radius: 8px;
-    background-color: var(--color-paper-2);
-    color: var(--color-ink-muted);
-    font-size: 0.9rem;
 }
 
-.tf-nsfw-notice a {
-    color: var(--color-link);
-}
-
-.tf-nsfw-banner {
+/* Comunidade +18 para quem não pode ver (fx-banner de perigo). */
+#nsfwBanner {
     margin: 0 0 18px;
-    padding: 14px 16px;
-    border-radius: 8px;
-    background-color: var(--color-danger-surface);
-    border: 1px solid var(--color-danger-strong);
-    color: var(--color-danger-text-soft);
 }
 
-.tf-nsfw-banner a {
-    color: var(--color-text);
-}
-
-/* ----- Rascunho restaurado no modal de post ----- */
-.modal-draft {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: var(--space-3);
-    margin-bottom: var(--space-3);
-    padding: var(--space-2) var(--space-3);
-    border-radius: var(--radius-md);
-    background-color: var(--color-warning-surface);
-    color: var(--color-warning-ink);
-    font-size: 0.9rem;
-}
-
-.modal-draft-discard {
-    min-height: 44px;
-    padding: 0 var(--space-2);
-    border: none;
-    background: none;
-    color: inherit;
-    font: inherit;
-    font-weight: 700;
-    text-decoration: underline;
-    cursor: pointer;
-}
-
-/* Edição de comentário dentro do cartão branco (ver nota no chat-widget.css). */
-.tf-edit-input {
-    background-color: var(--color-paper);
-    color: var(--color-ink);
-}

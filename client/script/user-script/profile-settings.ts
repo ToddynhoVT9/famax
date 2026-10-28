@@ -81,7 +81,7 @@ const socialCount = $("socialCount");
 
 function setToggle(button: HTMLButtonElement | null, on: boolean): void {
     if (!button) return;
-    button.classList.toggle("on", on);
+    // O desenho do Switch (fx-switch) lê o aria-checked.
     button.setAttribute("aria-checked", String(on));
     button.disabled = false;
 }
@@ -333,19 +333,19 @@ const openModals = new Map<HTMLElement, () => void>();
 
 function openModal(overlay: HTMLElement | null, focus?: HTMLElement | null): void {
     if (!overlay || openModals.has(overlay)) return;
-    overlay.classList.add("show");
+    overlay.hidden = false;
     const box = overlay.querySelector<HTMLElement>('[role="dialog"]') ?? overlay;
     openModals.set(overlay, trapFocus(box, { onEscape: () => closeModal(overlay), initialFocus: focus }));
 }
 
 function closeModal(overlay: HTMLElement | null): void {
     if (!overlay) return;
-    overlay.classList.remove("show");
+    overlay.hidden = true;
     openModals.get(overlay)?.();
     openModals.delete(overlay);
 }
 
-for (const overlay of document.querySelectorAll<HTMLElement>(".modal-overlay")) {
+for (const overlay of document.querySelectorAll<HTMLElement>(".fx-overlay")) {
     // Clique fora da caixa e botões "Cancelar" fecham.
     overlay.addEventListener("click", (event) => {
         const target = event.target as Element;
@@ -477,7 +477,7 @@ const bioCounter = $("sobreBioCounter");
 const sobreError = $("sobreError");
 const sobreSave = $<HTMLButtonElement>("btnSobreSave");
 const genderButtons = Array.from(
-    document.querySelectorAll<HTMLButtonElement>("#generoOptionsContainer .btn-genero"),
+    document.querySelectorAll<HTMLButtonElement>('#generoOptionsContainer [role="radio"]'),
 );
 
 let selectedGender = "";
@@ -486,7 +486,6 @@ function selectGender(value: string): void {
     selectedGender = value;
     for (const button of genderButtons) {
         const on = button.dataset.gender === value;
-        button.classList.toggle("selected", on);
         button.setAttribute("aria-checked", String(on));
     }
 }
@@ -544,7 +543,7 @@ function socialRow(link: SocialLink = { platform: "site", url: "" }): HTMLElemen
     row.className = "social-row";
 
     const select = document.createElement("select");
-    select.className = "settings-input social-platform";
+    select.className = "fx-input social-platform";
     select.setAttribute("aria-label", "Rede social");
     for (const [value, label] of Object.entries(SOCIAL_PLATFORM_LABELS)) {
         select.append(new Option(label, value, false, value === link.platform));
@@ -552,7 +551,7 @@ function socialRow(link: SocialLink = { platform: "site", url: "" }): HTMLElemen
 
     const url = document.createElement("input");
     url.type = "url";
-    url.className = "settings-input social-url";
+    url.className = "fx-input social-url";
     url.placeholder = "https://";
     url.maxLength = 500;
     url.value = link.url;
@@ -560,7 +559,7 @@ function socialRow(link: SocialLink = { platform: "site", url: "" }): HTMLElemen
 
     const remove = document.createElement("button");
     remove.type = "button";
-    remove.className = "btn-modal social-remove";
+    remove.className = "fx-btn fx-btn--secondary social-remove";
     remove.textContent = "Remover";
     remove.addEventListener("click", () => {
         row.remove();

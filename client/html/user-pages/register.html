@@ -20,39 +20,39 @@
         <h1 class="register-title">Criar uma conta</h1>
         
         <div class="form-group">
-            <label class="field-label" for="email">E-mail</label>
-            <input type="email" id="email" class="input-field" placeholder="E-mail" autocomplete="email">
-            <label class="field-label" for="password">Senha</label>
-            <input type="password" id="password" class="input-field" placeholder="Senha" autocomplete="new-password">
-            <label class="field-label" for="confirm-password">Confirmar senha</label>
-            <input type="password" id="confirm-password" class="input-field" placeholder="Confirmar senha" autocomplete="new-password">
-            <label class="field-label" for="username">Nome de usuário</label>
-            <input type="text" id="username" class="input-field" placeholder="Nome de usuário" autocomplete="username">
-            <label class="field-label" for="display-name">Nome de exibição</label>
-            <input type="text" id="display-name" class="input-field" placeholder="Nome de exibição" autocomplete="nickname">
+            <label class="fx-label" for="email">E-mail</label>
+            <input type="email" id="email" class="fx-input" placeholder="E-mail" autocomplete="email">
+            <label class="fx-label" for="password">Senha</label>
+            <input type="password" id="password" class="fx-input" placeholder="Senha" autocomplete="new-password">
+            <label class="fx-label" for="confirm-password">Confirmar senha</label>
+            <input type="password" id="confirm-password" class="fx-input" placeholder="Confirmar senha" autocomplete="new-password">
+            <label class="fx-label" for="username">Nome de usuário</label>
+            <input type="text" id="username" class="fx-input" placeholder="Nome de usuário" autocomplete="username">
+            <label class="fx-label" for="display-name">Nome de exibição</label>
+            <input type="text" id="display-name" class="fx-input" placeholder="Nome de exibição" autocomplete="nickname">
             
-            <div class="checkbox-container">
-                <input type="checkbox" id="private-checkbox">
-                <label for="private-checkbox">Perfil privado</label>
+            <div class="register-check">
+                <label class="fx-check"><input type="checkbox" id="private-checkbox"> Perfil privado</label>
             </div>
             <p class="checkbox-hint">Perfis privados só aparecem na busca para quem já conversa com você. Dá para mudar depois.</p>
 
-            <div class="checkbox-container">
-                <input type="checkbox" id="terms-checkbox">
-                <label for="terms-checkbox">Aceitar</label>
+            <div class="register-check">
+                <label class="fx-check"><input type="checkbox" id="terms-checkbox"> Aceitar</label>
                 <button type="button" class="terms-text" id="termsTrigger" aria-haspopup="dialog">termos de usuário</button>
             </div>
             
-            <button class="btn-register" id="registerButton">Cadastrar</button>
+            <button class="fx-btn fx-btn--chrome" id="registerButton">Cadastrar</button>
             <div id="register-error" class="error-message" role="alert" hidden></div>
         </div>
     </main>
 
     <!--Termos de Uso -->
-    <div class="modal-overlay" id="terms-modal" hidden>
-        <div class="modal-content" role="dialog" aria-modal="true" aria-labelledby="terms-modal-title" tabindex="-1">
-            <button type="button" class="close-btn" id="closeModalButton" aria-label="Fechar termos">&times;</button>
-            <h2 class="modal-title" id="terms-modal-title">Termos de Uso e Condições</h2>
+    <div class="fx-overlay" id="terms-modal" hidden>
+        <div class="fx-dialog fx-dialog--form" role="dialog" aria-modal="true" aria-labelledby="terms-modal-title" tabindex="-1">
+            <div class="fx-dialog-head">
+                <h2 class="fx-dialog-title" id="terms-modal-title">Termos de Uso e Condições</h2>
+                <button type="button" class="fx-btn fx-btn--icon" id="closeModalButton" aria-label="Fechar termos">&times;</button>
+            </div>
             <a href="../legal/terms.html" class="terms-full-page">Abrir em página inteira</a>
             <div class="modal-body">
                 <h3>1. Aceitação dos Termos</h3>

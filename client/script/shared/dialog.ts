@@ -35,23 +35,23 @@ export function confirmDialog(options: ConfirmOptions): Promise<boolean> {
     return new Promise((resolve) => {
         const previousFocus = document.activeElement as HTMLElement | null;
 
-        const overlay = el("div", "dialog-overlay");
-        const box = el("div", "dialog-box");
+        const overlay = el("div", "fx-overlay fx-overlay--confirm");
+        const box = el("div", "fx-dialog");
         box.setAttribute("role", "alertdialog");
         box.setAttribute("aria-modal", "true");
 
-        const title = el("h2", "dialog-title", options.title);
+        const title = el("h2", "fx-dialog-title", options.title);
         title.id = `dialog-title-${Date.now()}`;
         box.setAttribute("aria-labelledby", title.id);
 
-        const message = el("p", "dialog-message", options.message);
+        const message = el("p", "fx-dialog-text", options.message);
 
-        const actions = el("div", "dialog-actions");
-        const cancel = el("button", "dialog-btn", options.cancelLabel ?? "Cancelar");
+        const actions = el("div", "fx-dialog-actions");
+        const cancel = el("button", "fx-btn fx-btn--secondary", options.cancelLabel ?? "Cancelar");
         cancel.type = "button";
         const confirm = el(
             "button",
-            `dialog-btn dialog-btn--primary${options.danger ? " dialog-btn--danger" : ""}`,
+            `fx-btn ${options.danger ? "fx-btn--danger" : "fx-btn--primary"}`,
             options.confirmLabel ?? "Confirmar",
         );
         confirm.type = "button";
@@ -61,11 +61,13 @@ export function confirmDialog(options: ConfirmOptions): Promise<boolean> {
 
         let input: HTMLInputElement | null = null;
         if (options.requireText !== undefined) {
-            const label = el("label", "dialog-label");
-            label.append("Digite ");
-            label.append(el("strong", "", options.requireText));
-            label.append(" para confirmar:");
-            input = el("input", "dialog-input");
+            const label = el("label", "fx-field");
+            const caption = el("span", "fx-label");
+            caption.append("Digite ");
+            caption.append(el("strong", "", options.requireText));
+            caption.append(" para confirmar:");
+            label.append(caption);
+            input = el("input", "fx-input");
             input.type = "text";
             input.autocomplete = "off";
             label.append(input);

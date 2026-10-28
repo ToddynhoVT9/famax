@@ -15,16 +15,10 @@
     width: min(320px, 100%);
 }
 
-/* Aviso vindo de outra tela (ex.: senha redefinida). */
-.login-notice {
+/* Aviso vindo de outra tela (fx-banner de sucesso, ex.: senha redefinida). */
+#login-notice {
     width: 100%;
     margin-bottom: 15px;
-    padding: 10px 12px;
-    border-radius: 6px;
-    background-color: rgba(127, 211, 138, 0.15);
-    color: var(--color-success-text);
-    font-size: 0.9rem;
-    text-align: center;
 }
 
 .forgot-password {
@@ -37,29 +31,6 @@
 
 .forgot-password:hover {
     text-decoration: underline;
-}
-
-.btn-login {
-    width: 100%;
-    padding: 14px;
-    border: none;
-    border-radius: 6px;
-    background-color: var(--color-chrome);
-    color: var(--color-on-chrome);
-    font-size: 0.95rem;
-    cursor: pointer;
-    transition: background-color 0.2s ease, transform 0.1s ease;
-    text-align: center;
-    box-sizing: border-box;
-    font-family: inherit;
-}
-
-.btn-login:active {
-    transform: scale(0.98);
-}
-
-.btn-login:hover {
-    background-color: var(--color-chrome-hover);
 }
 
 /* ----- Passos do login (verificação em duas etapas) ----- */
@@ -87,12 +58,7 @@
     color: var(--color-text-faint);
 }
 
-.login-link-btn {
+#mfaBack {
     margin-top: 10px;
-    background: none;
-    border: none;
-    color: var(--color-text-soft);
-    text-decoration: underline;
-    cursor: pointer;
-    font: inherit;
 }
+

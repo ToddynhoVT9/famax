@@ -48,27 +48,6 @@
     height: 75px;
 }
 
-.btn-edit-profile {
-    background-color: transparent;
-    color: var(--color-text);
-    border: 1px solid var(--color-text);
-    padding: 10px 20px;
-    border-radius: 20px;
-    font-size: 1rem;
-    font-weight: 600;
-    text-decoration: none;
-    cursor: pointer;
-    transition: background-color 0.2s, color 0.2s;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-}
-
-.btn-edit-profile:hover {
-    background-color: var(--color-text);
-    color: var(--color-bg);
-}
-
 /* "⋯" do perfil de outra pessoa (Denunciar) */
 .profile-header-actions {
     gap: 10px;
@@ -79,51 +58,12 @@
     position: relative;
 }
 
-.profile-more-btn {
-    background: transparent;
-    color: var(--color-text);
-    border: 1px solid var(--color-text);
-    border-radius: 20px;
-    padding: 8px 16px;
-    font-size: 1.1rem;
-    line-height: 1;
-    cursor: pointer;
-}
-
-.profile-more-btn:hover,
-.profile-more-btn[aria-expanded="true"] {
-    background-color: var(--color-paper);
-    color: var(--color-ink);
-}
-
-.profile-more-menu {
+/* O menu (fx-menu) abre sob o "⋯", alinhado à direita. */
+.profile-more > .fx-menu {
     position: absolute;
     right: 0;
     top: calc(100% + 6px);
-    min-width: 180px;
-    background-color: var(--color-paper);
-    border-radius: 6px;
-    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.25);
-    padding: 6px 0;
-    z-index: 50;
-}
-
-.profile-more-item {
-    display: block;
-    width: 100%;
-    background: none;
-    border: none;
-    text-align: left;
-    padding: 9px 14px;
-    font: inherit;
-    font-size: 0.95rem;
-    color: var(--color-danger);
-    cursor: pointer;
-}
-
-.profile-more-item:hover,
-.profile-more-item:focus-visible {
-    background-color: var(--color-paper-2);
+    z-index: var(--z-popover);
 }
 
 /* INFORMAÇÕES DO USUÁRIO */
@@ -163,44 +103,9 @@
     font-weight: 700;
 }
 
-/* ABAS DE NAVEGAÇÃO DO PERFIL */
+/* ABAS DE NAVEGAÇÃO DO PERFIL (fx-tabs) */
 .profile-tabs {
-    display: flex;
-    border-bottom: 1px solid var(--color-border);
     margin-top: 10px;
-}
-
-.tab-btn {
-    background: transparent;
-    border: none;
-    color: var(--color-text-faint);
-    padding: 15px 30px;
-    font-size: 1.1rem;
-    font-weight: 600;
-    cursor: pointer;
-    position: relative;
-    transition: color 0.2s;
-}
-
-.tab-btn:hover {
-    color: var(--color-text);
-    background-color: rgba(255, 255, 255, 0.05);
-}
-
-.tab-btn.active {
-    color: var(--color-text);
-}
-
-.tab-btn.active::after {
-    content: '';
-    position: absolute;
-    bottom: 0;
-    left: 50%;
-    transform: translateX(-50%);
-    width: 60%;
-    height: 4px;
-    background-color: var(--color-paper);
-    border-radius: 4px 4px 0 0;
 }
 
 /* FEED DO PERFIL */
@@ -208,13 +113,9 @@
     padding: 30px 0;
 }
 
-.empty-state {
-    text-align: center;
-    padding: 50px 20px;
-    color: var(--color-text-faint);
-    font-size: 1.2rem;
-    background-color: rgba(255, 255, 255, 0.02);
-    border-radius: 8px;
+/* Aviso de perfil privado e lista vazia (fx-empty): o texto vem direto no bloco. */
+.perfil-container .fx-empty {
+    color: var(--color-text-muted);
 }
 
 /* ----- DADOS VINDOS DA API (profile-view.ts) ----- */
@@ -354,26 +255,7 @@
     color: var(--color-text-faint);
 }
 
-.btn-load-more {
-    display: block;
-    margin: 20px auto 0;
-    padding: 10px 24px;
-    background: none;
-    border: 1px solid var(--color-text);
-    border-radius: 20px;
-    color: var(--color-text);
-    font: inherit;
-    cursor: pointer;
-}
 
-.btn-load-more:hover {
-    background-color: rgba(255, 255, 255, 0.1);
-}
-
-.btn-load-more:disabled {
-    opacity: 0.6;
-    cursor: default;
-}
 
 #privateNotice {
     margin-top: 20px;

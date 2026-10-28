@@ -78,7 +78,7 @@ if (
     document.getElementById("reactivateButton")?.remove();
     const button = document.createElement("button");
     button.id = "reactivateButton";
-    button.className = "btn-login";
+    button.className = "fx-btn fx-btn--chrome fx-btn--block";
     button.textContent = "Reativar minha conta";
     errorElement.after(button);
     button.addEventListener("click", async () => {
@@ -123,7 +123,7 @@ if (
           "Gere novos códigos nas configurações se estiverem acabando.";
         notice.hidden = false;
         const next = document.createElement("a");
-        next.className = "btn-login";
+        next.className = "fx-btn fx-btn--chrome fx-btn--block";
         next.href = afterLoginUrl();
         next.textContent = "Continuar";
         codeStep.replaceChildren(next);

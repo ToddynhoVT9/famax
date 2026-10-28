@@ -66,13 +66,13 @@ if (
 ) {
     const showError = (message: string): void => {
         formError.textContent = message;
-        formError.classList.add("show");
+        formError.hidden = false;
         formError.scrollIntoView({ behavior: "smooth", block: "nearest" });
     };
 
     const clearError = (): void => {
         formError.textContent = "";
-        formError.classList.remove("show");
+        formError.hidden = true;
     };
 
     // --- Categorias -------------------------------------------------------

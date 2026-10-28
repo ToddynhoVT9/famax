@@ -2,8 +2,9 @@
  * FAMAX — Modal de criar/editar post (Shared)
  *
  * Usado pela página da comunidade (criar e editar) e pela página do post
- * (editar). O modal é montado aqui, não copiado em cada HTML; os estilos
- * (.modal-*) estão em community.css, que as duas páginas carregam.
+ * (editar). O modal é montado aqui, não copiado em cada HTML, com o Dialog,
+ * o Field e o Button do components.css; o que é só desta janela (.modal-*)
+ * está em community.css, que as duas páginas carregam.
  *
  * Imagens (até 4): escolhidas aqui, mas só enviadas DEPOIS que o post foi
  * salvo — POST /posts/:id/images precisa do post existindo, e assim um
@@ -86,34 +87,35 @@ export function openPostEditor(options: PostEditorOptions): Promise<Post | null>
     const { post } = options;
 
     return new Promise((resolve) => {
-        const overlay = el("div", "modal-overlay show");
-        const form = el("form", "modal-box");
+        const overlay = el("div", "fx-overlay");
+        const form = el("form", "fx-dialog fx-dialog--form");
         form.noValidate = true;
         form.setAttribute("role", "dialog");
         form.setAttribute("aria-modal", "true");
         form.setAttribute("aria-labelledby", "postEditorTitle");
 
-        const header = el("div", "modal-header");
-        const title = el("h2", "modal-title", post ? "Editar discussão" : "Criar nova discussão");
+        const header = el("div", "fx-dialog-head");
+        const title = el("h2", "fx-dialog-title", post ? "Editar discussão" : "Criar nova discussão");
         title.id = "postEditorTitle";
-        const close = el("button", "modal-close", "×");
+        const close = el("button", "fx-btn fx-btn--icon", "×");
         close.type = "button";
         close.setAttribute("aria-label", "Fechar");
         header.append(title, close);
 
-        const error = el("div", "modal-error");
+        const error = el("div", "fx-banner fx-banner--danger");
         error.setAttribute("role", "alert");
+        error.hidden = true;
 
-        const titleLabel = el("label", "modal-label", "Título do Post");
-        const titleInput = el("input", "modal-input");
+        const titleLabel = el("label", "fx-label", "Título do Post");
+        const titleInput = el("input", "fx-input");
         titleInput.maxLength = 200;
         titleInput.placeholder = "Sobre o que você quer falar?";
         titleInput.value = post?.title ?? "";
         titleInput.id = "postEditorTitleInput";
         titleLabel.htmlFor = titleInput.id;
 
-        const categoryLabel = el("label", "modal-label modal-label--spaced", "Categoria");
-        const categorySelect = el("select", "modal-input modal-select");
+        const categoryLabel = el("label", "fx-label", "Categoria");
+        const categorySelect = el("select", "fx-input");
         categorySelect.id = "postEditorCategory";
         categoryLabel.htmlFor = categorySelect.id;
         categorySelect.append(new Option("Sem categoria", ""));
@@ -122,8 +124,8 @@ export function openPostEditor(options: PostEditorOptions): Promise<Post | null>
         }
         categorySelect.value = post?.communityCategoryId ?? "";
 
-        const contentLabel = el("label", "modal-label modal-label--spaced", "Conteúdo");
-        const contentInput = el("textarea", "modal-textarea");
+        const contentLabel = el("label", "fx-label", "Conteúdo");
+        const contentInput = el("textarea", "fx-input post-editor-content");
         contentInput.id = "postEditorContent";
         contentLabel.htmlFor = contentInput.id;
         contentInput.maxLength = 10_000;
@@ -131,16 +133,16 @@ export function openPostEditor(options: PostEditorOptions): Promise<Post | null>
         contentInput.value = post?.content ?? "";
         const contentHint = el(
             "p",
-            "modal-hint",
+            "fx-hint",
             "Aceita markdown: **negrito**, *itálico*, [link](https://...), listas, `código`, > citação, ||spoiler|| e @menções.",
         );
 
         // ----- +18 (só para quem tem conteúdo adulto liberado) -----
-        const nsfwLabel = el("label", "modal-checkbox");
+        const nsfwLabel = el("label", "fx-check");
         const nsfwInput = el("input");
         nsfwInput.type = "checkbox";
         nsfwInput.checked = post?.postIsNsfw ?? false;
-        nsfwLabel.append(nsfwInput, " Conteúdo adulto (+18): só quem tem conteúdo adulto liberado vê");
+        nsfwLabel.append(nsfwInput, "Conteúdo adulto (+18): só quem tem conteúdo adulto liberado vê");
         nsfwLabel.hidden = !post?.postIsNsfw;
         void getMe()
             .then((me) => {
@@ -149,14 +151,14 @@ export function openPostEditor(options: PostEditorOptions): Promise<Post | null>
             .catch(() => {});
 
         // ----- Imagens -----
-        const imagesLabel = el("span", "modal-label modal-label--spaced", `Imagens (até ${MAX_POST_IMAGES})`);
+        const imagesLabel = el("span", "fx-label", `Imagens (até ${MAX_POST_IMAGES})`);
         const imagesList = el("div", "modal-images");
         const fileInput = el("input", "visually-hidden");
         fileInput.type = "file";
         fileInput.accept = IMAGE_TYPES.join(",");
         fileInput.multiple = true;
         fileInput.id = "postEditorImages";
-        const addImages = el("label", "modal-btn-secondary modal-add-images", "Adicionar imagens");
+        const addImages = el("label", "fx-btn fx-btn--secondary modal-add-images", "Adicionar imagens");
         addImages.htmlFor = fileInput.id;
         addImages.tabIndex = 0;
         addImages.setAttribute("role", "button");
@@ -225,20 +227,20 @@ export function openPostEditor(options: PostEditorOptions): Promise<Post | null>
         });
         renderImages();
 
-        const actions = el("div", "modal-actions");
-        const cancel = el("button", "modal-btn-secondary", "Cancelar");
+        const actions = el("div", "fx-dialog-actions");
+        const cancel = el("button", "fx-btn fx-btn--secondary", "Cancelar");
         cancel.type = "button";
-        const submit = el("button", "modal-btn-primary", post ? "Salvar alterações" : "Publicar Post");
+        const submit = el("button", "fx-btn fx-btn--primary", post ? "Salvar alterações" : "Publicar Post");
         submit.type = "submit";
         actions.append(cancel, submit);
 
         // ----- Rascunho (só post novo) -----
-        const draftBar = el("div", "modal-draft");
+        const draftBar = el("div", "fx-banner fx-banner--warning");
         draftBar.hidden = true;
         draftBar.setAttribute("role", "status");
-        const discardDraft = el("button", "modal-draft-discard", "Descartar rascunho");
+        const discardDraft = el("button", "fx-banner-link", "Descartar rascunho");
         discardDraft.type = "button";
-        draftBar.append(el("span", "", "Rascunho restaurado."), discardDraft);
+        draftBar.append(el("span", "fx-banner-text", "Rascunho restaurado."), discardDraft);
 
         const draft = post ? null : readDraft(options.communityId);
         if (draft) {
@@ -266,22 +268,22 @@ export function openPostEditor(options: PostEditorOptions): Promise<Post | null>
         categorySelect.addEventListener("change", saveDraft);
         nsfwInput.addEventListener("change", saveDraft);
 
+        // Field: rótulo em cima, campo embaixo (o contador entra logo depois do campo).
+        const field = (...children: HTMLElement[]): HTMLDivElement => {
+            const wrap = el("div", "fx-field");
+            wrap.append(...children);
+            return wrap;
+        };
+
         form.append(
             header,
             draftBar,
             error,
-            titleLabel,
-            titleInput,
-            categoryLabel,
-            categorySelect,
-            contentLabel,
-            contentInput,
-            contentHint,
+            field(titleLabel, titleInput),
+            field(categoryLabel, categorySelect),
+            field(contentLabel, contentInput, contentHint),
             nsfwLabel,
-            imagesLabel,
-            imagesList,
-            fileInput,
-            addImages,
+            field(imagesLabel, imagesList, fileInput, addImages),
             actions,
         );
         overlay.append(form);
@@ -305,7 +307,7 @@ export function openPostEditor(options: PostEditorOptions): Promise<Post | null>
 
         const showError = (message: string | null): void => {
             error.textContent = message ?? "";
-            error.classList.toggle("show", message !== null);
+            error.hidden = message === null;
         };
 
         let releaseFocus: () => void = () => {};

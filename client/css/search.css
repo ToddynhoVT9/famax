@@ -14,39 +14,10 @@
     overflow-wrap: anywhere;
 }
 
+/* Abas de tipo (fx-tabs): quebram em linhas até o prompt 04 (r-tabs). */
 .search-tabs {
-    display: flex;
-    gap: 6px;
     flex-wrap: wrap;
-    border-bottom: 2px solid var(--color-border);
     margin-bottom: 20px;
-}
-
-.search-tab {
-    background: none;
-    border: none;
-    border-bottom: 2px solid transparent;
-    margin-bottom: -2px;
-    padding: 10px 14px;
-    color: var(--color-text-faint);
-    font: inherit;
-    font-size: 1.05rem;
-    cursor: pointer;
-}
-
-.search-tab:hover {
-    color: var(--color-text);
-}
-
-.search-tab.active {
-    color: var(--color-text);
-    border-bottom-color: var(--color-text);
-    font-weight: 600;
-}
-
-.search-tab:focus-visible {
-    outline: 2px solid var(--color-text);
-    outline-offset: 2px;
 }
 
 .result-section {
@@ -146,21 +117,6 @@
     gap: 16px;
     margin-top: 20px;
     flex-wrap: wrap;
-}
-
-.search-pager-btn {
-    background: none;
-    border: 1px solid var(--color-text);
-    border-radius: 20px;
-    padding: 8px 18px;
-    color: var(--color-text);
-    font: inherit;
-    cursor: pointer;
-}
-
-.search-pager-btn:disabled {
-    opacity: 0.4;
-    cursor: default;
 }
 
 .search-pager-info {

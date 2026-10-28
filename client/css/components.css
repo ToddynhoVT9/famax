@@ -1,0 +1,468 @@
+/* ===================================
+   FAMAX — Componentes compartilhados (design system)
+   Button, Field, Switch, Badge, Chip, Tabs, Menu, Dialog, Toast, Banner,
+   Avatar, EmptyState e Skeleton, com as classes fx- do bundle.css.
+   Importado pelo global.css: vale em todas as páginas, antes do layout.css
+   e do CSS de cada página. Só tokens: nenhuma cor solta.
+
+   As prévias do design system desenham estados com classes (.is-hover,
+   .is-focus, .is-invalid); aqui eles são :hover, :focus-visible e
+   [aria-invalid="true"]. O anel de foco é o do global.css (:focus-visible).
+   =================================== */
+
+/* ----- Button ----- */
+.fx-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--space-2);
+    min-height: var(--touch-target);
+    padding: 0 var(--space-5);
+    border: 1px solid transparent;
+    border-radius: var(--radius-md);
+    font: inherit;
+    font-size: var(--text-md);
+    font-weight: var(--weight-semibold);
+    line-height: 1.5rem;
+    text-decoration: none;
+    cursor: pointer;
+    white-space: nowrap;
+}
+
+.fx-btn--pill { border-radius: var(--radius-pill); }
+.fx-btn--sm { min-height: 32px; padding: 0 var(--space-3); font-size: var(--text-sm); line-height: 1.25rem; }
+/* Na largura do contêiner (formulários de acesso, "Carregar mais" no celular). */
+.fx-btn--block { display: flex; width: 100%; }
+
+.fx-btn--primary { background: var(--color-action); color: var(--color-on-action); }
+.fx-btn--primary:hover { background: var(--color-action-hover); }
+
+/* No header (color-chrome): o primário é papel, o secundário é contornado. */
+.fx-btn--on-chrome { background: var(--color-paper); color: var(--color-ink); }
+.fx-btn--on-chrome:hover { background: var(--color-paper-2); }
+.fx-btn--on-chrome-outline { background: transparent; color: var(--color-on-chrome); border-color: var(--color-on-chrome); font-weight: var(--weight-regular); }
+.fx-btn--on-chrome-outline:hover { background: var(--color-chrome-hover); }
+
+.fx-btn--secondary { background: var(--color-surface-5); color: var(--color-text); border-color: var(--color-border-strong); font-weight: var(--weight-regular); }
+.fx-btn--secondary:hover { background: var(--color-surface-6); }
+
+.fx-btn--outline { background: transparent; color: var(--color-text); border-color: var(--color-text); }
+.fx-btn--outline:hover { background: var(--color-tint-page); }
+
+.fx-btn--chrome { background: var(--color-chrome); color: var(--color-on-chrome); font-weight: var(--weight-regular); }
+.fx-btn--chrome:hover { background: var(--color-chrome-hover); }
+
+.fx-btn--warm { background: var(--color-chrome-warm); color: var(--color-on-chrome); font-weight: var(--weight-regular); }
+.fx-btn--warm:hover { background: var(--color-chrome-warm-hover); }
+
+.fx-btn--danger { background: var(--color-danger); color: var(--color-on-accent); }
+.fx-btn--danger:hover { background: var(--color-danger-strong); }
+
+/* Dentro de um cartão branco. O hover do botão escuro escurece, nunca clareia. */
+.fx-btn--dark { background: var(--color-dark-2); color: var(--color-on-accent); }
+.fx-btn--dark:hover { background: var(--color-dark-1); }
+.fx-btn--outline-ink { background: transparent; color: var(--color-ink-soft); border-color: var(--color-paper-border-strong); font-weight: var(--weight-regular); }
+.fx-btn--outline-ink:hover { background: var(--color-paper-2); }
+.fx-btn--outline-danger { background: transparent; color: var(--color-danger); border-color: var(--color-danger); font-weight: var(--weight-regular); }
+.fx-btn--outline-danger:hover { background: var(--color-paper-2); }
+
+.fx-btn--link { min-height: auto; padding: 0; background: none; color: var(--color-text); font-weight: var(--weight-regular); text-decoration: underline; text-underline-offset: 3px; }
+
+.fx-btn--icon { width: var(--touch-target); padding: 0; border-radius: var(--radius-circle); background: transparent; color: inherit; font-size: var(--text-xl); font-weight: var(--weight-regular); }
+.fx-btn--icon:hover, .fx-btn--icon[aria-expanded="true"] { background: var(--color-tint-chrome); }
+/* Dentro de um cartão branco o tint branco não aparece. */
+.fx-btn--icon-paper:hover, .fx-btn--icon-paper[aria-expanded="true"] { background: var(--color-paper-2); }
+
+/* Confirmação feita que dá para desfazer ("✓ Vou"). */
+.fx-btn--success { background: var(--color-success); color: var(--color-on-accent); border-color: var(--color-success); }
+/* Sobre foto: iguais nos dois temas. */
+.fx-btn--on-photo { background: var(--color-scrim); color: var(--color-on-chrome); border-color: var(--color-on-chrome); font-weight: var(--weight-regular); }
+
+.fx-btn:disabled, .fx-btn[aria-disabled="true"] { opacity: var(--opacity-disabled); cursor: default; }
+
+/* ----- Field ----- */
+.fx-field { display: flex; flex-direction: column; gap: var(--space-1); min-width: 0; flex: 1; }
+.fx-label { font-size: var(--text-sm); line-height: 1.25rem; font-weight: var(--weight-semibold); color: var(--color-text-soft); }
+
+.fx-input {
+    width: 100%;
+    min-height: var(--touch-target);
+    padding: var(--space-3) var(--space-4);
+    border: 1px solid var(--color-border-strong);
+    border-radius: var(--radius-md);
+    background: var(--color-control);
+    color: var(--color-text);
+    font: inherit;
+    font-size: var(--text-md);
+    line-height: 1.5rem;
+}
+
+.fx-input::placeholder { color: var(--color-text-soft); }
+.fx-input:focus { background: var(--color-control-hover); }
+.fx-input[aria-invalid="true"], .fx-input.is-invalid { border-color: var(--color-danger-text); }
+textarea.fx-input { min-height: 96px; resize: vertical; }
+
+.fx-hint { font-size: var(--text-sm); line-height: 1.25rem; color: var(--color-text-muted); }
+.fx-error { font-size: var(--text-sm); line-height: 1.25rem; color: var(--color-danger-text); }
+
+/* Dentro de um cartão branco. */
+.fx-input--paper { background: var(--color-paper); color: var(--color-ink); border-color: var(--color-paper-border-strong); }
+.fx-input--paper:focus { background: var(--color-paper); }
+.fx-input--paper::placeholder { color: var(--color-ink-muted); }
+.fx-input--pill { border-radius: var(--radius-pill); }
+
+/* Tamanho sm: o select da barra do feed ("Ordenar por") e os campos do chat. */
+.fx-input--sm { min-height: 32px; padding: 0 var(--space-3); font-size: var(--text-sm); line-height: 1.25rem; width: auto; }
+
+.fx-compose { display: flex; align-items: center; gap: var(--space-2); }
+.fx-counter { font-size: var(--text-xs); line-height: 1rem; color: inherit; font-variant-numeric: tabular-nums; }
+
+/* Caixa de seleção: o <label> envolve a caixa. color-action no lugar de
+   color-ink-soft: a caixa marcada #333 sumia no fundo escuro (1.3:1). */
+.fx-check { display: inline-flex; align-items: center; gap: var(--space-2); color: var(--color-text-soft); cursor: pointer; }
+.fx-check input { width: 20px; height: 20px; margin: 0; flex-shrink: 0; accent-color: var(--color-action); }
+
+/* Abaixo de 600px, menos de 16px no campo faz o iPhone dar zoom na página ao focar. */
+@media (max-width: 599px) {
+    .fx-input { font-size: max(16px, 1rem); }
+}
+
+/* ----- Switch ----- */
+.fx-lines { background: var(--color-surface); border-radius: var(--radius-lg); padding: 0 var(--space-5); }
+.fx-line { display: flex; align-items: center; justify-content: space-between; gap: var(--space-4); min-height: 56px; border-bottom: 1px solid var(--color-border); }
+.fx-line:last-child { border-bottom: none; }
+
+/* A borda é o que passa de 3:1 contra o fundo: fica nos dois estados. */
+.fx-switch {
+    position: relative;
+    flex-shrink: 0;
+    width: 52px;
+    height: 28px;
+    padding: 0;
+    border: 1px solid var(--color-border-strong);
+    border-radius: var(--radius-pill);
+    background: transparent;
+    cursor: pointer;
+    transition: background-color 0.3s;
+}
+
+.fx-switch::after {
+    content: "";
+    position: absolute;
+    top: 2px;
+    left: 2px;
+    width: 22px;
+    height: 22px;
+    border-radius: var(--radius-circle);
+    background: var(--color-text-muted);
+    transition: left 0.3s, background-color 0.3s;
+}
+
+.fx-switch[aria-checked="true"] { background: var(--color-success); }
+.fx-switch[aria-checked="true"]::after { left: 26px; background: var(--color-paper); }
+.fx-switch:disabled { opacity: var(--opacity-disabled); cursor: default; }
+
+/* ----- Badge ----- */
+.fx-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-1);
+    padding: 2px var(--space-2);
+    border-radius: var(--radius-pill);
+    font-size: var(--text-xs);
+    line-height: 1rem;
+    font-weight: var(--weight-bold);
+    background: var(--color-paper-2);
+    color: var(--color-ink-soft);
+    white-space: nowrap;
+}
+
+.fx-badge--warning { background: var(--color-warning-surface); color: var(--color-warning-ink); }
+.fx-badge--info { background: var(--color-info-surface); color: var(--color-link); }
+.fx-badge--success { background: var(--color-success-surface); color: var(--color-success-strong); }
+.fx-badge--danger-solid { background: var(--color-danger-strong); color: var(--color-on-accent); }
+.fx-badge--success-solid { background: var(--color-success); color: var(--color-on-accent); }
+.fx-badge--owner { background: var(--color-gold); color: var(--color-on-accent); }
+.fx-badge--moderator { background: var(--color-success-strong); color: var(--color-on-accent); }
+.fx-badge--warning-solid { background: var(--color-warning-strong); color: var(--color-on-accent); }
+/* Sobre o chrome (o "Em breve" da sidebar e das configurações): só o contorno. */
+.fx-badge--outline { background: transparent; color: inherit; border: 1px solid currentColor; font-weight: var(--weight-regular); }
+
+.fx-counter-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 18px;
+    height: 18px;
+    padding: 0 5px;
+    border-radius: var(--radius-pill);
+    background: var(--color-danger);
+    color: var(--color-on-accent);
+    font-size: var(--text-xs);
+    line-height: 1;
+    font-weight: var(--weight-bold);
+    font-variant-numeric: tabular-nums;
+}
+
+/* ----- Chip ----- */
+.fx-chip {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 32px;
+    padding: 0 var(--space-4);
+    border: 1px solid var(--color-border-strong);
+    border-radius: var(--radius-pill);
+    background: transparent;
+    color: var(--color-text-soft);
+    font: inherit;
+    font-size: var(--text-sm);
+    line-height: 1.25rem;
+    white-space: nowrap;
+    text-decoration: none;
+    cursor: pointer;
+}
+
+.fx-chip:hover { border-color: var(--color-text); color: var(--color-text); }
+.fx-chip[aria-pressed="true"], .fx-chip[aria-selected="true"], .fx-chip[aria-checked="true"], .fx-chip[aria-current] { background: var(--color-paper); border-color: var(--color-text); color: var(--color-ink); font-weight: var(--weight-semibold); }
+
+.fx-chip--paper { border-color: var(--color-paper-border-strong); background: var(--color-paper); color: var(--color-ink-soft); }
+.fx-chip--paper:hover { border-color: var(--color-ink-soft); color: var(--color-ink); }
+.fx-chip--paper[aria-pressed="true"], .fx-chip--paper[aria-selected="true"] { background: var(--color-dark-2); border-color: var(--color-dark-2); color: var(--color-on-accent); }
+
+/* ----- Tabs ----- */
+.fx-tabs { display: flex; gap: var(--space-2); border-bottom: 1px solid var(--color-border); }
+
+.fx-tab {
+    position: relative;
+    padding: var(--space-3) var(--space-4);
+    border: none;
+    background: none;
+    color: var(--color-text-faint);
+    font: inherit;
+    font-size: var(--text-lg);
+    line-height: 1.625rem;
+    font-weight: var(--weight-semibold);
+    text-decoration: none;
+    white-space: nowrap;
+    cursor: pointer;
+}
+
+.fx-tab:hover { color: var(--color-text); background: var(--color-tint-page); }
+.fx-tab[aria-selected="true"] { color: var(--color-text); }
+
+/* Indicador em color-text: em color-paper ele sumia no tema claro. */
+.fx-tab[aria-selected="true"]::after {
+    content: "";
+    position: absolute;
+    left: var(--space-4);
+    right: var(--space-4);
+    bottom: -1px;
+    height: 3px;
+    border-radius: var(--radius-sm) var(--radius-sm) 0 0;
+    background: var(--color-text);
+}
+
+/* ----- Avatar ----- */
+.fx-avatar {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    overflow: hidden;
+    border-radius: var(--radius-circle);
+    color: var(--color-on-accent);
+    font-weight: var(--weight-bold);
+    object-fit: cover;
+    text-decoration: none;
+}
+
+.fx-avatar img { width: 100%; height: 100%; object-fit: cover; }
+.fx-avatar--xs { width: var(--avatar-xs); height: var(--avatar-xs); font-size: var(--text-xs); }
+.fx-avatar--sm { width: var(--avatar-sm); height: var(--avatar-sm); font-size: var(--text-xs); }
+.fx-avatar--md { width: var(--avatar-md); height: var(--avatar-md); font-size: var(--text-md); }
+.fx-avatar--lg { width: var(--avatar-lg); height: var(--avatar-lg); font-size: var(--text-lg); }
+.fx-avatar--xl { width: var(--avatar-xl); height: var(--avatar-xl); font-size: 3.5rem; font-weight: var(--weight-heavy); }
+
+/* Enquanto o /me não chega, no header. */
+.fx-avatar--loading { background: var(--color-tint-chrome); animation: fx-avatar-pulse 1.2s ease-in-out infinite; }
+
+@keyframes fx-avatar-pulse {
+    50% { opacity: 0.5; }
+}
+
+/* Cor estável por pessoa (avatarColor em shared/dom.ts gera estes nomes). */
+.bg-blue { background-color: var(--avatar-blue); }
+.bg-pink { background-color: var(--avatar-pink); }
+.bg-gray { background-color: var(--avatar-gray); }
+.bg-orange { background-color: var(--avatar-orange); }
+.bg-lightb { background-color: var(--avatar-lightblue); }
+.bg-teal { background-color: var(--avatar-teal); }
+
+/* ----- Menu ----- */
+.fx-menu {
+    display: flex;
+    flex-direction: column;
+    min-width: 200px;
+    padding: var(--space-2) 0;
+    background: var(--color-paper);
+    color: var(--color-ink);
+    border-radius: var(--radius-md);
+    box-shadow: var(--shadow-md);
+}
+
+.fx-menu-label { display: block; padding: var(--space-1) var(--space-4) 2px; font-size: var(--text-xs); line-height: 1rem; font-weight: var(--weight-bold); text-transform: uppercase; letter-spacing: 0.5px; color: var(--color-ink-faint); }
+
+.fx-menu-item {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    width: 100%;
+    padding: var(--space-2) var(--space-4);
+    border: none;
+    background: none;
+    color: var(--color-ink);
+    font: inherit;
+    font-size: var(--text-md);
+    line-height: 1.5rem;
+    text-align: left;
+    text-decoration: none;
+    cursor: pointer;
+}
+
+.fx-menu-item:hover, .fx-menu-item:focus-visible, .fx-menu-item[aria-selected="true"] { background: var(--color-paper-2); }
+.fx-menu-item--danger { color: var(--color-danger); }
+.fx-menu-item:disabled { opacity: var(--opacity-disabled); cursor: default; }
+.fx-menu-sep { height: 1px; margin: var(--space-2) 0; background: var(--color-paper-border); }
+
+/* Item de escolha (tema): o ✓ marca a atual; o aria-checked é o que o leitor de tela anuncia. */
+.fx-menu-item[role="menuitemradio"]::before { content: ""; width: 1em; text-align: center; }
+.fx-menu-item[role="menuitemradio"][aria-checked="true"]::before { content: "✓"; font-weight: var(--weight-bold); }
+
+/* ----- Dialog ----- */
+/* Véu fixo na tela; a confirmação fica acima das janelas de formulário. */
+.fx-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: var(--z-modal);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: var(--space-4);
+    background: var(--color-overlay);
+}
+
+.fx-overlay--confirm { z-index: var(--z-dialog); }
+
+.fx-dialog {
+    width: min(var(--dialog-width), 100%);
+    max-height: calc(100dvh - 2 * var(--space-4));
+    overflow-y: auto;
+    padding: var(--space-6);
+    background: var(--color-surface-2);
+    color: var(--color-text);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-lg);
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-3);
+}
+
+.fx-dialog--form { width: min(var(--modal-width), 100%); padding: var(--space-8); gap: var(--space-4); }
+.fx-dialog-head { display: flex; align-items: center; justify-content: space-between; gap: var(--space-3); }
+.fx-dialog-title { margin: 0; font-size: var(--text-2xl); line-height: 2rem; font-weight: var(--weight-bold); }
+.fx-dialog-text { margin: 0; color: var(--color-text-soft); }
+.fx-dialog-actions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: var(--space-3); margin-top: var(--space-3); }
+
+/* ----- Toast ----- */
+.fx-toast-host {
+    position: fixed;
+    bottom: calc(var(--space-6) + var(--r-bar));
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: var(--z-toast);
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-2);
+    align-items: center;
+    pointer-events: none;
+}
+
+.fx-toast {
+    max-width: min(480px, calc(100vw - 2 * var(--space-4)));
+    padding: var(--space-3) var(--space-5);
+    border-radius: var(--radius-lg);
+    background: var(--color-surface-2);
+    color: var(--color-text);
+    box-shadow: var(--shadow-md);
+    font-size: var(--text-md);
+    line-height: 1.5rem;
+}
+
+.fx-toast--success { background: var(--color-success); color: var(--color-on-accent); }
+.fx-toast--error { background: var(--color-danger-strong); color: var(--color-on-accent); }
+
+/* ----- Banner ----- */
+.fx-banner {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--space-2) var(--space-4);
+    padding: var(--space-3) var(--space-4);
+    border: 1px solid transparent;
+    border-radius: var(--radius-lg);
+    font-size: var(--text-sm);
+    line-height: 1.25rem;
+}
+
+.fx-banner-text { flex: 1 1 260px; margin: 0; }
+.fx-banner a, .fx-banner-link { color: inherit; font: inherit; text-decoration: underline; text-underline-offset: 3px; background: none; border: none; padding: 0; cursor: pointer; }
+.fx-banner--warning { background: var(--color-warning-surface); color: var(--color-warning-ink); }
+.fx-banner--warning .fx-btn { background: var(--color-warning-ink); color: var(--color-on-accent); }
+.fx-banner--danger { background: var(--color-danger-surface); border-color: var(--color-danger-strong); color: var(--color-danger-text-soft); }
+.fx-banner--success { background: var(--color-success-tint); color: var(--color-success-text); }
+.fx-banner--neutral { background: var(--color-paper-2); color: var(--color-ink-muted); }
+.fx-banner--neutral a, .fx-banner--neutral .fx-banner-link { color: var(--color-link); }
+
+/* Aviso em linha (conteúdo de quem você bloqueou): sem caixa. */
+.fx-notice { margin: 0; font-size: var(--text-sm); line-height: 1.25rem; font-style: italic; color: var(--color-ink-faint); }
+.fx-notice .fx-link { font-style: normal; }
+
+/* Zona de perigo: não é banner, mas mora aqui. */
+.fx-danger-zone { display: flex; flex-direction: column; align-items: flex-start; gap: var(--space-2); padding: var(--space-5); border: 1px solid var(--color-danger-strong); border-radius: var(--radius-lg); }
+.fx-danger-zone h2, .fx-danger-zone h3 { margin: 0; font-size: var(--text-lg); line-height: 1.625rem; font-weight: var(--weight-semibold); color: var(--color-danger-text); }
+.fx-danger-zone p { margin: 0 0 var(--space-2); color: var(--color-text-muted); }
+
+/* ----- EmptyState ----- */
+.fx-empty { display: flex; flex-direction: column; align-items: center; gap: var(--space-2); padding: var(--space-8) var(--space-4); text-align: center; }
+.fx-empty-title { margin: 0; font-size: var(--text-lg); line-height: 1.625rem; font-weight: var(--weight-semibold); color: var(--color-text); }
+.fx-empty-text { margin: 0; max-width: 420px; color: var(--color-text-muted); }
+.fx-empty .fx-btn { margin-top: var(--space-2); }
+
+/* ----- Skeleton ----- */
+.fx-skel-group { display: flex; flex-direction: column; gap: var(--space-3); width: 100%; }
+.fx-skel { display: flex; flex-direction: column; gap: var(--space-2); padding: var(--space-4); border-radius: var(--radius-lg); background: var(--color-paper); }
+/* Mensagem do chat: uma linha, alinhada como a de quem enviou. */
+.fx-skel--message { width: 55%; padding: var(--space-3); background: var(--color-paper-2); }
+.fx-skel--mine { align-self: flex-end; }
+
+.fx-skel-line {
+    display: block;
+    height: 12px;
+    border-radius: var(--radius-pill);
+    background: linear-gradient(90deg, var(--color-paper-2) 25%, var(--color-paper-border) 50%, var(--color-paper-2) 75%);
+    background-size: 200% 100%;
+    animation: fx-skel-shimmer 1.4s ease-in-out infinite;
+}
+
+.fx-skel-line--title { height: 18px; }
+
+@keyframes fx-skel-shimmer {
+    from { background-position: 100% 0; }
+    to { background-position: -100% 0; }
+}
+
+/* ----- Alvos de toque da R: 44px abaixo de 1280px, 32px no desktop -----
+   É um piso (min-height): nada encolhe. O .fx-btn normal e o .fx-btn--icon já
+   têm 44px e ficam assim em todas as faixas, como nas pranchas. */
+.fx-btn--sm, .fx-chip, .fx-tab, .fx-menu-item, .fx-check { min-height: var(--r-touch); }

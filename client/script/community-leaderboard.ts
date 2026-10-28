@@ -34,7 +34,7 @@ function renderRow(row: LeaderboardRow): HTMLLIElement {
     link.href = profileUrl(row.userId);
 
     const avatar = document.createElement("span");
-    avatar.className = "tf-lb-avatar";
+    avatar.className = "fx-avatar fx-avatar--sm";
     if (row.avatarUrl) {
         const img = document.createElement("img");
         img.src = row.avatarUrl;
@@ -63,7 +63,7 @@ function renderRow(row: LeaderboardRow): HTMLLIElement {
 export function createLeaderboard(widget: HTMLElement, communityId: string): { reload(): Promise<void> } {
     const list = widget.querySelector<HTMLOListElement>(".tf-lb-list");
     const status = widget.querySelector<HTMLElement>(".tf-lb-status");
-    const tabs = Array.from(widget.querySelectorAll<HTMLButtonElement>(".tf-lb-tab"));
+    const tabs = Array.from(widget.querySelectorAll<HTMLButtonElement>('[role="tab"]'));
     let period: Period = "week";
     let seq = 0;
 
@@ -99,7 +99,6 @@ export function createLeaderboard(widget: HTMLElement, communityId: string): { r
             period = next;
             for (const t of tabs) {
                 const active = t === tab;
-                t.classList.toggle("active", active);
                 t.setAttribute("aria-selected", String(active));
             }
             void load();

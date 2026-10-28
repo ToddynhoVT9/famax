@@ -24,65 +24,65 @@
         </div>
         <div class="page-body">
             <form id="communityForm" novalidate>
-                <div class="form-error" id="formError" role="alert"></div>
+                <div class="fx-banner fx-banner--danger" id="formError" role="alert" hidden></div>
 
                 <div class="form-field">
-                    <label for="communityName">Nome da comunidade</label>
-                    <input id="communityName" name="communityName" type="text"
+                    <label class="fx-label" for="communityName">Nome da comunidade</label>
+                    <input class="fx-input" id="communityName" name="communityName" type="text"
                            placeholder="Ex: Gamers do bairro" maxlength="80" required>
                 </div>
 
                 <div class="form-field">
-                    <label for="communityCategory">Categoria</label>
-                    <select id="communityCategory" name="communityCategory" required disabled>
+                    <label class="fx-label" for="communityCategory">Categoria</label>
+                    <select class="fx-input" id="communityCategory" name="communityCategory" required disabled>
                         <option value="">Carregando categorias...</option>
                     </select>
                 </div>
 
                 <div class="form-field">
-                    <label for="communityDescription">Descrição <span class="field-hint">(opcional)</span></label>
-                    <textarea id="communityDescription" name="communityDescription"
+                    <label class="fx-label" for="communityDescription">Descrição <span class="field-hint">(opcional)</span></label>
+                    <textarea class="fx-input" id="communityDescription" name="communityDescription"
                               maxlength="500" placeholder="Sobre o que é a sua comunidade?"></textarea>
                 </div>
 
                 <!-- Só no modo edição: as regras aparecem na vista "Regras" da comunidade. -->
                 <div class="form-field" id="rulesField" hidden>
-                    <label for="communityRules">Regras <span class="field-hint">(opcional)</span></label>
-                    <textarea id="communityRules" name="communityRules" maxlength="5000" rows="6"
+                    <label class="fx-label" for="communityRules">Regras <span class="field-hint">(opcional)</span></label>
+                    <textarea class="fx-input" id="communityRules" name="communityRules" maxlength="5000" rows="6"
                               placeholder="Uma regra por linha. Ex.: 1. Respeite os outros membros."></textarea>
                 </div>
 
                 <!-- Só para quem tem "Conteúdo adulto" ligado (community-new.ts mostra). -->
-                <label class="checkbox-field" id="nsfwField" hidden>
+                <label class="fx-check" id="nsfwField" hidden>
                     <input type="checkbox" id="communityNsfw">
                     Comunidade para maiores de 18 (+18) — fica fora da home e só quem tem conteúdo adulto liberado entra
                 </label>
 
                 <div class="form-field">
-                    <label for="communityCover">Capa da comunidade <span class="field-hint">(opcional)</span></label>
-                    <input id="communityCover" name="communityCover" type="file"
+                    <label class="fx-label" for="communityCover">Capa da comunidade <span class="field-hint">(opcional)</span></label>
+                    <input class="fx-input" id="communityCover" name="communityCover" type="file"
                            accept="image/png,image/jpeg,image/webp">
                     <span class="field-hint">PNG, JPEG ou WebP. Máximo 2MB.</span>
                 </div>
 
                 <!-- Só no modo edição, quando a comunidade já tem capa. -->
-                <label class="checkbox-field" id="removeCoverField" hidden>
+                <label class="fx-check" id="removeCoverField" hidden>
                     <input type="checkbox" id="removeCover"> Remover a capa atual
                 </label>
 
                 <div class="image-preview" id="imagePreview">Nenhuma imagem selecionada</div>
 
                 <div class="actions">
-                    <button type="button" class="btn btn-secondary" id="cancelBtn">Voltar</button>
-                    <button type="submit" class="btn btn-primary" id="submitBtn">Criar comunidade</button>
+                    <button type="button" class="fx-btn fx-btn--secondary" id="cancelBtn">Voltar</button>
+                    <button type="submit" class="fx-btn fx-btn--primary" id="submitBtn">Criar comunidade</button>
                 </div>
             </form>
 
             <!-- Só no modo edição: exclusão pelo dono, com o nome digitado. -->
-            <section class="danger-zone" id="dangerZone" hidden>
+            <section class="fx-danger-zone" id="dangerZone" hidden>
                 <h2>Excluir comunidade</h2>
                 <p>A comunidade some para todos os membros, junto com as discussões. Esta ação não pode ser desfeita pela interface.</p>
-                <button type="button" class="btn btn-danger" id="deleteCommunityBtn">Excluir comunidade</button>
+                <button type="button" class="fx-btn fx-btn--danger" id="deleteCommunityBtn">Excluir comunidade</button>
             </section>
         </div>
     </div>

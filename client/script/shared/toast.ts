@@ -14,11 +14,11 @@ let host: HTMLElement | null = null;
 export function toast(message: string, kind: ToastKind = "info"): void {
     if (!host) {
         host = document.createElement("div");
-        host.className = "toast-host";
+        host.className = "fx-toast-host";
         document.body.append(host);
     }
     const item = document.createElement("div");
-    item.className = `toast toast--${kind}`;
+    item.className = kind === "info" ? "fx-toast" : `fx-toast fx-toast--${kind}`;
     item.setAttribute("role", kind === "error" ? "alert" : "status");
     item.textContent = message;
     host.append(item);

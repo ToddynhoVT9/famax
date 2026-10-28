@@ -39,14 +39,13 @@
         <div id="viewDiscussions">
 
         <!-- Abas -->
-        <div class="tf-tabs" id="tfTabsContainer" role="tablist" aria-label="Discussões da comunidade">
-            <button type="button" class="tf-tab active" role="tab" id="tab-all" data-tab="all"
+        <div class="fx-tabs tf-tabs" id="tfTabsContainer" role="tablist" aria-label="Discussões da comunidade">
+            <button type="button" class="fx-tab" role="tab" id="tab-all" data-tab="all"
                 aria-selected="true" aria-controls="tfFeedPanel">Conversas</button>
-            <button type="button" class="tf-tab" role="tab" id="tab-unanswered" data-tab="unanswered"
+            <button type="button" class="fx-tab" role="tab" id="tab-unanswered" data-tab="unanswered"
                 aria-selected="false" aria-controls="tfFeedPanel" tabindex="-1">Ajudar os outros</button>
-            <button type="button" class="tf-tab" role="tab" id="tab-categories" data-tab="categories"
+            <button type="button" class="fx-tab" role="tab" id="tab-categories" data-tab="categories"
                 aria-selected="false" aria-controls="tfFeedPanel" tabindex="-1">Categorias</button>
-            <div class="tf-tab-indicator" id="tfTabIndicator"></div>
         </div>
 
         <div class="tf-layout">
@@ -56,7 +55,7 @@
                     <p class="tf-tab-hint" id="tfTabHint" hidden></p>
                     <label class="tf-sort">
                         <span>Ordenar por</span>
-                        <select id="tfSort">
+                        <select class="fx-input fx-input--sm" id="tfSort">
                             <option value="new">Recentes</option>
                             <option value="hot">Em alta</option>
                             <option value="top">Mais curtidos</option>
@@ -69,14 +68,14 @@
                 <div class="tf-posts-list" id="tfPostsList">
                     <div class="tf-feed-status" id="tfFeedStatus">Carregando discussões...</div>
                 </div>
-                <button type="button" class="tf-load-more" id="tfLoadMore" hidden>Carregar mais</button>
+                <button type="button" class="fx-btn fx-btn--outline fx-btn--pill list-more" id="tfLoadMore" hidden>Carregar mais</button>
             </div>
 
             <!-- Direita: Widgets -->
             <div class="tf-sidebar-col">
                 <div class="tf-widget tf-greeting-widget">
                     <h3 class="tf-widget-title-center">Algo novo a discutir?</h3>
-                    <button type="button" class="tf-btn-dark" id="btnCreatePost">Compartilhe-os</button>
+                    <button type="button" class="fx-btn fx-btn--dark fx-btn--block" id="btnCreatePost">Compartilhe-os</button>
                 </div>
 
                 <!-- Próximos eventos (community-events.ts) -->
@@ -94,9 +93,9 @@
                 <div class="tf-widget tf-leaderboard-widget" id="leaderboardWidget">
                     <h3 class="tf-widget-title">Maiores criadores</h3>
                     <div class="tf-lb-tabs" role="tablist" aria-label="Período do ranking">
-                        <button type="button" class="tf-lb-tab active" role="tab" aria-selected="true"
+                        <button type="button" class="fx-chip fx-chip--paper" role="tab" aria-selected="true"
                             data-period="week">Semanalmente</button>
-                        <button type="button" class="tf-lb-tab" role="tab" aria-selected="false"
+                        <button type="button" class="fx-chip fx-chip--paper" role="tab" aria-selected="false"
                             data-period="all">Todos os tempos</button>
                     </div>
                     <ol class="tf-lb-list" aria-live="polite"></ol>

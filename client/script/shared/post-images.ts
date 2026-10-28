@@ -48,13 +48,13 @@ export function openLightbox(images: PostImage[], start = 0): void {
     img.alt = "";
     const counter = el("p", "lightbox-counter");
     counter.setAttribute("aria-live", "polite");
-    const close = el("button", "lightbox-btn lightbox-close", "×");
+    const close = el("button", "fx-btn fx-btn--icon lightbox-close", "×");
     close.type = "button";
     close.setAttribute("aria-label", "Fechar");
-    const prev = el("button", "lightbox-btn lightbox-prev", "‹");
+    const prev = el("button", "fx-btn fx-btn--icon lightbox-prev", "‹");
     prev.type = "button";
     prev.setAttribute("aria-label", "Imagem anterior");
-    const next = el("button", "lightbox-btn lightbox-next", "›");
+    const next = el("button", "fx-btn fx-btn--icon lightbox-next", "›");
     next.type = "button";
     next.setAttribute("aria-label", "Próxima imagem");
 

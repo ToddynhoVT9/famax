@@ -89,7 +89,7 @@ const cssId = (id: string) => CSS.escape(id);
 // ===========================================================================
 
 const menuItem = (action: string, label: string, danger = false) =>
-    `<button type="button" class="tf-menu-item${danger ? " tf-menu-item--danger" : ""}" role="menuitem" data-action="${action}">${label}</button>`;
+    `<button type="button" class="fx-menu-item${danger ? " fx-menu-item--danger" : ""}" role="menuitem" data-action="${action}">${label}</button>`;
 
 /**
  * Itens do "⋯": o autor edita e exclui; os outros denunciam; dono e
@@ -118,9 +118,9 @@ function postMenuItems(post: Post): string {
 /** Selos "Fixado" e "Resolvido" acima do título. */
 function postBadges(post: Post): string {
     const badges = [
-        post.pinnedAt ? '<span class="tf-badge tf-badge--pinned">📌 Fixado</span>' : "",
-        post.resolvedCommentId ? '<span class="tf-badge tf-badge--resolved">✓ Resolvido</span>' : "",
-        post.isNsfw ? '<span class="tf-badge tf-badge--nsfw">+18</span>' : "",
+        post.pinnedAt ? '<span class="fx-badge fx-badge--warning">📌 Fixado</span>' : "",
+        post.resolvedCommentId ? '<span class="fx-badge fx-badge--success">✓ Resolvido</span>' : "",
+        post.isNsfw ? '<span class="fx-badge fx-badge--danger-solid">+18</span>' : "",
     ].join("");
     return `<div class="tf-post-badges"${badges ? "" : " hidden"}>${badges}</div>`;
 }
@@ -133,9 +133,9 @@ export function renderPost(post: Post, options: { single?: boolean; showCommunit
     const items = postMenuItems(post);
     const menu = items
         ? `<div class="tf-post-menu">
-               <button type="button" class="tf-post-menu-btn" data-action="post-menu"
+               <button type="button" class="fx-btn fx-btn--icon fx-btn--icon-paper" data-action="post-menu"
                        aria-haspopup="menu" aria-expanded="false" aria-label="Opções do post">⋯</button>
-               <div class="tf-menu-list" role="menu" hidden>${items}</div>
+               <div class="fx-menu" role="menu" hidden>${items}</div>
            </div>`
         : "";
 
@@ -148,7 +148,7 @@ export function renderPost(post: Post, options: { single?: boolean; showCommunit
         <article class="tf-post${options.single ? " tf-post--single" : ""}${post.authorBlockedByMe ? " is-blocked" : ""}" data-post-id="${id}">
             ${post.authorBlockedByMe ? BLOCKED_NOTICE : ""}
             <div class="tf-post-avatar-container" data-author-id="${escapeHtml(post.authorId)}">
-                <div class="tf-avatar ${avatarColor(post.authorId)}">${escapeHtml(initials(name))}</div>
+                <div class="fx-avatar fx-avatar--lg ${avatarColor(post.authorId)}">${escapeHtml(initials(name))}</div>
             </div>
             <div class="tf-post-body">
                 <div class="tf-post-meta">
@@ -173,11 +173,11 @@ export function renderPost(post: Post, options: { single?: boolean; showCommunit
                 </div>
                 <div class="tf-post-comments"${options.single ? "" : " hidden"}>
                     <div class="tf-comment-list"></div>
-                    <button type="button" class="tf-comments-more" data-action="more-comments" hidden>Carregar mais comentários</button>
+                    <button type="button" class="fx-btn fx-btn--outline-ink fx-btn--sm fx-btn--pill" data-action="more-comments" hidden>Carregar mais comentários</button>
                     <form class="tf-comment-form" data-form="comment">
-                        <input type="text" class="tf-comment-input" maxlength="2000" data-char-counter="near"
+                        <input type="text" class="fx-input fx-input--paper fx-input--pill" maxlength="2000" data-char-counter="near"
                                placeholder="Escreva um comentário... (**negrito**, @menção, ||spoiler||)" aria-label="Comentário" />
-                        <button type="submit">Enviar</button>
+                        <button type="submit" class="fx-btn fx-btn--dark fx-btn--pill">Enviar</button>
                     </form>
                     <div class="tf-inline-error" role="alert" hidden></div>
                 </div>
@@ -198,12 +198,12 @@ function saveButtonHtml(saved: boolean): string {
  * abre ali (não desbloqueia ninguém). O CSS esconde o resto enquanto o
  * item tem .is-blocked.
  */
-const BLOCKED_NOTICE = `<p class="tf-blocked-notice">Conteúdo de usuário bloqueado —
+const BLOCKED_NOTICE = `<p class="fx-notice">Conteúdo de usuário bloqueado —
     <button type="button" class="tf-blocked-show" data-action="show-blocked">mostrar</button></p>`;
 
 /** No lugar do conteúdo +18, para quem não pode ver (o servidor nem o mandou). */
 function nsfwNoticeHtml(): string {
-    return `<p class="tf-nsfw-notice">Conteúdo para maiores de 18. Para ver, ative “Conteúdo adulto” nas
+    return `<p class="fx-banner fx-banner--neutral tf-nsfw-hidden">Conteúdo para maiores de 18. Para ver, ative “Conteúdo adulto” nas
         <a href="${escapeHtml(pages.settings)}">configurações</a> (exige 18 anos pela data de nascimento).</p>`;
 }
 
@@ -265,7 +265,7 @@ function renderCommentMain(comment: Comment, context: CommentContext = NO_CONTEX
             : '<button type="button" class="tf-comment-action" data-action="accept-answer">Marcar como resposta</button>';
     }
     return `<div class="tf-comment-main">
-                <strong data-author-id="${escapeHtml(comment.authorId ?? "")}">${escapeHtml(authorName(comment))}</strong>${roleBadgeHtml(comment.authorRole)}${accepted ? '<span class="tf-accepted-badge">✓ Resposta aceita</span>' : ""}
+                <strong data-author-id="${escapeHtml(comment.authorId ?? "")}">${escapeHtml(authorName(comment))}</strong>${roleBadgeHtml(comment.authorRole)}${accepted ? '<span class="fx-badge fx-badge--success-solid" data-accepted-badge>✓ Resposta aceita</span>' : ""}
                 <div class="tf-comment-text md" data-content="${escapeHtml(comment.content ?? "")}">${renderMarkdown(comment.content ?? "")}</div>
                 <div class="tf-comment-footer">
                     <span class="tf-comment-time">${escapeHtml(timeAgo(comment.createdAt))}${comment.editedAt ? " · editado" : ""}</span>
@@ -542,7 +542,7 @@ export function createPostThread(container: HTMLElement, options: PostThreadOpti
     async function loadComments(postEl: HTMLElement, more = false): Promise<void> {
         const postId = postEl.dataset.postId;
         const list = postEl.querySelector<HTMLElement>(".tf-comment-list");
-        const moreBtn = postEl.querySelector<HTMLButtonElement>(".tf-comments-more");
+        const moreBtn = postEl.querySelector<HTMLButtonElement>('[data-action="more-comments"]');
         if (!postId || !list || !moreBtn) return;
 
         const cursor = more ? commentCursors.get(postId) : null;
@@ -584,7 +584,7 @@ export function createPostThread(container: HTMLElement, options: PostThreadOpti
 
     async function submitComment(form: HTMLFormElement, postEl: HTMLElement, parentId: string | null): Promise<void> {
         const postId = postEl.dataset.postId;
-        const input = form.querySelector<HTMLInputElement>(".tf-comment-input");
+        const input = form.querySelector<HTMLInputElement>("input");
         const submit = form.querySelector<HTMLButtonElement>('button[type="submit"]');
         if (!postId || !input) return;
 
@@ -618,8 +618,8 @@ export function createPostThread(container: HTMLElement, options: PostThreadOpti
         form.className = "tf-comment-form tf-reply-form";
         form.dataset.form = "reply";
         form.innerHTML = `
-            <input type="text" class="tf-comment-input" maxlength="2000" data-char-counter="near" aria-label="Resposta" />
-            <button type="submit">Enviar</button>
+            <input type="text" class="fx-input fx-input--paper fx-input--pill" maxlength="2000" data-char-counter="near" aria-label="Resposta" />
+            <button type="submit" class="fx-btn fx-btn--dark fx-btn--pill">Enviar</button>
             <button type="button" class="tf-comment-action" data-action="cancel-form">Cancelar</button>`;
         const input = form.querySelector<HTMLInputElement>("input");
         if (input) input.placeholder = `Responder a ${name}...`;
@@ -635,10 +635,10 @@ export function createPostThread(container: HTMLElement, options: PostThreadOpti
         form.className = "tf-edit-form";
         form.dataset.form = "edit-comment";
         form.innerHTML = `
-            <textarea class="tf-edit-input" maxlength="2000" rows="3" data-char-counter="near" aria-label="Editar comentário"></textarea>
+            <textarea class="fx-input fx-input--paper" maxlength="2000" rows="3" data-char-counter="near" aria-label="Editar comentário"></textarea>
             <div class="tf-edit-actions">
                 <button type="button" class="tf-comment-action" data-action="cancel-form">Cancelar</button>
-                <button type="submit" class="tf-edit-save">Salvar</button>
+                <button type="submit" class="fx-btn fx-btn--dark fx-btn--sm">Salvar</button>
             </div>`;
         const textarea = form.querySelector<HTMLTextAreaElement>("textarea");
         if (textarea) textarea.value = text.dataset.content ?? text.textContent ?? "";
@@ -816,14 +816,14 @@ export function createPostThread(container: HTMLElement, options: PostThreadOpti
         }
         container.querySelectorAll<HTMLElement>(`strong[data-author-id="${cssId(userId)}"]`).forEach((strong) => {
             const badge = strong.nextElementSibling;
-            if (badge?.classList.contains("role-badge")) badge.remove();
+            if (badge instanceof HTMLElement && badge.dataset.roleBadge !== undefined) badge.remove();
         });
     }
 
     // ----- Menus e delegação de eventos ------------------------------------
 
     function closeMenus(except?: Element): void {
-        container.querySelectorAll<HTMLElement>(".tf-menu-list:not([hidden])").forEach((menu) => {
+        container.querySelectorAll<HTMLElement>('.tf-post-menu > [role="menu"]:not([hidden])').forEach((menu) => {
             if (except && menu.parentElement?.contains(except)) return;
             menu.hidden = true;
             menu.previousElementSibling?.setAttribute("aria-expanded", "false");
@@ -869,7 +869,7 @@ export function createPostThread(container: HTMLElement, options: PostThreadOpti
                     actionEl.setAttribute("aria-expanded", String(!panel.hidden));
                     if (!panel.hidden) {
                         if (!commentCursors.has(postId)) void loadComments(postEl);
-                        panel.querySelector<HTMLInputElement>(".tf-comment-input")?.focus();
+                        panel.querySelector<HTMLInputElement>('[data-form="comment"] input')?.focus();
                     }
                     return;
                 }
@@ -915,7 +915,7 @@ export function createPostThread(container: HTMLElement, options: PostThreadOpti
                     // O item mais próximo recolhido: o comentário, ou o post.
                     const blocked = actionEl.closest<HTMLElement>(".is-blocked");
                     blocked?.classList.remove("is-blocked");
-                    actionEl.closest(".tf-blocked-notice")?.remove();
+                    actionEl.closest(".fx-notice")?.remove();
                     if (blocked === postEl) markOverflow(postEl);
                     return;
                 }

@@ -1,4 +1,5 @@
 @import "./tokens.css";
+@import "./components.css";
 
 /* ===================================
    FAMAX — Global Reset & Base Styles
@@ -67,7 +68,7 @@ a {
     position: absolute;
     top: -100px;
     left: var(--space-4);
-    z-index: 5000;
+    z-index: var(--z-skip-link);
     padding: var(--space-2) var(--space-4);
     border-radius: var(--radius-md);
     background-color: var(--color-paper);
@@ -79,7 +80,7 @@ a {
     top: var(--space-2);
 }
 
-/* O atributo hidden precisa vencer o display das classes (.btn-load-more,
+/* O atributo hidden precisa vencer o display das classes (.fx-btn,
    .profile-tabs...): sem isto, um elemento com display próprio no CSS
    continua visível mesmo com hidden, e o JS que esconde por hidden falha. */
 [hidden] {
@@ -98,93 +99,7 @@ a {
     }
 }
 
-/* ----- Esqueletos de carregamento (shared/skeleton.ts) ----- */
-.skeleton-group {
-    display: flex;
-    flex-direction: column;
-    gap: var(--space-3);
-    width: 100%;
-}
-
-.skeleton-item {
-    display: flex;
-    flex-direction: column;
-    gap: var(--space-2);
-    padding: var(--space-4);
-    border-radius: var(--radius-md, 8px);
-    background-color: var(--color-paper);
-}
-
-.skeleton-item--message {
-    width: 55%;
-    padding: var(--space-3);
-    background-color: var(--color-paper-2);
-}
-
-.skeleton-item--mine {
-    align-self: flex-end;
-}
-
-.skeleton-line {
-    display: block;
-    height: 12px;
-    border-radius: 6px;
-    background: linear-gradient(90deg, var(--color-paper-2) 25%, var(--color-paper-border) 50%, var(--color-paper-2) 75%);
-    background-size: 200% 100%;
-    animation: skeleton-shimmer 1.4s ease-in-out infinite;
-}
-
-.skeleton-item--post .skeleton-line:first-child {
-    height: 18px;
-}
-
-@keyframes skeleton-shimmer {
-    from { background-position: 100% 0; }
-    to { background-position: -100% 0; }
-}
-
-/* ----- Estado vazio com ação ----- */
-.empty-state {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: var(--space-2);
-    padding: var(--space-8) var(--space-4);
-    text-align: center;
-    color: var(--color-text);
-}
-
-.empty-state-title {
-    margin: 0;
-    font-size: 1.1rem;
-    font-weight: 600;
-}
-
-.empty-state-text {
-    margin: 0;
-    max-width: 420px;
-    color: var(--color-text-muted);
-}
-
-.empty-state-action {
-    margin-top: var(--space-2);
-    display: inline-flex;
-    align-items: center;
-    min-height: 44px;
-    padding: 0 var(--space-6);
-    border: none;
-    border-radius: var(--radius-pill, 999px);
-    background-color: var(--color-primary);
-    color: var(--color-on-accent);
-    font: inherit;
-    font-weight: 600;
-    text-decoration: none;
-    cursor: pointer;
-}
-
-.empty-state-action:hover {
-    filter: brightness(1.1);
-}
+/* Esqueletos e estado vazio (shared/skeleton.ts) estão no components.css. */
 
 /* ----- Contador de caracteres (shared/char-counter.ts) ----- */
 .char-counter {

@@ -75,7 +75,7 @@ function initChatWidget(): void {
     widget.id = "chatWidget";
     widget.innerHTML = `
         <button class="chat-toggle" id="chatToggle" aria-label="Abrir chat" aria-expanded="false" aria-controls="chatPanel">
-            💬<span class="chat-unread-badge" id="chatUnreadBadge"></span>
+            💬<span class="fx-counter-badge" id="chatUnreadBadge" hidden></span>
         </button>
         <div class="chat-panel" id="chatPanel" role="dialog" aria-label="Chat bate-papo">
             <div class="chat-header">
@@ -84,34 +84,34 @@ function initChatWidget(): void {
                     <p id="chatSubtitle">Converse com seus amigos</p>
                 </div>
                 <div class="chat-header-actions">
-                    <button type="button" class="chat-header-btn" id="chatNewBtn" aria-label="Nova conversa" title="Nova conversa ou grupo">＋</button>
-                    <button type="button" class="chat-header-btn" id="chatClose" aria-label="Fechar chat">✕</button>
+                    <button type="button" class="fx-btn fx-btn--icon" id="chatNewBtn" aria-label="Nova conversa" title="Nova conversa ou grupo">＋</button>
+                    <button type="button" class="fx-btn fx-btn--icon" id="chatClose" aria-label="Fechar chat">✕</button>
                 </div>
             </div>
             <div class="chat-search" id="chatSearch">
                 <div class="chat-search-modes" role="group" aria-label="Tipo de conversa">
-                    <button type="button" class="chat-mode active" data-mode="direct" aria-pressed="true">Conversa</button>
-                    <button type="button" class="chat-mode" data-mode="group" aria-pressed="false">Grupo</button>
+                    <button type="button" class="fx-chip fx-chip--paper" data-mode="direct" aria-pressed="true">Conversa</button>
+                    <button type="button" class="fx-chip fx-chip--paper" data-mode="group" aria-pressed="false">Grupo</button>
                 </div>
-                <input id="chatGroupTitle" type="text" placeholder="Nome do grupo" maxlength="80" hidden />
+                <input class="fx-input fx-input--paper fx-input--pill" id="chatGroupTitle" type="text" placeholder="Nome do grupo" maxlength="80" hidden />
                 <div class="chat-chips" id="chatGroupChips" hidden></div>
-                <input id="chatSearchInput" type="text" placeholder="Buscar pessoa pelo nome ou @usuário" maxlength="50" />
+                <input class="fx-input fx-input--paper fx-input--pill" id="chatSearchInput" type="text" placeholder="Buscar pessoa pelo nome ou @usuário" maxlength="50" />
                 <div class="chat-search-results" id="chatSearchResults"></div>
-                <button type="button" class="chat-primary-btn" id="chatGroupCreate" hidden>Criar grupo</button>
+                <button type="button" class="fx-btn fx-btn--chrome fx-btn--sm fx-btn--pill" id="chatGroupCreate" hidden>Criar grupo</button>
             </div>
             <div class="chat-body">
                 <aside class="chat-contacts" id="chatContacts"></aside>
                 <section class="chat-conversation">
                     <div class="chat-conv-header" id="chatConvHeader" hidden>
                         <span class="chat-conv-title" id="chatConvTitle"></span>
-                        <button type="button" class="chat-conv-btn" id="chatGroupBtn" hidden aria-label="Detalhes do grupo" title="Detalhes do grupo">⚙</button>
+                        <button type="button" class="fx-btn fx-btn--icon fx-btn--icon-paper" id="chatGroupBtn" hidden aria-label="Detalhes do grupo" title="Detalhes do grupo">⚙</button>
                     </div>
                     <div class="chat-messages" id="chatMessages" aria-live="polite"></div>
                     <div class="chat-group-panel" id="chatGroupPanel" hidden></div>
                     <div class="chat-typing" id="chatTyping" hidden></div>
                     <form class="chat-input-row" id="chatForm">
-                        <input id="chatInput" type="text" placeholder="Digite uma mensagem..." maxlength="2000" data-char-counter="near" disabled aria-label="Mensagem" />
-                        <button type="submit" id="chatSend" disabled>Enviar</button>
+                        <input class="fx-input fx-input--paper fx-input--pill" id="chatInput" type="text" placeholder="Digite uma mensagem..." maxlength="2000" data-char-counter="near" disabled aria-label="Mensagem" />
+                        <button type="submit" class="fx-btn fx-btn--chrome fx-btn--pill" id="chatSend" disabled>Enviar</button>
                     </form>
                 </section>
             </div>
@@ -194,11 +194,11 @@ function initChatWidget(): void {
                     const name = conversationName(conversation);
                     const unread =
                         conversation.unreadCount > 0
-                            ? `<span class="contact-unread">${conversation.unreadCount > 99 ? "99+" : conversation.unreadCount}</span>`
+                            ? `<span class="fx-counter-badge">${conversation.unreadCount > 99 ? "99+" : conversation.unreadCount}</span>`
                             : "";
                     const avatar = conversation.isGroup
-                        ? `<span class="contact-avatar contact-avatar--group" aria-hidden="true">👥</span>`
-                        : avatarHtml(conversation.otherUserId, name, conversation.otherAvatarUrl, "contact-avatar");
+                        ? `<span class="fx-avatar fx-avatar--md contact-avatar--group" aria-hidden="true">👥</span>`
+                        : avatarHtml(conversation.otherUserId, name, conversation.otherAvatarUrl, "fx-avatar fx-avatar--md");
                     return `
                     <button type="button" class="contact-item ${conversation.conversationId === active?.id ? "active" : ""}"
                             data-conversation="${escapeHtml(conversation.conversationId)}" title="${escapeHtml(name)}">
@@ -278,7 +278,7 @@ function initChatWidget(): void {
             const firstOfRun = previous?.senderId !== message.senderId || previous?.kind === "system";
             return `
                 <div class="message-row other${firstOfRun ? "" : " is-continued"}">
-                    ${firstOfRun ? avatarHtml(message.senderId, name, message.senderAvatarUrl, "message-avatar") : '<span class="message-avatar-space"></span>'}
+                    ${firstOfRun ? avatarHtml(message.senderId, name, message.senderAvatarUrl, "fx-avatar fx-avatar--xs") : '<span class="message-avatar-space"></span>'}
                     <div class="message-stack">
                         ${firstOfRun ? `<span class="message-sender">${escapeHtml(name)}</span>` : ""}
                         ${bubble}
@@ -339,7 +339,7 @@ function initChatWidget(): void {
 
     function renderBadge(): void {
         badge.textContent = unreadTotal > 99 ? "99+" : String(unreadTotal);
-        badge.classList.toggle("show", unreadTotal > 0);
+        badge.hidden = unreadTotal === 0;
     }
 
     function renderTyping(): void {
@@ -718,7 +718,7 @@ function initChatWidget(): void {
 
         const head = el("div", "chat-group-head");
         const title = el("strong", "", "Detalhes do grupo");
-        const close = el("button", "chat-conv-btn", "✕");
+        const close = el("button", "fx-btn fx-btn--icon fx-btn--icon-paper", "✕");
         close.type = "button";
         close.setAttribute("aria-label", "Fechar detalhes");
         close.addEventListener("click", () => {
@@ -729,11 +729,11 @@ function initChatWidget(): void {
 
         if (isAdmin) {
             const rename = el("form", "chat-group-rename");
-            const field = el("input", "chat-group-input");
+            const field = el("input", "fx-input fx-input--paper fx-input--pill");
             field.value = active.title ?? "";
             field.maxLength = 80;
             field.setAttribute("aria-label", "Nome do grupo");
-            const save = el("button", "chat-primary-btn", "Renomear");
+            const save = el("button", "fx-btn fx-btn--chrome fx-btn--sm fx-btn--pill", "Renomear");
             save.type = "submit";
             rename.append(field, save);
             rename.addEventListener("submit", async (event) => {
@@ -783,7 +783,7 @@ function initChatWidget(): void {
         groupPanel.append(el("p", "chat-group-label", `${active.participants.length} pessoas`), list);
 
         if (isAdmin) {
-            const addInput = el("input", "chat-group-input");
+            const addInput = el("input", "fx-input fx-input--paper fx-input--pill");
             addInput.placeholder = "Adicionar pessoa: nome ou @usuário";
             addInput.maxLength = 50;
             addInput.setAttribute("aria-label", "Adicionar pessoa ao grupo");
@@ -824,7 +824,7 @@ function initChatWidget(): void {
             groupPanel.append(addInput, results);
         }
 
-        const leave = el("button", "chat-danger-btn", "Sair do grupo");
+        const leave = el("button", "fx-btn fx-btn--outline-danger fx-btn--sm fx-btn--pill chat-group-leave", "Sair do grupo");
         leave.type = "button";
         leave.addEventListener("click", async () => {
             const ok = await confirmDialog({
@@ -869,9 +869,8 @@ function initChatWidget(): void {
 
     function setSearchMode(mode: "direct" | "group"): void {
         searchMode = mode;
-        widget.querySelectorAll<HTMLButtonElement>(".chat-mode").forEach((b) => {
+        widget.querySelectorAll<HTMLButtonElement>("[data-mode]").forEach((b) => {
             const on = b.dataset.mode === mode;
-            b.classList.toggle("active", on);
             b.setAttribute("aria-pressed", String(on));
         });
         groupTitleInput.hidden = mode !== "group";
@@ -883,7 +882,7 @@ function initChatWidget(): void {
     function renderGroupChips(): void {
         groupChips.replaceChildren(
             ...groupSelection.map((u) => {
-                const chip = el("button", "chat-chip", `${u.displayName?.trim() || u.username} ✕`);
+                const chip = el("button", "fx-chip fx-chip--paper", `${u.displayName?.trim() || u.username} ✕`);
                 chip.type = "button";
                 chip.setAttribute("aria-label", `Tirar ${u.displayName?.trim() || u.username}`);
                 chip.addEventListener("click", (event) => {
@@ -898,7 +897,7 @@ function initChatWidget(): void {
     }
 
     widget.querySelector(".chat-search-modes")?.addEventListener("click", (event) => {
-        const button = (event.target as Element).closest<HTMLButtonElement>(".chat-mode");
+        const button = (event.target as Element).closest<HTMLButtonElement>("[data-mode]");
         if (button?.dataset.mode) setSearchMode(button.dataset.mode as "direct" | "group");
     });
 
@@ -1059,7 +1058,7 @@ function initChatWidget(): void {
 
     // Esc dentro do painel fecha (um diálogo aberto por cima trata o próprio Esc).
     widget.addEventListener("keydown", (event: KeyboardEvent) => {
-        if (event.key !== "Escape" || !isOpen() || document.querySelector(".dialog-overlay")) return;
+        if (event.key !== "Escape" || !isOpen() || document.querySelector(".fx-overlay:not([hidden])")) return;
         closeBtn.click();
     });
 
@@ -1096,7 +1095,7 @@ function initChatWidget(): void {
         const target = event.target;
         if (!isOpen() || !(target instanceof Element)) return;
         // Diálogos (apagar, remover, sair) ficam fora do widget mas fazem parte dele.
-        if (widget.contains(target) || target.closest(".dialog-overlay")) return;
+        if (widget.contains(target) || target.closest(".fx-overlay:not([hidden])")) return;
         widget.classList.remove("open");
         widget.classList.remove("searching");
         scheduleNextTick();

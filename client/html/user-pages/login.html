@@ -21,24 +21,24 @@
     <main class="login-container">
         <h1 class="visually-hidden">Entrar no FAMAX</h1>
         <div class="form-group">
-            <div class="login-notice" id="login-notice" role="status" hidden></div>
+            <div class="fx-banner fx-banner--success" id="login-notice" role="status" hidden></div>
             <!-- Passo 1: usuário e senha -->
             <div class="login-step" id="passwordStep">
-                <label class="field-label" for="username">E-mail ou usuário</label>
-                <input type="text" id="username" class="input-field" placeholder="E-mail ou usuário" autocomplete="username">
-                <label class="field-label" for="password">Senha</label>
-                <input type="password" id="password" class="input-field" placeholder="Senha" autocomplete="current-password">
+                <label class="fx-label" for="username">E-mail ou usuário</label>
+                <input type="text" id="username" class="fx-input" placeholder="E-mail ou usuário" autocomplete="username">
+                <label class="fx-label" for="password">Senha</label>
+                <input type="password" id="password" class="fx-input" placeholder="Senha" autocomplete="current-password">
                 <a href="recover-password.html" class="forgot-password">Esqueci minha senha</a>
-                <button class="btn-login" id="loginButton">Entrar</button>
+                <button class="fx-btn fx-btn--chrome fx-btn--block" id="loginButton">Entrar</button>
             </div>
             <!-- Passo 2 (só com verificação em duas etapas): código do app -->
             <div class="login-step" id="codeStep" hidden>
                 <p class="login-step-text">Digite o código de 6 dígitos do seu app autenticador.</p>
-                <input type="text" id="mfaCode" class="input-field" placeholder="000000" inputmode="numeric"
+                <input type="text" id="mfaCode" class="fx-input" placeholder="000000" inputmode="numeric"
                     autocomplete="one-time-code" maxlength="20" aria-label="Código de verificação">
                 <p class="login-step-hint">Sem o celular? Use um dos seus códigos de recuperação.</p>
-                <button class="btn-login" id="mfaButton">Verificar</button>
-                <button type="button" class="login-link-btn" id="mfaBack">Voltar</button>
+                <button class="fx-btn fx-btn--chrome fx-btn--block" id="mfaButton">Verificar</button>
+                <button type="button" class="fx-btn fx-btn--link" id="mfaBack">Voltar</button>
             </div>
             <div id="error-message" class="error-message" role="alert" hidden></div>
         </div>

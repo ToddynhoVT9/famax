@@ -175,7 +175,7 @@ function renderNsfwBanner(c: Community): void {
     if (!c.nsfwBlocked) return;
     const banner = document.createElement("p");
     banner.id = "nsfwBanner";
-    banner.className = "tf-nsfw-banner";
+    banner.className = "fx-banner fx-banner--danger";
     banner.append("Esta comunidade é para maiores de 18. Para ver as discussões e participar, ative “Conteúdo adulto” nas ");
     const link = document.createElement("a");
     link.href = pages.settings;
@@ -189,7 +189,7 @@ function renderActions(): void {
     if (!actions || !community) return;
     actions.replaceChildren();
 
-    const button = (label: string, className = "tf-btn-join"): HTMLButtonElement => {
+    const button = (label: string, className = "fx-btn fx-btn--primary fx-btn--pill"): HTMLButtonElement => {
         const b = document.createElement("button");
         b.type = "button";
         b.className = className;
@@ -200,7 +200,7 @@ function renderActions(): void {
     // Dono e moderadores: atalho para a fila de denúncias.
     if (isStaff(community.myRole)) {
         const moderation = document.createElement("a");
-        moderation.className = "tf-btn-join tf-btn-secondary";
+        moderation.className = "fx-btn fx-btn--outline fx-btn--pill";
         moderation.href = moderationUrl(community.communityId);
         moderation.textContent = "Moderação";
         actions.append(moderation);
@@ -212,7 +212,7 @@ function renderActions(): void {
         badge.className = "tf-owner-badge";
         badge.textContent = "Você é o dono";
         const edit = document.createElement("a");
-        edit.className = "tf-btn-join";
+        edit.className = "fx-btn fx-btn--primary fx-btn--pill";
         edit.href = communityEditUrl(community.communityId);
         edit.textContent = "Editar comunidade";
         actions.prepend(badge);
@@ -233,14 +233,14 @@ function renderActions(): void {
     if (community.myRole) {
         const wrapper = document.createElement("div");
         wrapper.className = "tf-member-menu";
-        const toggle = button("Participando ✓", "tf-btn-join tf-btn-joined");
+        const toggle = button("Participando ✓", "fx-btn fx-btn--outline fx-btn--pill");
         toggle.setAttribute("aria-haspopup", "menu");
         toggle.setAttribute("aria-expanded", "false");
         const menu = document.createElement("div");
-        menu.className = "tf-menu-list";
+        menu.className = "fx-menu";
         menu.setAttribute("role", "menu");
         menu.hidden = true;
-        const leave = button("Sair da comunidade", "tf-menu-item tf-menu-item--danger");
+        const leave = button("Sair da comunidade", "fx-menu-item fx-menu-item--danger");
         leave.setAttribute("role", "menuitem");
         menu.append(leave);
         wrapper.append(toggle, menu);
@@ -355,10 +355,14 @@ sortSelect?.addEventListener("change", () => {
     void loadPosts(true);
 });
 
+/** As abas do feed (Conversas, Ajudar os outros, Categorias). */
+function feedTabs(): HTMLButtonElement[] {
+    return Array.from(document.querySelectorAll<HTMLButtonElement>('#tfTabsContainer [role="tab"]'));
+}
+
 function renderTabs(): void {
-    document.querySelectorAll<HTMLButtonElement>(".tf-tab").forEach((button) => {
+    feedTabs().forEach((button) => {
         const active = button.dataset.tab === tab;
-        button.classList.toggle("active", active);
         button.setAttribute("aria-selected", String(active));
         button.tabIndex = active ? 0 : -1;
         if (active) $("tfFeedPanel")?.setAttribute("aria-labelledby", button.id);
@@ -368,7 +372,6 @@ function renderTabs(): void {
         tabHint.hidden = !TAB_HINTS[tab];
     }
     if (chipsEl) chipsEl.hidden = tab !== "categories";
-    updateIndicator();
 }
 
 function renderChips(): void {
@@ -376,7 +379,7 @@ function renderChips(): void {
     const chip = (label: string, value: string | null): HTMLButtonElement => {
         const b = document.createElement("button");
         b.type = "button";
-        b.className = "tf-chip";
+        b.className = "fx-chip";
         b.textContent = label;
         b.dataset.categoryId = value ?? "";
         b.setAttribute("aria-pressed", String(categoryFilter === value));
@@ -397,7 +400,7 @@ function selectTab(next: Tab, nextCategory: string | null = null): void {
     void loadPosts(true);
 }
 
-document.querySelectorAll<HTMLButtonElement>(".tf-tab").forEach((button) => {
+feedTabs().forEach((button) => {
     button.addEventListener("click", () => {
         const next = button.dataset.tab as Tab;
         if (next !== tab) selectTab(next);
@@ -406,7 +409,7 @@ document.querySelectorAll<HTMLButtonElement>(".tf-tab").forEach((button) => {
 
 // Teclado no padrão de tablist: setas, Home e End mudam de aba.
 $("tfTabsContainer")?.addEventListener("keydown", (event) => {
-    const tabs = Array.from(document.querySelectorAll<HTMLButtonElement>(".tf-tab"));
+    const tabs = feedTabs();
     const index = tabs.findIndex((t) => t.dataset.tab === tab);
     let target = -1;
     if (event.key === "ArrowRight") target = (index + 1) % tabs.length;
@@ -420,25 +423,11 @@ $("tfTabsContainer")?.addEventListener("keydown", (event) => {
 });
 
 chipsEl?.addEventListener("click", (event) => {
-    const chip = (event.target as Element).closest<HTMLButtonElement>(".tf-chip");
+    const chip = (event.target as Element).closest<HTMLButtonElement>(".fx-chip");
     if (!chip) return;
     selectTab("categories", chip.dataset.categoryId || null);
 });
 
-function updateIndicator(): void {
-    const activeTab = document.querySelector<HTMLElement>(".tf-tab.active");
-    const indicator = $("tfTabIndicator");
-    const container = $("tfTabsContainer");
-    if (activeTab && indicator && container) {
-        const containerRect = container.getBoundingClientRect();
-        const tabRect = activeTab.getBoundingClientRect();
-        indicator.style.width = `${tabRect.width}px`;
-        indicator.style.transform = `translateX(${tabRect.left - containerRect.left}px)`;
-    }
-}
-
-window.addEventListener("load", () => setTimeout(updateIndicator, 50));
-window.addEventListener("resize", updateIndicator);
 
 // ===========================================================================
 // Vistas: Discussões, Regras, Membros
@@ -518,7 +507,6 @@ function showView(next: View): void {
         eventsLoaded = true;
         void eventsView?.reload();
     }
-    if (view === "discussions") updateIndicator();
 }
 
 // ===========================================================================

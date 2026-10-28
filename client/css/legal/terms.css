@@ -43,20 +43,9 @@ ul {
     margin-bottom: 15px;
 }
 
-.btn-voltar {
-    display: inline-block;
+/* "Voltar" (fx-btn chrome): só o espaço até o título. */
+#backButton {
     margin-bottom: 20px;
-    color: var(--color-on-chrome);
-    text-decoration: none;
-    background-color: var(--color-chrome);
-    padding: 10px 20px;
-    border-radius: 6px;
-    transition: background 0.2s;
-    font-weight: 500;
-}
-
-.btn-voltar:hover {
-    background-color: var(--color-chrome-hover);
 }
 
 .terms-updated {

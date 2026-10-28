@@ -27,8 +27,8 @@
             <!-- Banner e foto -->
             <div class="banner" id="settingsBanner">
                 <div class="media-actions media-actions--banner">
-                    <button type="button" class="btn-media" id="btnBannerChange">Alterar banner</button>
-                    <button type="button" class="btn-media btn-media--danger" id="btnBannerRemove" hidden>Remover banner</button>
+                    <button type="button" class="fx-btn fx-btn--on-photo fx-btn--sm fx-btn--pill" id="btnBannerChange">Alterar banner</button>
+                    <button type="button" class="fx-btn fx-btn--on-photo fx-btn--sm fx-btn--pill" id="btnBannerRemove" hidden>Remover banner</button>
                 </div>
                 <input type="file" id="bannerInput" accept="image/png,image/jpeg,image/webp" hidden>
 
@@ -36,8 +36,8 @@
             </div>
 
             <div class="media-actions media-actions--avatar">
-                <button type="button" class="btn-media" id="btnAvatarChange">Alterar foto</button>
-                <button type="button" class="btn-media btn-media--danger" id="btnAvatarRemove" hidden>Remover foto</button>
+                <button type="button" class="fx-btn fx-btn--on-photo fx-btn--sm fx-btn--pill" id="btnAvatarChange">Alterar foto</button>
+                <button type="button" class="fx-btn fx-btn--on-photo fx-btn--sm fx-btn--pill" id="btnAvatarRemove" hidden>Remover foto</button>
                 <input type="file" id="avatarInput" accept="image/png,image/jpeg,image/webp" hidden>
             </div>
             <p class="settings-hint">Foto: PNG, JPEG ou WebP, até 1MB. Banner: até 2MB.</p>
@@ -51,28 +51,26 @@
                     <form class="settings-form" id="identityForm" novalidate>
                         <label class="settings-field">
                             <span>Nome de exibição</span>
-                            <input type="text" class="settings-input" id="displayNameInput" maxlength="100" required>
+                            <input type="text" class="fx-input" id="displayNameInput" maxlength="100" required>
                         </label>
                         <label class="settings-field">
                             <span>Apelido <small>(opcional)</small></span>
-                            <input type="text" class="settings-input" id="nicknameInput" maxlength="50">
+                            <input type="text" class="fx-input" id="nicknameInput" maxlength="50">
                         </label>
                         <div class="settings-form-actions">
-                            <button type="submit" class="btn-modal btn-modal--primary" id="btnIdentitySave">Salvar</button>
+                            <button type="submit" class="fx-btn fx-btn--primary" id="btnIdentitySave">Salvar</button>
                             <span class="settings-status" id="identityStatus" role="status" hidden></span>
                         </div>
                     </form>
 
                     <div class="profile-line">
-                        <button type="button" class="line-btn" id="btnSobre">Sobre</button>
+                        <button type="button" class="fx-btn fx-btn--link" id="btnSobre">Sobre</button>
                         <span class="line-hint">nascimento, gênero e bio</span>
                     </div>
                     <div class="profile-line">
                         <span class="line-label" id="adultLabel">Conteúdo adulto</span>
-                        <button type="button" class="toggle-switch-ui" id="toggleAdult" role="switch"
-                            aria-checked="false" aria-labelledby="adultLabel" disabled>
-                            <span class="toggle-circle"></span>
-                        </button>
+                        <button type="button" class="fx-switch" id="toggleAdult" role="switch"
+                            aria-checked="false" aria-labelledby="adultLabel" disabled></button>
                     </div>
                 </div>
 
@@ -90,63 +88,51 @@
                         <span class="line-value" id="usernameValue"></span>
                     </div>
                     <div class="profile-line">
-                        <button type="button" class="line-btn" id="btnChangePassword">Senha</button>
+                        <button type="button" class="fx-btn fx-btn--link" id="btnChangePassword">Senha</button>
                         <span class="line-hint">alterar</span>
                     </div>
                     <div class="profile-line">
                         <span class="line-label" id="privateLabel">Perfil privado</span>
-                        <button type="button" class="toggle-switch-ui" id="togglePrivate" role="switch"
-                            aria-checked="false" aria-labelledby="privateLabel" disabled>
-                            <span class="toggle-circle"></span>
-                        </button>
+                        <button type="button" class="fx-switch" id="togglePrivate" role="switch"
+                            aria-checked="false" aria-labelledby="privateLabel" disabled></button>
                     </div>
                     <div class="profile-line is-disabled">
                         <span class="line-label">Outros perfis</span>
-                        <span class="badge-soon">Em breve</span>
+                        <span class="fx-badge fx-badge--outline">Em breve</span>
                     </div>
                     <div class="profile-line">
-                        <button type="button" class="line-btn" id="btnSocial">Suas redes sociais</button>
+                        <button type="button" class="fx-btn fx-btn--link" id="btnSocial">Suas redes sociais</button>
                         <span class="line-hint" id="socialCount"></span>
                     </div>
                     <!-- Notificações: o que gera aviso no sininho. -->
                     <h2 class="settings-subtitle">Notificações</h2>
                     <div class="profile-line">
                         <span class="line-label" id="notifyCommentsLabel">Comentários nas suas discussões</span>
-                        <button type="button" class="toggle-switch-ui" id="toggleNotifyComments" role="switch"
-                            aria-checked="false" aria-labelledby="notifyCommentsLabel" disabled>
-                            <span class="toggle-circle"></span>
-                        </button>
+                        <button type="button" class="fx-switch" id="toggleNotifyComments" role="switch"
+                            aria-checked="false" aria-labelledby="notifyCommentsLabel" disabled></button>
                     </div>
                     <div class="profile-line">
                         <span class="line-label" id="notifyRepliesLabel">Respostas aos seus comentários e menções</span>
-                        <button type="button" class="toggle-switch-ui" id="toggleNotifyReplies" role="switch"
-                            aria-checked="false" aria-labelledby="notifyRepliesLabel" disabled>
-                            <span class="toggle-circle"></span>
-                        </button>
+                        <button type="button" class="fx-switch" id="toggleNotifyReplies" role="switch"
+                            aria-checked="false" aria-labelledby="notifyRepliesLabel" disabled></button>
                     </div>
                     <div class="profile-line">
                         <span class="line-label" id="notifyLikesLabel">Curtidas</span>
-                        <button type="button" class="toggle-switch-ui" id="toggleNotifyLikes" role="switch"
-                            aria-checked="false" aria-labelledby="notifyLikesLabel" disabled>
-                            <span class="toggle-circle"></span>
-                        </button>
+                        <button type="button" class="fx-switch" id="toggleNotifyLikes" role="switch"
+                            aria-checked="false" aria-labelledby="notifyLikesLabel" disabled></button>
                     </div>
                     <div class="profile-line">
                         <span class="line-label" id="notifyFollowsLabel">Novos seguidores</span>
-                        <button type="button" class="toggle-switch-ui" id="toggleNotifyFollows" role="switch"
-                            aria-checked="false" aria-labelledby="notifyFollowsLabel" disabled>
-                            <span class="toggle-circle"></span>
-                        </button>
+                        <button type="button" class="fx-switch" id="toggleNotifyFollows" role="switch"
+                            aria-checked="false" aria-labelledby="notifyFollowsLabel" disabled></button>
                     </div>
                     <div class="profile-line">
                         <span class="line-label" id="notifyEventsLabel">Eventos novos nas suas comunidades</span>
-                        <button type="button" class="toggle-switch-ui" id="toggleNotifyEvents" role="switch"
-                            aria-checked="false" aria-labelledby="notifyEventsLabel" disabled>
-                            <span class="toggle-circle"></span>
-                        </button>
+                        <button type="button" class="fx-switch" id="toggleNotifyEvents" role="switch"
+                            aria-checked="false" aria-labelledby="notifyEventsLabel" disabled></button>
                     </div>
                     <div class="profile-line">
-                        <button type="button" class="line-btn" id="btnLogoutAll"
+                        <button type="button" class="fx-btn fx-btn--link" id="btnLogoutAll"
                             title="Encerrar todas as sessões, inclusive esta">Sair de todos os dispositivos</button>
                     </div>
                 </div>
@@ -163,46 +149,48 @@
     </main>
 
     <!-- MODAL DE SENHA -->
-    <div class="modal-overlay" id="senhaModalOverlay">
-        <div class="modal-box" role="dialog" aria-modal="true" aria-labelledby="senhaModalTitle">
+    <div class="fx-overlay" id="senhaModalOverlay" hidden>
+        <div class="fx-dialog fx-dialog--form" role="dialog" aria-modal="true" aria-labelledby="senhaModalTitle">
             <!-- Passo 1: Senha atual -->
-            <form id="modalStep1" novalidate>
-                <div class="modal-title" id="senhaModalTitle">Senha</div>
-                <label class="modal-label" for="currentPasswordInput">Qual a sua senha atual?</label>
-                <input type="password" class="modal-input" id="currentPasswordInput" autocomplete="current-password">
-                <label class="show-password">
+            <form class="settings-modal-step" id="modalStep1" novalidate>
+                <h2 class="fx-dialog-title" id="senhaModalTitle">Senha</h2>
+                <div class="fx-field">
+                    <label class="fx-label" for="currentPasswordInput">Qual a sua senha atual?</label>
+                    <input type="password" class="fx-input" id="currentPasswordInput" autocomplete="current-password">
+                </div>
+                <label class="fx-check">
                     <input type="checkbox" data-toggle-password="currentPasswordInput">
                     Mostrar senha
                 </label>
-                <div class="modal-error" id="step1Error" role="alert" hidden></div>
-                <div class="modal-actions">
-                    <button type="button" class="btn-modal" data-close-modal>Cancelar</button>
-                    <button type="submit" class="btn-modal btn-modal--primary">Continuar</button>
+                <div class="fx-error" id="step1Error" role="alert" hidden></div>
+                <div class="fx-dialog-actions">
+                    <button type="button" class="fx-btn fx-btn--secondary" data-close-modal>Cancelar</button>
+                    <button type="submit" class="fx-btn fx-btn--primary">Continuar</button>
                 </div>
             </form>
 
             <!-- Passo 2: Nova senha -->
-            <form id="modalStep2" novalidate hidden>
-                <div class="modal-title">Senha</div>
+            <form class="settings-modal-step" id="modalStep2" novalidate hidden>
+                <h2 class="fx-dialog-title">Senha</h2>
                 <div class="modal-two-cols">
-                    <div>
-                        <label class="modal-label" for="newPasswordInput">Qual a sua nova senha?</label>
-                        <input type="password" class="modal-input" id="newPasswordInput" autocomplete="new-password">
+                    <div class="fx-field">
+                        <label class="fx-label" for="newPasswordInput">Qual a sua nova senha?</label>
+                        <input type="password" class="fx-input" id="newPasswordInput" autocomplete="new-password">
                     </div>
-                    <div>
-                        <label class="modal-label" for="confirmPasswordInput">Confirme a sua nova senha.</label>
-                        <input type="password" class="modal-input" id="confirmPasswordInput" autocomplete="new-password">
+                    <div class="fx-field">
+                        <label class="fx-label" for="confirmPasswordInput">Confirme a sua nova senha.</label>
+                        <input type="password" class="fx-input" id="confirmPasswordInput" autocomplete="new-password">
                     </div>
                 </div>
-                <p class="modal-hint">Mínimo de 8 caracteres, com 3 números e 1 caractere especial. As outras sessões serão encerradas.</p>
-                <label class="show-password">
+                <p class="fx-hint">Mínimo de 8 caracteres, com 3 números e 1 caractere especial. As outras sessões serão encerradas.</p>
+                <label class="fx-check">
                     <input type="checkbox" data-toggle-password="newPasswordInput confirmPasswordInput">
                     Mostrar senhas
                 </label>
-                <div class="modal-error" id="step2Error" role="alert" hidden></div>
-                <div class="modal-actions">
-                    <button type="button" class="btn-modal" id="btnPasswordBack">Voltar</button>
-                    <button type="submit" class="btn-modal btn-modal--primary" id="btnPasswordSave">Alterar senha</button>
+                <div class="fx-error" id="step2Error" role="alert" hidden></div>
+                <div class="fx-dialog-actions">
+                    <button type="button" class="fx-btn fx-btn--secondary" id="btnPasswordBack">Voltar</button>
+                    <button type="submit" class="fx-btn fx-btn--primary" id="btnPasswordSave">Alterar senha</button>
                 </div>
             </form>
 
@@ -214,57 +202,57 @@
     </div>
 
     <!-- MODAL SOBRE -->
-    <div class="modal-overlay" id="sobreModalOverlay">
-        <form class="modal-box modal-box--wide" id="sobreForm" role="dialog" aria-modal="true"
+    <div class="fx-overlay" id="sobreModalOverlay" hidden>
+        <form class="fx-dialog fx-dialog--form" id="sobreForm" role="dialog" aria-modal="true"
             aria-labelledby="sobreModalTitle" novalidate>
-            <div class="modal-title" id="sobreModalTitle">Sobre</div>
+            <h2 class="fx-dialog-title" id="sobreModalTitle">Sobre</h2>
 
             <div class="sobre-flex-row">
                 <div class="sobre-idade-section">
-                    <label class="modal-label" for="sobreBirthDate">Data de nascimento</label>
-                    <input type="date" class="sobre-date-input" id="sobreBirthDate">
+                    <label class="fx-label" for="sobreBirthDate">Data de nascimento</label>
+                    <input type="date" class="fx-input" id="sobreBirthDate">
                 </div>
 
                 <div class="sobre-genero-section">
-                    <div class="modal-label" id="generoLabel">Gênero</div>
+                    <div class="fx-label" id="generoLabel">Gênero</div>
                     <div class="genero-options" id="generoOptionsContainer" role="radiogroup" aria-labelledby="generoLabel">
-                        <button type="button" class="btn-genero" role="radio" aria-checked="false" data-gender="">Não informar</button>
-                        <button type="button" class="btn-genero" role="radio" aria-checked="false" data-gender="outro">Outro</button>
-                        <button type="button" class="btn-genero" role="radio" aria-checked="false" data-gender="masculino">Masculino</button>
-                        <button type="button" class="btn-genero" role="radio" aria-checked="false" data-gender="feminino">Feminino</button>
+                        <button type="button" class="fx-chip" role="radio" aria-checked="false" data-gender="">Não informar</button>
+                        <button type="button" class="fx-chip" role="radio" aria-checked="false" data-gender="outro">Outro</button>
+                        <button type="button" class="fx-chip" role="radio" aria-checked="false" data-gender="masculino">Masculino</button>
+                        <button type="button" class="fx-chip" role="radio" aria-checked="false" data-gender="feminino">Feminino</button>
                     </div>
                 </div>
             </div>
 
             <div class="sobre-bio-section">
-                <label class="modal-label" for="sobreBio">Bio</label>
-                <textarea class="sobre-textarea" id="sobreBio" rows="8" maxlength="500"
+                <label class="fx-label" for="sobreBio">Bio</label>
+                <textarea class="fx-input sobre-bio" id="sobreBio" rows="8" maxlength="500"
                     placeholder="Escreva sobre você..."></textarea>
                 <span class="char-counter" id="sobreBioCounter" aria-live="polite"></span>
             </div>
 
-            <div class="modal-error" id="sobreError" role="alert" hidden></div>
-            <div class="modal-actions">
-                <button type="button" class="btn-modal" data-close-modal>Cancelar</button>
-                <button type="submit" class="btn-modal btn-modal--primary" id="btnSobreSave">Salvar</button>
+            <div class="fx-error" id="sobreError" role="alert" hidden></div>
+            <div class="fx-dialog-actions">
+                <button type="button" class="fx-btn fx-btn--secondary" data-close-modal>Cancelar</button>
+                <button type="submit" class="fx-btn fx-btn--primary" id="btnSobreSave">Salvar</button>
             </div>
         </form>
     </div>
 
     <!-- MODAL REDES SOCIAIS -->
-    <div class="modal-overlay" id="socialModalOverlay">
-        <form class="modal-box modal-box--wide" id="socialForm" role="dialog" aria-modal="true"
+    <div class="fx-overlay" id="socialModalOverlay" hidden>
+        <form class="fx-dialog fx-dialog--form" id="socialForm" role="dialog" aria-modal="true"
             aria-labelledby="socialModalTitle" novalidate>
-            <div class="modal-title" id="socialModalTitle">Suas redes sociais</div>
-            <p class="modal-hint">Os links aparecem no seu perfil. Só endereços https://.</p>
+            <h2 class="fx-dialog-title" id="socialModalTitle">Suas redes sociais</h2>
+            <p class="fx-hint">Os links aparecem no seu perfil. Só endereços https://.</p>
 
             <div class="social-rows" id="socialRows"></div>
-            <button type="button" class="btn-modal" id="btnSocialAdd">+ Adicionar</button>
+            <button type="button" class="fx-btn fx-btn--secondary social-add" id="btnSocialAdd">+ Adicionar</button>
 
-            <div class="modal-error" id="socialError" role="alert" hidden></div>
-            <div class="modal-actions">
-                <button type="button" class="btn-modal" data-close-modal>Cancelar</button>
-                <button type="submit" class="btn-modal btn-modal--primary" id="btnSocialSave">Salvar</button>
+            <div class="fx-error" id="socialError" role="alert" hidden></div>
+            <div class="fx-dialog-actions">
+                <button type="button" class="fx-btn fx-btn--secondary" data-close-modal>Cancelar</button>
+                <button type="submit" class="fx-btn fx-btn--primary" id="btnSocialSave">Salvar</button>
             </div>
         </form>
     </div>

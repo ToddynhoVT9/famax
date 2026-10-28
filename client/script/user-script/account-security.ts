@@ -63,7 +63,7 @@ export function setStatus(target: HTMLElement, text: string | null, kind: "ok" |
 
 export function passwordInput(label: string, autocomplete: AutoFill = "current-password"): [HTMLLabelElement, HTMLInputElement] {
     const wrapper = el("label", "settings-field");
-    const input = el("input", "settings-input");
+    const input = el("input", "fx-input");
     input.type = "password";
     input.autocomplete = autocomplete;
     wrapper.append(el("span", "", label), input);
@@ -80,22 +80,22 @@ function emailCard(ctx: SecurityContext): Card {
     const current = el("p", "security-line");
     const pending = el("p", "security-line security-line--warn");
     const actions = el("div", "security-actions");
-    const resend = el("button", "btn-modal", "Reenviar link de confirmação");
+    const resend = el("button", "fx-btn fx-btn--chrome", "Reenviar link de confirmação");
     resend.type = "button";
-    const cancelPending = el("button", "btn-modal", "Cancelar troca");
+    const cancelPending = el("button", "fx-btn fx-btn--chrome", "Cancelar troca");
     cancelPending.type = "button";
     actions.append(resend, cancelPending);
 
     const form = el("form", "settings-form security-form");
     form.noValidate = true;
     const newLabel = el("label", "settings-field");
-    const newInput = el("input", "settings-input");
+    const newInput = el("input", "fx-input");
     newInput.type = "email";
     newInput.autocomplete = "email";
     newInput.maxLength = 255;
     newLabel.append(el("span", "", "Novo e-mail"), newInput);
     const [passwordLabel, password] = passwordInput("Sua senha");
-    const submit = el("button", "btn-modal btn-modal--primary", "Trocar e-mail");
+    const submit = el("button", "fx-btn fx-btn--primary", "Trocar e-mail");
     submit.type = "submit";
     const formActions = el("div", "settings-form-actions");
     formActions.append(submit);
@@ -154,7 +154,7 @@ function emailCard(ctx: SecurityContext): Card {
                 el("strong", "", me.email),
                 el(
                     "span",
-                    me.emailVerified ? "security-badge security-badge--ok" : "security-badge security-badge--warn",
+                    me.emailVerified ? "fx-badge fx-badge--moderator" : "fx-badge fx-badge--warning-solid",
                     me.emailVerified ? "confirmado" : "não confirmado",
                 ),
             );
@@ -186,7 +186,7 @@ function recoveryCodesBox(codes: string[]): HTMLElement {
     const list = el("ol", "recovery-codes");
     for (const code of codes) list.append(el("li", "", code));
     const actions = el("div", "security-actions");
-    const copy = el("button", "btn-modal", "Copiar");
+    const copy = el("button", "fx-btn fx-btn--chrome", "Copiar");
     copy.type = "button";
     copy.addEventListener("click", async () => {
         try {
@@ -196,7 +196,7 @@ function recoveryCodesBox(codes: string[]): HTMLElement {
             toast("Não foi possível copiar. Selecione e copie à mão.", "error");
         }
     });
-    const download = el("a", "btn-modal", "Baixar .txt");
+    const download = el("a", "fx-btn fx-btn--chrome", "Baixar .txt");
     download.href = URL.createObjectURL(
         new Blob([`Códigos de recuperação do FAMAX\n\n${codes.join("\n")}\n`], { type: "text/plain" }),
     );
@@ -235,14 +235,14 @@ function twoFactorCard(ctx: SecurityContext): Card {
             const form = el("form", "settings-form security-form");
             form.noValidate = true;
             const label = el("label", "settings-field");
-            const code = el("input", "settings-input");
+            const code = el("input", "fx-input");
             code.inputMode = "numeric";
             code.autocomplete = "one-time-code";
             code.maxLength = 6;
             label.append(el("span", "", "Código de 6 dígitos do app"), code);
-            const confirm = el("button", "btn-modal btn-modal--primary", "Ativar");
+            const confirm = el("button", "fx-btn fx-btn--primary", "Ativar");
             confirm.type = "submit";
-            const cancel = el("button", "btn-modal", "Cancelar");
+            const cancel = el("button", "fx-btn fx-btn--chrome", "Cancelar");
             cancel.type = "button";
             const actions = el("div", "security-actions");
             actions.append(confirm, cancel);
@@ -261,11 +261,11 @@ function twoFactorCard(ctx: SecurityContext): Card {
                 confirm.disabled = true;
                 try {
                     const { recoveryCodes } = await api.twoFactor.enable(code.value.trim());
-                    const done = el("button", "btn-modal btn-modal--primary", "Guardei os códigos");
+                    const done = el("button", "fx-btn fx-btn--primary", "Guardei os códigos");
                     done.type = "button";
                     done.addEventListener("click", () => void refreshMe());
                     area.replaceChildren(recoveryCodesBox(recoveryCodes), done);
-                    state.replaceChildren(el("span", "security-badge security-badge--ok", "ativa"));
+                    state.replaceChildren(el("span", "fx-badge fx-badge--moderator", "ativa"));
                     setStatus(message, "Verificação em duas etapas ativada.", "ok");
                 } catch (err) {
                     setStatus(message, errorMessage(err, "Não foi possível ativar."));
@@ -283,17 +283,17 @@ function twoFactorCard(ctx: SecurityContext): Card {
         form.noValidate = true;
         const [passwordLabel, password] = passwordInput("Sua senha");
         const label = el("label", "settings-field");
-        const code = el("input", "settings-input");
+        const code = el("input", "fx-input");
         code.autocomplete = "one-time-code";
         code.maxLength = 20;
         label.append(el("span", "", "Código do app ou de recuperação"), code);
         const submit = el(
             "button",
-            action === "disable" ? "btn-modal btn-modal--danger" : "btn-modal btn-modal--primary",
+            action === "disable" ? "fx-btn fx-btn--danger" : "fx-btn fx-btn--primary",
             action === "disable" ? "Desativar" : "Gerar códigos novos",
         );
         submit.type = "submit";
-        const cancel = el("button", "btn-modal", "Cancelar");
+        const cancel = el("button", "fx-btn fx-btn--chrome", "Cancelar");
         cancel.type = "button";
         const actions = el("div", "security-actions");
         actions.append(submit, cancel);
@@ -311,7 +311,7 @@ function twoFactorCard(ctx: SecurityContext): Card {
                     setStatus(message, "Verificação em duas etapas desativada.", "ok");
                     await refreshMe();
                 } else {
-                    const done = el("button", "btn-modal btn-modal--primary", "Guardei os códigos");
+                    const done = el("button", "fx-btn fx-btn--primary", "Guardei os códigos");
                     done.type = "button";
                     done.addEventListener("click", () => void refreshMe());
                     area.replaceChildren(recoveryCodesBox(result.recoveryCodes ?? []), done);
@@ -328,25 +328,25 @@ function twoFactorCard(ctx: SecurityContext): Card {
         current = me;
         if (me.twoFactorEnabled) {
             state.replaceChildren(
-                el("span", "security-badge security-badge--ok", "ativa"),
+                el("span", "fx-badge fx-badge--moderator", "ativa"),
                 el(
                     "span",
                     me.recoveryCodesLeft <= 2 ? "security-line--warn" : "security-card-text",
                     `${me.recoveryCodesLeft} ${me.recoveryCodesLeft === 1 ? "código de recuperação restante" : "códigos de recuperação restantes"}`,
                 ),
             );
-            const codes = el("button", "btn-modal", "Gerar códigos novos");
+            const codes = el("button", "fx-btn fx-btn--chrome", "Gerar códigos novos");
             codes.type = "button";
             codes.addEventListener("click", () => confirmForm("codes"));
-            const disable = el("button", "btn-modal btn-modal--danger", "Desativar");
+            const disable = el("button", "fx-btn fx-btn--danger", "Desativar");
             disable.type = "button";
             disable.addEventListener("click", () => confirmForm("disable"));
             const actions = el("div", "security-actions");
             actions.append(codes, disable);
             area.replaceChildren(actions);
         } else {
-            state.replaceChildren(el("span", "security-badge security-badge--warn", "desativada"));
-            const enable = el("button", "btn-modal btn-modal--primary", "Ativar");
+            state.replaceChildren(el("span", "fx-badge fx-badge--warning-solid", "desativada"));
+            const enable = el("button", "fx-btn fx-btn--primary", "Ativar");
             enable.type = "button";
             enable.addEventListener("click", () => void startSetup());
             area.replaceChildren(enable);
@@ -366,7 +366,7 @@ function sessionsCard(): Card {
         "Onde sua conta está conectada. Encerre o que você não reconhecer.",
     );
     const list = el("ul", "security-list");
-    const revokeOthers = el("button", "btn-modal", "Sair de todos os outros");
+    const revokeOthers = el("button", "fx-btn fx-btn--chrome", "Sair de todos os outros");
     revokeOthers.type = "button";
     const message = status();
     body.append(list, revokeOthers, message);
@@ -380,12 +380,12 @@ function sessionsCard(): Card {
                     const item = el("li", "security-list-item");
                     const info = el("div", "security-list-info");
                     const name = el("strong", "", session.device);
-                    if (session.current) name.append(" ", el("span", "security-badge security-badge--ok", "este dispositivo"));
+                    if (session.current) name.append(" ", el("span", "fx-badge fx-badge--moderator", "este dispositivo"));
                     const meta = [session.ip, `ativo ${timeAgo(session.lastSeenAt)}`].filter(Boolean).join(" · ");
                     info.append(name, el("span", "security-list-meta", meta));
                     item.append(info);
                     if (!session.current) {
-                        const end = el("button", "btn-modal", "Encerrar");
+                        const end = el("button", "fx-btn fx-btn--chrome", "Encerrar");
                         end.type = "button";
                         end.addEventListener("click", async () => {
                             end.disabled = true;
@@ -464,7 +464,7 @@ function blocksCard(): Card {
                     const link = el("a", "", user.displayName?.trim() || user.username);
                     link.href = profileUrl(user.userId);
                     info.append(link, el("span", "security-list-meta", `@${user.username}`));
-                    const unblock = el("button", "btn-modal", "Desbloquear");
+                    const unblock = el("button", "fx-btn fx-btn--chrome", "Desbloquear");
                     unblock.type = "button";
                     unblock.addEventListener("click", async () => {
                         unblock.disabled = true;
@@ -505,9 +505,9 @@ function dataCard(): Card {
         "Seus dados",
         "Baixe uma cópia de tudo o que é seu no FAMAX, ou exclua a conta.",
     );
-    const exportBtn = el("button", "btn-modal", "Exportar meus dados (.json)");
+    const exportBtn = el("button", "fx-btn fx-btn--chrome", "Exportar meus dados (.json)");
     exportBtn.type = "button";
-    const deleteBtn = el("button", "btn-modal btn-modal--danger", "Excluir minha conta");
+    const deleteBtn = el("button", "fx-btn fx-btn--danger", "Excluir minha conta");
     deleteBtn.type = "button";
     const actions = el("div", "security-actions");
     actions.append(exportBtn, deleteBtn);
@@ -549,7 +549,7 @@ function dataCard(): Card {
     });
 
     deleteBtn.addEventListener("click", () => {
-        const form = el("form", "settings-form security-form security-danger-zone");
+        const form = el("form", "settings-form security-form fx-danger-zone");
         form.noValidate = true;
         form.append(
             el(
@@ -563,15 +563,15 @@ function dataCard(): Card {
         let code: HTMLInputElement | null = null;
         if (current?.twoFactorEnabled) {
             const label = el("label", "settings-field");
-            code = el("input", "settings-input");
+            code = el("input", "fx-input");
             code.autocomplete = "one-time-code";
             code.maxLength = 20;
             label.append(el("span", "", "Código do app ou de recuperação"), code);
             form.append(label);
         }
-        const submit = el("button", "btn-modal btn-modal--danger", "Excluir conta");
+        const submit = el("button", "fx-btn fx-btn--danger", "Excluir conta");
         submit.type = "submit";
-        const cancel = el("button", "btn-modal", "Cancelar");
+        const cancel = el("button", "fx-btn fx-btn--chrome", "Cancelar");
         cancel.type = "button";
         const formActions = el("div", "security-actions");
         formActions.append(submit, cancel);

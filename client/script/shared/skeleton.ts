@@ -22,7 +22,7 @@ const SHAPES: Record<SkeletonKind, number[]> = {
 
 export function skeleton(kind: SkeletonKind, count = 3, label = "Carregando..."): HTMLElement {
     const group = document.createElement("div");
-    group.className = `skeleton-group skeleton-group--${kind}`;
+    group.className = "fx-skel-group";
     group.setAttribute("role", "status");
     group.setAttribute("aria-busy", "true");
 
@@ -33,16 +33,17 @@ export function skeleton(kind: SkeletonKind, count = 3, label = "Carregando...")
 
     for (let i = 0; i < count; i++) {
         const item = document.createElement("div");
-        item.className = `skeleton-item skeleton-item--${kind}`;
+        item.className = kind === "message" ? "fx-skel fx-skel--message" : "fx-skel";
         item.setAttribute("aria-hidden", "true");
         // Mensagens alternam lados, como numa conversa de verdade.
-        if (kind === "message" && i % 2 === 1) item.classList.add("skeleton-item--mine");
-        for (const width of SHAPES[kind]) {
+        if (kind === "message" && i % 2 === 1) item.classList.add("fx-skel--mine");
+        SHAPES[kind].forEach((width, index) => {
             const line = document.createElement("span");
-            line.className = "skeleton-line";
+            // A primeira linha do post é o título, mais alta.
+            line.className = kind === "post" && index === 0 ? "fx-skel-line fx-skel-line--title" : "fx-skel-line";
             line.style.width = `${width}%`;
             item.append(line);
-        }
+        });
         group.append(item);
     }
     return group;
@@ -57,16 +58,16 @@ export interface EmptyAction {
 
 export function emptyState(title: string, text?: string, action?: EmptyAction): HTMLElement {
     const box = document.createElement("div");
-    box.className = "empty-state";
+    box.className = "fx-empty";
 
     const heading = document.createElement("p");
-    heading.className = "empty-state-title";
+    heading.className = "fx-empty-title";
     heading.textContent = title;
     box.append(heading);
 
     if (text) {
         const body = document.createElement("p");
-        body.className = "empty-state-text";
+        body.className = "fx-empty-text";
         body.textContent = text;
         box.append(body);
     }
@@ -81,7 +82,8 @@ export function emptyState(title: string, text?: string, action?: EmptyAction): 
             control.type = "button";
             if (action.onClick) control.addEventListener("click", action.onClick);
         }
-        control.className = "empty-state-action";
+        // Button primary em pílula (hoje era azul): a ação do estado vazio.
+        control.className = "fx-btn fx-btn--primary fx-btn--pill";
         control.textContent = action.label;
         box.append(control);
     }

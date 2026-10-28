@@ -39,7 +39,6 @@ body.community-new-page {
 .page-header p {
     color: var(--color-on-chrome);
     font-size: 1rem;
-    opacity: 0.9;
 }
 
 .page-body {
@@ -56,39 +55,9 @@ body.community-new-page {
     gap: 10px;
 }
 
-.form-field label {
-    font-size: 0.95rem;
-    color: var(--color-text-soft);
-}
-
-.form-field input[type="text"],
-.form-field textarea,
-.form-field select,
-.form-field input[type="file"] {
-    width: 100%;
-    border-radius: 14px;
-    border: 1px solid var(--color-border-strong);
-    padding: 14px 16px;
-    background-color: var(--color-bg-deep);
-    color: var(--color-text-soft);
-    font-size: 1rem;
-    font-family: inherit;
-}
-
+/* Campos (fx-input): só o que é deste formulário. */
 .form-field textarea {
-    resize: vertical;
     min-height: 90px;
-    line-height: 1.5;
-}
-
-.form-field select {
-    appearance: none;
-    cursor: pointer;
-}
-
-.form-field select:disabled {
-    opacity: 0.6;
-    cursor: progress;
 }
 
 .field-hint {
@@ -116,22 +85,6 @@ body.community-new-page {
     object-fit: cover;
 }
 
-/* Mensagens de erro inline — substituem o alert() do protótipo. */
-.form-error {
-    display: none;
-    background: rgba(220, 53, 69, 0.12);
-    border: 1px solid rgba(220, 53, 69, 0.5);
-    color: var(--color-danger-text);
-    border-radius: 12px;
-    padding: 12px 16px;
-    font-size: 0.92rem;
-    line-height: 1.4;
-}
-
-.form-error.show {
-    display: block;
-}
-
 .actions {
     display: flex;
     justify-content: flex-end;
@@ -139,81 +92,19 @@ body.community-new-page {
     flex-wrap: wrap;
 }
 
-.btn {
-    border: none;
-    border-radius: 14px;
-    padding: 14px 20px;
-    font-size: 1rem;
-    font-weight: 700;
-    cursor: pointer;
-    font-family: inherit;
-}
-
-.btn-secondary {
-    background: var(--color-surface-2);
-    color: var(--color-text);
-    border: 1px solid var(--color-border);
-}
-
-.btn-primary {
-    background: var(--color-paper);
-    color: var(--color-ink);
-}
-
-.btn-primary:hover,
-.btn-secondary:hover {
-    opacity: 0.94;
-}
-
-.btn:disabled {
-    opacity: 0.55;
-    cursor: not-allowed;
-}
-
 @media (max-width: 640px) {
     .actions {
         justify-content: stretch;
     }
 
-    .actions .btn {
+    .actions .fx-btn {
         flex: 1;
     }
 }
 
 /* ----- Modo edição (?edit=<id>) ----- */
-.checkbox-field {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    margin-bottom: 12px;
-    color: var(--color-text-soft);
-    cursor: pointer;
-}
-
-.danger-zone {
+/* Excluir comunidade (fx-danger-zone): afastada do formulário. */
+#dangerZone {
     margin-top: 32px;
-    padding: 20px;
-    border: 1px solid rgba(217, 83, 79, 0.6);
-    border-radius: 12px;
 }
 
-.danger-zone h2 {
-    font-size: 1.15rem;
-    margin-bottom: 8px;
-    color: var(--color-danger-text);
-}
-
-.danger-zone p {
-    color: var(--color-text-muted);
-    margin-bottom: 16px;
-    line-height: 1.5;
-}
-
-.btn-danger {
-    background-color: var(--color-danger);
-    color: var(--color-on-chrome);
-}
-
-.btn-danger:hover {
-    background-color: var(--color-danger-strong);
-}

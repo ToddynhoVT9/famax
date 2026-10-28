@@ -13,7 +13,7 @@ import { confirmDialog, toast } from "./shared/dialog.js";
 import {
     canModerate,
     openBanDialog,
-    ROLE_LABEL,
+    roleBadge,
     type CommunityRole,
 } from "./shared/moderation.js";
 import type { CommunityMember as Member } from "../../shared/api-types.js";
@@ -50,7 +50,7 @@ export function createMembersView(root: HTMLElement, options: MembersViewOptions
     filters.setAttribute("role", "group");
     filters.setAttribute("aria-label", "Filtrar membros");
     const chip = (label: string, value: "" | "moderator") => {
-        const b = el("button", "tf-chip", label);
+        const b = el("button", "fx-chip", label);
         b.type = "button";
         b.dataset.role = value;
         b.setAttribute("aria-pressed", String(value === roleFilter));
@@ -60,7 +60,7 @@ export function createMembersView(root: HTMLElement, options: MembersViewOptions
 
     const total = el("p", "tf-members-total");
     const list = el("ul", "tf-members-list");
-    const more = el("button", "tf-load-more", "Carregar mais");
+    const more = el("button", "fx-btn fx-btn--outline fx-btn--pill list-more", "Carregar mais");
     more.type = "button";
     more.hidden = true;
     root.replaceChildren(filters, total, list, more);
@@ -68,7 +68,7 @@ export function createMembersView(root: HTMLElement, options: MembersViewOptions
     // ----- Render -----------------------------------------------------------
 
     function actionButton(label: string, action: string, danger = false): HTMLButtonElement {
-        const b = el("button", `tf-member-action${danger ? " tf-member-action--danger" : ""}`, label);
+        const b = el("button", `fx-btn fx-btn--sm fx-btn--pill ${danger ? "fx-btn--outline-danger" : "fx-btn--outline-ink"}`, label);
         b.type = "button";
         b.dataset.action = action;
         return b;
@@ -83,7 +83,7 @@ export function createMembersView(root: HTMLElement, options: MembersViewOptions
         item.dataset.userId = member.userId;
         item.dataset.name = name;
 
-        const avatar = el("a", "tf-member-avatar");
+        const avatar = el("a", "fx-avatar fx-avatar--md");
         avatar.href = profileUrl(member.userId);
         avatar.setAttribute("aria-hidden", "true");
         avatar.tabIndex = -1;
@@ -102,7 +102,7 @@ export function createMembersView(root: HTMLElement, options: MembersViewOptions
         nameLink.href = profileUrl(member.userId);
         info.append(nameLink);
         if (member.role !== "member") {
-            info.append(el("span", `role-badge role-badge--${member.role}`, ROLE_LABEL[member.role]));
+            info.append(roleBadge(member.role));
         }
         info.append(
             el(
@@ -200,10 +200,10 @@ export function createMembersView(root: HTMLElement, options: MembersViewOptions
     }
 
     filters.addEventListener("click", (event) => {
-        const button = (event.target as Element).closest<HTMLButtonElement>(".tf-chip");
+        const button = (event.target as Element).closest<HTMLButtonElement>(".fx-chip");
         if (!button) return;
         roleFilter = (button.dataset.role ?? "") as "" | "moderator";
-        filters.querySelectorAll(".tf-chip").forEach((c) => c.setAttribute("aria-pressed", String(c === button)));
+        filters.querySelectorAll(".fx-chip").forEach((c) => c.setAttribute("aria-pressed", String(c === button)));
         void load(true);
     });
 

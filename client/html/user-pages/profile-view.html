@@ -27,18 +27,18 @@
             </div>
 
             <div class="profile-header-actions">
-                <a href="profile-settings.html" class="btn-edit-profile" id="btnEditProfile" hidden>Editar perfil</a>
+                <a href="profile-settings.html" class="fx-btn fx-btn--outline fx-btn--pill" id="btnEditProfile" hidden>Editar perfil</a>
                 <!-- Perfil de outra pessoa: Seguir / Seguindo (shared/follow.ts) -->
-                <button type="button" class="follow-btn" id="btnFollow" hidden>Seguir</button>
+                <button type="button" class="fx-btn fx-btn--pill fx-btn--primary" id="btnFollow" hidden>Seguir</button>
                 <!-- Abre o widget de chat na conversa com a pessoa (shared/chat-bus.ts) -->
-                <button type="button" class="btn-edit-profile" id="btnMessage" hidden>Enviar mensagem</button>
+                <button type="button" class="fx-btn fx-btn--outline fx-btn--pill" id="btnMessage" hidden>Enviar mensagem</button>
                 <!-- Perfil de outra pessoa, com sessão: "⋯" com Denunciar. -->
                 <div class="profile-more" id="profileMore" hidden>
-                    <button type="button" class="profile-more-btn" id="profileMoreBtn"
+                    <button type="button" class="fx-btn fx-btn--outline fx-btn--pill" id="profileMoreBtn"
                             aria-haspopup="menu" aria-expanded="false" aria-label="Mais opções">⋯</button>
-                    <div class="profile-more-menu" id="profileMoreMenu" role="menu" hidden>
-                        <button type="button" class="profile-more-item" role="menuitem" id="btnBlockUser">Bloquear</button>
-                        <button type="button" class="profile-more-item" role="menuitem" id="btnReportUser">Denunciar usuário</button>
+                    <div class="fx-menu" id="profileMoreMenu" role="menu" hidden>
+                        <button type="button" class="fx-menu-item fx-menu-item--danger" role="menuitem" id="btnBlockUser">Bloquear</button>
+                        <button type="button" class="fx-menu-item fx-menu-item--danger" role="menuitem" id="btnReportUser">Denunciar usuário</button>
                     </div>
                 </div>
             </div>
@@ -59,21 +59,21 @@
             </div>
 
             <!-- Perfil privado de outra pessoa: aviso no lugar das abas -->
-            <div class="empty-state" id="privateNotice" hidden>
+            <div class="fx-empty" id="privateNotice" hidden>
                 Este perfil é privado. Só o dono pode ver os posts e as respostas.
             </div>
 
-            <div class="profile-tabs" id="profileTabs" role="tablist" aria-label="Atividade do perfil" hidden>
-                <button type="button" class="tab-btn active" role="tab" aria-selected="true" aria-controls="profileFeed" data-tab="posts">Posts</button>
-                <button type="button" class="tab-btn" role="tab" aria-selected="false" aria-controls="profileFeed" data-tab="comments">Respostas</button>
+            <div class="fx-tabs profile-tabs" id="profileTabs" role="tablist" aria-label="Atividade do perfil" hidden>
+                <button type="button" class="fx-tab" role="tab" aria-selected="true" aria-controls="profileFeed" data-tab="posts">Posts</button>
+                <button type="button" class="fx-tab" role="tab" aria-selected="false" aria-controls="profileFeed" data-tab="comments">Respostas</button>
                 <!-- Só no próprio perfil: a lista de salvos é privada. -->
-                <button type="button" class="tab-btn" role="tab" aria-selected="false" aria-controls="profileFeed" data-tab="saved" id="tabSaved" hidden>Salvos</button>
+                <button type="button" class="fx-tab" role="tab" aria-selected="false" aria-controls="profileFeed" data-tab="saved" id="tabSaved" hidden>Salvos</button>
             </div>
 
             <div class="profile-feed" id="profileFeed" role="tabpanel" hidden>
                 <div class="profile-feed-list" id="profileFeedList"></div>
-                <div class="empty-state" id="profileFeedStatus" hidden></div>
-                <button type="button" class="btn-load-more" id="btnLoadMore" hidden>Carregar mais</button>
+                <div class="fx-empty" id="profileFeedStatus" hidden></div>
+                <button type="button" class="fx-btn fx-btn--outline fx-btn--pill list-more" id="btnLoadMore" hidden>Carregar mais</button>
             </div>
 
         </div>

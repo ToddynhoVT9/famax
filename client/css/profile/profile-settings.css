@@ -68,113 +68,18 @@
     min-width: 80px;
 }
 
-/* TOGGLE VISUAL
-   Trilho transparente com borda, como o Switch do design system: um fundo
-   cinza (#444) sumia no cartão e no fundo; a borda passa de 3:1. */
-.toggle-switch-ui {
-    width: 54px;
-    height: 28px;
-    background-color: transparent;
-    border: 1px solid var(--color-border-strong);
-    border-radius: 15px;
-    position: relative;
-    cursor: pointer;
-    transition: background-color 0.3s;
-    display: inline-block;
-}
-
-.toggle-switch-ui.on {
-    background-color: var(--color-success);
-}
-
-.toggle-circle {
-    width: 24px;
-    height: 24px;
-    background-color: var(--color-text-faint);
-    border-radius: 50%;
-    position: absolute;
-    /* Dentro da borda: a caixa interna tem 52 × 26px. */
-    top: 1px;
-    left: 1px;
-    transition: left 0.3s, background-color 0.3s;
-}
-
-.toggle-switch-ui.on .toggle-circle {
-    left: 27px;
-    background-color: var(--color-on-accent);
-}
-
-/* ----- MODAL SENHA ----- */
-.modal-overlay {
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 100vw;
-    height: 100vh;
-    background-color: rgba(0, 0, 0, 0.6);
-    z-index: 2000;
-    display: none;
-    align-items: center;
-    justify-content: center;
-}
-
-.modal-overlay.show {
-    display: flex;
-}
-
-.modal-box {
-    background-color: var(--color-surface-5);
-    width: 650px;
-    padding: 30px 40px;
-    border-radius: 8px;
-    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.5);
-    color: var(--color-text);
-    position: relative;
-}
-
-.modal-title {
-    font-size: 1.8rem;
-    margin-bottom: 30px;
-    font-weight: 700;
-    letter-spacing: 0.5px;
-}
-
-.modal-label {
-    font-size: 1.4rem;
-    margin-bottom: 15px;
-    font-weight: 600;
-}
-
-.modal-input {
-    width: 100%;
-    /* Mais escuro que a caixa do modal (surface-5), com borda: no tema
-       escuro o fundo de campo comum (control) é da mesma cor da caixa. */
-    background-color: var(--color-surface-3);
-    border: 1px solid var(--color-border-strong);
-    border-radius: 6px;
-    padding: 12px 14px;
-    color: var(--color-text);
-    font-size: 1.2rem;
-    box-sizing: border-box;
-    margin-top: 10px;
-}
-
-.modal-input:focus {
-    background-color: var(--color-surface-2);
-    outline: 2px solid var(--color-text);
-}
-
+/* ----- JANELAS (fx-dialog de formulário): o que é só desta página ----- */
 .modal-two-cols {
     display: flex;
     gap: 20px;
     width: 100%;
 }
 
-.modal-two-cols > div {
-    flex: 1;
+/* Cada passo da janela de senha: título, campos e ações em coluna. */
+.settings-modal-step {
     display: flex;
     flex-direction: column;
-    justify-content: flex-end;
+    gap: var(--space-4);
 }
 
 .modal-success {
@@ -204,43 +109,9 @@
     align-items: flex-end;
 }
 
-.sobre-date-input {
-    background-color: var(--color-control-hover);
-    border: none;
-    color: var(--color-text);
-    font-size: 1.1rem;
-    padding: 10px 15px;
-    border-radius: 8px;
-    cursor: pointer;
-    font-family: inherit;
-}
-
-/* Ícone de calendário branco */
-.sobre-date-input::-webkit-calendar-picker-indicator {
-    filter: invert(1);
-    cursor: pointer;
-}
-
 .genero-options {
     display: flex;
     gap: 10px;
-}
-
-.btn-genero {
-    background-color: var(--color-chrome-hover);
-    color: var(--color-on-chrome);
-    border: none;
-    padding: 10px 16px;
-    border-radius: 8px;
-    font-size: 1rem;
-    cursor: pointer;
-    transition: background-color 0.2s;
-}
-
-.btn-genero:hover,
-.btn-genero.selected {
-    background-color: var(--color-paper);
-    color: var(--color-ink);
 }
 
 .sobre-bio-section {
@@ -248,17 +119,7 @@
     flex-direction: column;
 }
 
-.sobre-textarea {
-    background-color: var(--color-control-hover);
-    border: none;
-    color: var(--color-text);
-    font-size: 0.95rem;
-    padding: 15px;
-    border-radius: 8px;
-    resize: vertical;
-    line-height: 1.5;
-    font-family: inherit;
-    width: 100%;
+.sobre-bio {
     min-height: 150px;
 }
 
@@ -308,30 +169,6 @@
     margin: 80px 0 0 0;
 }
 
-.btn-media {
-    background-color: rgba(0, 0, 0, 0.65);
-    color: var(--color-on-chrome);
-    border: 1px solid rgba(255, 255, 255, 0.4);
-    border-radius: 16px;
-    padding: 6px 14px;
-    font: inherit;
-    font-size: 0.9rem;
-    cursor: pointer;
-}
-
-.btn-media:hover {
-    background-color: rgba(0, 0, 0, 0.8);
-}
-
-.btn-media--danger {
-    border-color: var(--color-danger-text);
-}
-
-.btn-media:disabled {
-    opacity: 0.6;
-    cursor: default;
-}
-
 .settings-hint {
     margin-top: 8px;
     font-size: 0.85rem;
@@ -346,11 +183,6 @@
 
 .settings-status.is-ok {
     color: var(--color-success-text);
-}
-
-.settings-status[hidden],
-.modal-error[hidden] {
-    display: none;
 }
 
 /* A grade não precisa mais empurrar 100px: os botões da foto ocupam o espaço. */
@@ -379,21 +211,6 @@
     color: var(--color-text-faint);
 }
 
-.settings-input {
-    background-color: var(--color-surface-3);
-    border: 1px solid var(--color-border-strong);
-    border-radius: 6px;
-    padding: 10px 12px;
-    color: var(--color-text);
-    font: inherit;
-    font-size: 1rem;
-}
-
-.settings-input:focus {
-    outline: 2px solid var(--color-text);
-    outline-offset: 1px;
-}
-
 .settings-form-actions {
     display: flex;
     align-items: center;
@@ -405,16 +222,10 @@
 }
 
 /* ----- Linhas ----- */
-.line-btn {
-    background: none;
-    border: none;
-    padding: 0;
-    color: var(--color-text);
-    font: inherit;
+/* "Sobre", "Senha"... (fx-btn--link) com o peso dos rótulos das linhas. */
+.profile-line > .fx-btn--link {
     font-weight: 700;
-    text-decoration: underline;
     text-underline-offset: 4px;
-    cursor: pointer;
 }
 
 .line-label {
@@ -435,117 +246,15 @@
     opacity: 0.55;
 }
 
-.badge-soon {
-    font-size: 0.8rem;
-    padding: 3px 10px;
-    border-radius: 10px;
-    border: 1px solid var(--color-paper-border-strong);
-    color: var(--color-text-muted);
-}
-
-/* Os toggles agora são <button role="switch">. Sem "border: none" aqui: a
-   borda do .toggle-switch-ui é o que mostra o trilho. */
-button.toggle-switch-ui {
-    padding: 0;
-}
-
-button.toggle-switch-ui:disabled {
-    cursor: default;
-    opacity: 0.6;
-}
-
-button.toggle-switch-ui:focus-visible {
-    outline: 2px solid var(--color-text);
-    outline-offset: 2px;
-}
-
-/* ----- Modais ----- */
-.modal-box--wide {
-    width: 700px;
-}
-
-.modal-box {
-    max-width: calc(100vw - 32px);
-    max-height: calc(100vh - 32px);
-    overflow-y: auto;
-}
-
-.modal-label {
-    display: block;
-}
-
-.modal-hint {
-    margin-top: 12px;
-    font-size: 0.95rem;
-    color: var(--color-text-soft);
-}
-
-.modal-error {
-    color: var(--color-danger-text);
-    font-size: 0.95rem;
-    margin-top: 15px;
-    text-align: center;
-}
-
-.modal-actions {
-    display: flex;
-    justify-content: flex-end;
-    gap: 10px;
-    margin-top: 24px;
-}
-
-.btn-modal {
-    background-color: var(--color-chrome);
-    color: var(--color-on-chrome);
-    border: none;
-    border-radius: 6px;
-    padding: 10px 18px;
-    font: inherit;
-    font-size: 1rem;
-    cursor: pointer;
-}
-
-.btn-modal:hover {
-    background-color: var(--color-chrome-hover);
-}
-
-.btn-modal--primary {
-    background-color: var(--color-paper);
-    color: var(--color-ink);
-    font-weight: 600;
-}
-
-.btn-modal--primary:hover {
-    background-color: var(--color-paper-3);
-}
-
-.btn-modal:disabled {
-    opacity: 0.6;
-    cursor: default;
-}
-
-.show-password {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    margin-top: 15px;
-    font-size: 1rem;
-    color: var(--color-text-soft);
-    cursor: pointer;
-}
-
-.show-password input {
-    width: 16px;
-    height: 16px;
-    accent-color: var(--color-ink-soft);
-}
-
 /* ----- Editor de redes sociais ----- */
 .social-rows {
     display: flex;
     flex-direction: column;
     gap: 10px;
-    margin: 16px 0;
+}
+
+.social-add {
+    align-self: flex-start;
 }
 
 .social-row {
@@ -577,10 +286,6 @@ button.toggle-switch-ui:focus-visible {
         flex-wrap: wrap;
     }
 
-    .modal-box {
-        padding: 20px;
-    }
-
     .modal-two-cols,
     .sobre-flex-row {
         flex-direction: column;
@@ -608,7 +313,6 @@ button.toggle-switch-ui:focus-visible {
     margin: 18px 0 4px;
     color: var(--color-text);
 }
-
 
 /* ===========================================================================
    Conta e segurança (account-security.ts)
@@ -682,23 +386,6 @@ button.toggle-switch-ui:focus-visible {
     display: none;
 }
 
-.security-badge {
-    font-size: 0.72rem;
-    font-weight: 700;
-    padding: 2px 8px;
-    border-radius: 999px;
-}
-
-.security-badge--ok {
-    background-color: var(--color-success-strong);
-    color: var(--color-on-accent);
-}
-
-.security-badge--warn {
-    background-color: var(--color-warning-strong);
-    color: var(--color-on-accent);
-}
-
 .security-actions {
     display: flex;
     flex-wrap: wrap;
@@ -707,14 +394,6 @@ button.toggle-switch-ui:focus-visible {
 
 .security-form {
     gap: 8px;
-}
-
-.btn-modal--danger {
-    background-color: var(--color-danger-strong);
-}
-
-.btn-modal--danger:hover {
-    background-color: var(--color-danger-strong);
 }
 
 .twofa-qr {
@@ -754,12 +433,6 @@ button.toggle-switch-ui:focus-visible {
     border-radius: 8px;
 }
 
-a.btn-modal {
-    text-decoration: none;
-    display: inline-flex;
-    align-items: center;
-}
-
 .security-list {
     list-style: none;
     margin: 0;
@@ -791,14 +464,9 @@ a.btn-modal {
     font-size: 0.82rem;
 }
 
-.btn-modal[hidden] {
-    display: none;
-}
-
-.security-danger-zone {
-    border: 1px solid var(--color-danger-strong);
-    border-radius: 8px;
-    padding: 12px;
+/* Excluir conta (fx-danger-zone): os campos esticam como nos outros formulários. */
+.security-form.fx-danger-zone {
+    align-items: stretch;
 }
 
 .security-list-info a {

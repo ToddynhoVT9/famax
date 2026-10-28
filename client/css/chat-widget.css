@@ -10,7 +10,7 @@
     position: fixed;
     bottom: 16px;
     right: 16px;
-    z-index: 1400;
+    z-index: var(--z-chat);
     display: flex;
     flex-direction: column;
     align-items: flex-end;
@@ -31,26 +31,11 @@
     pointer-events: auto;
 }
 
-/* Badge de não lidas somando todas as conversas. */
-.chat-unread-badge {
+/* Contador (fx-counter-badge) de não lidas somando todas as conversas. */
+.chat-toggle > .fx-counter-badge {
     position: absolute;
     top: -2px;
     right: -2px;
-    min-width: 20px;
-    height: 20px;
-    padding: 0 5px;
-    border-radius: 999px;
-    background: var(--color-danger);
-    color: var(--color-on-accent);
-    font-size: 0.72rem;
-    font-weight: 700;
-    display: none;
-    align-items: center;
-    justify-content: center;
-}
-
-.chat-unread-badge.show {
-    display: flex;
 }
 
 .chat-panel {
@@ -98,21 +83,6 @@
     gap: 6px;
 }
 
-.chat-header-btn {
-    border: none;
-    background: transparent;
-    color: var(--color-on-chrome);
-    font-size: 1rem;
-    cursor: pointer;
-    padding: 4px 8px;
-    border-radius: 8px;
-    line-height: 1;
-}
-
-.chat-header-btn:hover {
-    background: rgba(255, 255, 255, 0.18);
-}
-
 .chat-body {
     display: flex;
     flex: 1;
@@ -154,19 +124,6 @@
     background: var(--color-paper-3);
 }
 
-.contact-avatar {
-    width: 38px;
-    height: 38px;
-    border-radius: 50%;
-    background: var(--color-chrome);
-    color: var(--color-on-chrome);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-weight: 700;
-    font-size: 0.85rem;
-}
-
 .contact-name {
     font-size: 0.78rem;
     font-weight: 600;
@@ -176,21 +133,10 @@
     white-space: nowrap;
 }
 
-.contact-unread {
+.contact-item > .fx-counter-badge {
     position: absolute;
     top: 6px;
     right: 6px;
-    min-width: 18px;
-    height: 18px;
-    padding: 0 5px;
-    border-radius: 999px;
-    background: var(--color-danger);
-    color: var(--color-on-accent);
-    font-size: 0.68rem;
-    font-weight: 700;
-    display: flex;
-    align-items: center;
-    justify-content: center;
 }
 
 .chat-conversation {
@@ -284,30 +230,10 @@
     background: var(--color-paper);
 }
 
-.chat-input-row input {
+/* Campo (fx-input pílula) e "Enviar" (fx-btn chrome) lado a lado. */
+.chat-input-row > .fx-input {
     flex: 1;
     min-width: 0;
-    border: 1px solid var(--color-paper-border-strong);
-    border-radius: 999px;
-    padding: 10px 12px;
-    font-size: 0.9rem;
-    font-family: inherit;
-}
-
-.chat-input-row button {
-    border: none;
-    border-radius: 999px;
-    padding: 10px 14px;
-    background: var(--color-chrome);
-    color: var(--color-on-chrome);
-    cursor: pointer;
-    font-family: inherit;
-}
-
-.chat-input-row button:disabled,
-.chat-input-row input:disabled {
-    opacity: 0.5;
-    cursor: not-allowed;
 }
 
 /* ----- Busca de pessoas (nova conversa) ----- */
@@ -322,14 +248,6 @@
 
 .chat-widget.searching .chat-search {
     display: flex;
-}
-
-.chat-search input {
-    border: 1px solid var(--color-paper-border-strong);
-    border-radius: 999px;
-    padding: 10px 12px;
-    font-size: 0.9rem;
-    font-family: inherit;
 }
 
 .chat-search-results {
@@ -411,19 +329,10 @@
    mensagens, visto, digitando, grupos.
    =========================================================================== */
 
-.contact-avatar {
-    overflow: hidden;
-}
-
-.contact-avatar img,
-.message-avatar img {
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
-}
-
+/* Grupo: sem pessoa, um ícone sobre o cinza do cartão. */
 .contact-avatar--group {
     background: var(--color-paper-3);
+    color: var(--color-ink);
     font-size: 1.1rem;
 }
 
@@ -461,20 +370,6 @@
     white-space: nowrap;
 }
 
-.chat-conv-btn {
-    border: none;
-    background: transparent;
-    cursor: pointer;
-    font-size: 1rem;
-    padding: 2px 6px;
-    border-radius: 6px;
-    color: var(--color-ink-soft);
-}
-
-.chat-conv-btn:hover {
-    background: var(--color-paper-2);
-}
-
 .chat-history-hint {
     align-self: center;
     font-size: 0.72rem;
@@ -507,22 +402,11 @@
     margin-top: -6px;
 }
 
-.message-avatar,
+/* Lugar do avatar (fx-avatar--xs) nas mensagens seguidas da mesma pessoa. */
 .message-avatar-space {
     flex-shrink: 0;
-    width: 26px;
-    height: 26px;
-}
-
-.message-avatar {
-    border-radius: 50%;
-    overflow: hidden;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    color: var(--color-on-accent);
-    font-size: 0.62rem;
-    font-weight: 700;
+    width: var(--avatar-xs);
+    height: var(--avatar-xs);
 }
 
 .message-stack {
@@ -616,17 +500,9 @@
     gap: 6px;
 }
 
-.chat-group-rename .chat-group-input {
+.chat-group-rename > .fx-input {
     flex: 1;
-}
-
-.chat-group-input {
     min-width: 0;
-    border: 1px solid var(--color-paper-border-strong);
-    border-radius: 999px;
-    padding: 8px 12px;
-    font-size: 0.85rem;
-    font-family: inherit;
 }
 
 .chat-group-label {
@@ -666,36 +542,9 @@
     padding: 1px 7px;
 }
 
-.chat-primary-btn {
-    border: none;
-    border-radius: 999px;
-    padding: 8px 14px;
-    background: var(--color-chrome);
-    color: var(--color-on-chrome);
-    cursor: pointer;
-    font-family: inherit;
-    font-size: 0.85rem;
-}
-
-.chat-primary-btn:disabled {
-    opacity: 0.5;
-    cursor: not-allowed;
-}
-
-.chat-primary-btn[hidden] {
-    display: none;
-}
-
-.chat-danger-btn {
+/* "Sair do grupo" fica no fim do painel. */
+.chat-group-leave {
     margin-top: auto;
-    border: 1px solid var(--color-danger);
-    border-radius: 999px;
-    padding: 8px 14px;
-    background: var(--color-paper);
-    color: var(--color-danger);
-    cursor: pointer;
-    font-family: inherit;
-    font-size: 0.85rem;
 }
 
 /* ----- Nova conversa: conversa x grupo ----- */
@@ -704,42 +553,14 @@
     gap: 6px;
 }
 
-.chat-mode {
+.chat-search-modes > .fx-chip {
     flex: 1;
-    border: 1px solid var(--color-paper-border-strong);
-    background: var(--color-paper);
-    border-radius: 999px;
-    padding: 6px;
-    font-size: 0.8rem;
-    cursor: pointer;
-    font-family: inherit;
-}
-
-.chat-mode.active {
-    background: var(--color-chrome);
-    border-color: var(--color-border-strong);
-    color: var(--color-on-chrome);
 }
 
 .chat-chips {
     display: flex;
     flex-wrap: wrap;
     gap: 4px;
-}
-
-.chat-chips[hidden],
-.chat-search input[hidden] {
-    display: none;
-}
-
-.chat-chip {
-    border: none;
-    background: var(--color-paper-3);
-    border-radius: 999px;
-    padding: 3px 9px;
-    font-size: 0.75rem;
-    cursor: pointer;
-    font-family: inherit;
 }
 
 /* ----- Celular: o chat aberto ocupa a tela inteira ----- */
@@ -760,33 +581,9 @@
         display: none;
     }
 
-    .chat-header-btn {
-        min-width: 44px;
-        min-height: 44px;
-    }
-
-    .chat-input-row input,
-    .chat-input-row button {
-        min-height: 44px;
-    }
-
     /* A página atrás não rola junto. */
     body.chat-is-open {
         overflow: hidden;
     }
 }
 
-/* Campos sobre o painel branco: fundo e cor explícitos. Sem isto, com o tema
-   escuro (color-scheme: dark) o navegador pinta o campo de escuro. */
-.chat-input-row input,
-.chat-search input,
-.chat-group-input {
-    background-color: var(--color-paper);
-    color: var(--color-ink);
-}
-
-.chat-input-row input::placeholder,
-.chat-search input::placeholder,
-.chat-group-input::placeholder {
-    color: var(--color-ink-muted);
-}

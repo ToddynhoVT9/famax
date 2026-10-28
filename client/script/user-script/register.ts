@@ -32,7 +32,7 @@ if (
   closeModalButton instanceof HTMLButtonElement &&
   registerButton instanceof HTMLButtonElement
 ) {
-  const dialog = modal.querySelector<HTMLElement>(".modal-content") ?? modal;
+  const dialog = modal.querySelector<HTMLElement>('[role="dialog"]') ?? modal;
   let releaseFocus: (() => void) | null = null;
 
   const closeModal = (): void => {

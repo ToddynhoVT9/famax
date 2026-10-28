@@ -132,7 +132,7 @@ function renderChips(categories: Category[]): void {
     const chip = (label: string, value: string | null): HTMLButtonElement => {
         const button = document.createElement("button");
         button.type = "button";
-        button.className = "home-chip";
+        button.className = "fx-chip";
         button.textContent = label;
         button.dataset.categoryId = value ?? "";
         button.setAttribute("aria-pressed", String(categoryFilter === value));
@@ -155,10 +155,10 @@ async function loadCategories(): Promise<void> {
 }
 
 chipsEl?.addEventListener("click", (event) => {
-    const chip = (event.target as Element).closest<HTMLButtonElement>(".home-chip");
+    const chip = (event.target as Element).closest<HTMLButtonElement>(".fx-chip");
     if (!chip) return;
     categoryFilter = chip.dataset.categoryId || null;
-    chipsEl.querySelectorAll<HTMLButtonElement>(".home-chip").forEach((c) =>
+    chipsEl.querySelectorAll<HTMLButtonElement>(".fx-chip").forEach((c) =>
         c.setAttribute("aria-pressed", String(c === chip)),
     );
     syncUrl();
@@ -228,9 +228,8 @@ async function loadFollowing(reset: boolean): Promise<void> {
 }
 
 function renderHomeTabs(): void {
-    tabsEl?.querySelectorAll<HTMLButtonElement>(".home-tab").forEach((button) => {
+    tabsEl?.querySelectorAll<HTMLButtonElement>('[role="tab"]').forEach((button) => {
         const active = button.dataset.tab === tab;
-        button.classList.toggle("active", active);
         button.setAttribute("aria-selected", String(active));
         button.tabIndex = active ? 0 : -1;
     });
@@ -246,7 +245,7 @@ function selectHomeTab(next: HomeTab): void {
 }
 
 tabsEl?.addEventListener("click", (event) => {
-    const button = (event.target as Element).closest<HTMLButtonElement>(".home-tab");
+    const button = (event.target as Element).closest<HTMLButtonElement>('[role="tab"]');
     const next = button?.dataset.tab as HomeTab | undefined;
     if (next && next !== tab) selectHomeTab(next);
 });
@@ -256,7 +255,7 @@ tabsEl?.addEventListener("keydown", (event) => {
     event.preventDefault();
     const next: HomeTab = tab === "communities" ? "following" : "communities";
     selectHomeTab(next);
-    tabsEl.querySelector<HTMLButtonElement>(`.home-tab[data-tab="${next}"]`)?.focus();
+    tabsEl.querySelector<HTMLButtonElement>(`[role="tab"][data-tab="${next}"]`)?.focus();
 });
 
 followingMore?.addEventListener("click", () => void loadFollowing(false));

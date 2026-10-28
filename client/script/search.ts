@@ -161,9 +161,8 @@ function syncUrl(): void {
 }
 
 function renderTabs(): void {
-    document.querySelectorAll<HTMLButtonElement>(".search-tab").forEach((tab) => {
+    document.querySelectorAll<HTMLButtonElement>('#searchTabs [role="tab"]').forEach((tab) => {
         const active = tab.dataset.type === type;
-        tab.classList.toggle("active", active);
         tab.setAttribute("aria-selected", String(active));
         tab.tabIndex = active ? 0 : -1;
     });
@@ -222,7 +221,7 @@ async function load(): Promise<void> {
 }
 
 $("searchTabs")?.addEventListener("click", (event) => {
-    const tab = (event.target as Element).closest<HTMLButtonElement>(".search-tab");
+    const tab = (event.target as Element).closest<HTMLButtonElement>('[role="tab"]');
     const next = tab?.dataset.type as SearchType | undefined;
     if (next && next !== type) selectType(next);
 });
@@ -236,7 +235,7 @@ $("searchTabs")?.addEventListener("keydown", (event) => {
     if (target < 0) return;
     event.preventDefault();
     selectType(TYPES[target]);
-    document.querySelector<HTMLButtonElement>(`.search-tab[data-type="${TYPES[target]}"]`)?.focus();
+    document.querySelector<HTMLButtonElement>(`#searchTabs [data-type="${TYPES[target]}"]`)?.focus();
 });
 
 const goToPage = (next: number): void => {

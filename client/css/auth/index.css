@@ -23,33 +23,10 @@ h1 {
     width: 100%;
 }
 
-.btn {
+/* Entrar (fx-btn chrome) e Criar conta (fx-btn warm), na mesma largura. */
+.auth-container > .fx-btn {
     width: min(300px, 100%);
-    padding: 14px;
-    border: none;
-    border-radius: 8px;
-    font-size: 1rem;
-    color: var(--color-on-chrome);
-    cursor: pointer;
-    transition: background-color 0.2s ease, transform 0.1s ease;
-    text-align: center;
-    text-decoration: none;
-    box-sizing: border-box;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-}
-
-.btn:active {
-    transform: scale(0.98);
-}
-
-.btn-login {
-    background-color: var(--color-chrome);
-}
-
-.btn-login:hover {
-    background-color: var(--color-chrome-hover);
+    min-height: 48px;
 }
 
 .divider {
@@ -57,14 +34,6 @@ h1 {
     height: 2px;
     background-color: var(--color-text);
     margin: 25px 0;
-}
-
-.btn-register {
-    background-color: var(--color-chrome-warm);
-}
-
-.btn-register:hover {
-    background-color: var(--color-chrome-warm-hover);
 }
 
 @media (max-width: 480px) {

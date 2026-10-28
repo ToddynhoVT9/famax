@@ -125,29 +125,6 @@
     margin-bottom: 28px;
 }
 
-.home-chip {
-    background: none;
-    border: 1px solid var(--color-border-strong);
-    color: var(--color-text-soft);
-    border-radius: 16px;
-    padding: 6px 14px;
-    font: inherit;
-    font-size: 0.9rem;
-    cursor: pointer;
-}
-
-.home-chip:hover {
-    border-color: var(--color-text);
-    color: var(--color-text);
-}
-
-.home-chip[aria-pressed="true"] {
-    background-color: var(--color-paper);
-    border-color: var(--color-text);
-    color: var(--color-ink);
-    font-weight: 600;
-}
-
 /* ----- ESTADOS DO FEED ----- */
 .feed-status {
     padding: 60px 20px;
@@ -161,31 +138,9 @@
 }
 
 /* ----- Abas Comunidades / Seguindo ----- */
+/* Abas Comunidades / Seguindo (fx-tabs): só o espaço até o conteúdo. */
 .home-tabs {
-    display: flex;
-    gap: 8px;
     margin-bottom: 20px;
-    border-bottom: 1px solid var(--color-border);
-}
-
-.home-tab {
-    background: none;
-    border: none;
-    border-bottom: 3px solid transparent;
-    color: var(--color-text-muted);
-    font-size: 1.05rem;
-    font-weight: 600;
-    padding: 10px 14px;
-    cursor: pointer;
-}
-
-.home-tab:hover {
-    color: var(--color-text);
-}
-
-.home-tab.active {
-    color: var(--color-text);
-    border-bottom-color: var(--color-text);
 }
 
 .home-following {

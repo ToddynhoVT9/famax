@@ -10,7 +10,7 @@ import { api } from "./api.js";
 import { postUrl, profileUrl } from "./pages.js";
 import { timeAgo, truncate } from "./dom.js";
 import { confirmDialog, toast } from "./dialog.js";
-import { canModerate, openBanDialog, ROLE_LABEL, type CommunityRole } from "./moderation.js";
+import { canModerate, openBanDialog, roleBadge, type CommunityRole } from "./moderation.js";
 import type { Report } from "../../../shared/api-types.js";
 export type { Report };
 
@@ -39,6 +39,14 @@ const STATUS_LABEL: Record<Report["status"], string> = {
     reviewing: "Em análise",
     resolved: "Resolvida",
     dismissed: "Descartada",
+};
+
+/** Tom do selo de cada estado (Badge): descartada fica neutra. */
+const STATUS_TONE: Record<Report["status"], string> = {
+    pending: " fx-badge--warning",
+    reviewing: " fx-badge--info",
+    resolved: " fx-badge--success",
+    dismissed: "",
 };
 
 const RESOLUTION_LABEL: Record<string, string> = {
@@ -73,7 +81,7 @@ export function createReportQueue(root: HTMLElement, options: ReportQueueOptions
     filters.setAttribute("role", "group");
     filters.setAttribute("aria-label", "Filtrar por status");
     for (const f of STATUS_FILTERS) {
-        const chip = el("button", "tf-chip", f.label);
+        const chip = el("button", "fx-chip", f.label);
         chip.type = "button";
         chip.dataset.status = f.value;
         chip.setAttribute("aria-pressed", String(f.value === status));
@@ -82,7 +90,7 @@ export function createReportQueue(root: HTMLElement, options: ReportQueueOptions
     const summary = el("p", "report-summary");
     summary.setAttribute("aria-live", "polite");
     const list = el("div", "report-list");
-    const more = el("button", "tf-load-more", "Carregar mais");
+    const more = el("button", "fx-btn fx-btn--outline fx-btn--pill list-more", "Carregar mais");
     more.type = "button";
     more.hidden = true;
     root.replaceChildren(filters, summary, list, more);
@@ -90,7 +98,9 @@ export function createReportQueue(root: HTMLElement, options: ReportQueueOptions
     // ----- Render -----------------------------------------------------------
 
     function button(label: string, action: string, kind = ""): HTMLButtonElement {
-        const b = el("button", `report-btn${kind ? ` report-btn--${kind}` : ""}`, label);
+        // A principal é escura; as de perigo, contornadas em vermelho (Button sm, no cartão branco).
+        const variant = kind === "primary" ? "fx-btn--dark" : kind === "danger" ? "fx-btn--outline-danger" : "fx-btn--outline-ink";
+        const b = el("button", `fx-btn fx-btn--sm fx-btn--pill ${variant}`, label);
         b.type = "button";
         b.dataset.action = action;
         return b;
@@ -126,7 +136,7 @@ export function createReportQueue(root: HTMLElement, options: ReportQueueOptions
         if (report.authorId) authorLink.href = profileUrl(report.authorId);
         by.append("por ", authorLink);
         if (report.authorRole === "owner" || report.authorRole === "moderator") {
-            by.append(" ", el("span", `role-badge role-badge--${report.authorRole}`, ROLE_LABEL[report.authorRole]));
+            by.append(" ", roleBadge(report.authorRole));
         }
         box.append(by);
         if (report.targetDeleted) box.append(el("span", "report-removed", "Já removido"));
@@ -140,7 +150,7 @@ export function createReportQueue(root: HTMLElement, options: ReportQueueOptions
         const head = el("div", "report-head");
         head.append(
             el("span", "report-type", TARGET_LABEL[report.targetType]),
-            el("span", `report-status report-status--${report.status}`, STATUS_LABEL[report.status]),
+            el("span", `fx-badge${STATUS_TONE[report.status]}`, STATUS_LABEL[report.status]),
             el("span", "report-meta", `denunciado por @${report.reporterUsername} · ${timeAgo(report.createdAt)}`),
         );
 
@@ -277,15 +287,15 @@ export function createReportQueue(root: HTMLElement, options: ReportQueueOptions
     }
 
     filters.addEventListener("click", (event) => {
-        const chip = (event.target as Element).closest<HTMLButtonElement>(".tf-chip");
+        const chip = (event.target as Element).closest<HTMLButtonElement>(".fx-chip");
         if (!chip) return;
         status = chip.dataset.status as StatusFilter;
-        filters.querySelectorAll(".tf-chip").forEach((c) => c.setAttribute("aria-pressed", String(c === chip)));
+        filters.querySelectorAll(".fx-chip").forEach((c) => c.setAttribute("aria-pressed", String(c === chip)));
         void load(true);
     });
 
     list.addEventListener("click", (event) => {
-        const b = (event.target as Element).closest<HTMLButtonElement>(".report-btn");
+        const b = (event.target as Element).closest<HTMLButtonElement>(".report-actions button[data-action]");
         const card = b?.closest<HTMLElement>(".report-card");
         if (!b || !card || b.disabled) return;
         b.disabled = true;

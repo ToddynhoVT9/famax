@@ -100,76 +100,71 @@ function locationNode(location: string): HTMLElement {
 
 function openEventEditor(communityId: string, event?: CommunityEvent): Promise<CommunityEvent | null> {
     return new Promise((resolve) => {
-        const overlay = el("div", "modal-overlay show");
-        const form = el("form", "modal-box");
+        const overlay = el("div", "fx-overlay");
+        const form = el("form", "fx-dialog fx-dialog--form");
         form.noValidate = true;
         form.setAttribute("role", "dialog");
         form.setAttribute("aria-modal", "true");
         form.setAttribute("aria-labelledby", "eventEditorTitle");
 
-        const header = el("div", "modal-header");
-        const title = el("h2", "modal-title", event ? "Editar evento" : "Novo evento");
+        const header = el("div", "fx-dialog-head");
+        const title = el("h2", "fx-dialog-title", event ? "Editar evento" : "Novo evento");
         title.id = "eventEditorTitle";
-        const close = el("button", "modal-close", "×");
+        const close = el("button", "fx-btn fx-btn--icon", "×");
         close.type = "button";
         close.setAttribute("aria-label", "Fechar");
         header.append(title, close);
 
-        const error = el("div", "modal-error");
+        const error = el("div", "fx-banner fx-banner--danger");
         error.setAttribute("role", "alert");
+        error.hidden = true;
 
-        const field = <T extends HTMLInputElement | HTMLTextAreaElement>(
-            label: string,
-            input: T,
-            id: string,
-            spaced = true,
-        ): [HTMLLabelElement, T] => {
-            const labelEl = el("label", `modal-label${spaced ? " modal-label--spaced" : ""}`, label);
+        // Field: rótulo visível em cima e o campo embaixo.
+        const field = (label: string, input: HTMLInputElement | HTMLTextAreaElement, id: string): HTMLDivElement => {
+            const wrap = el("div", "fx-field");
+            const labelEl = el("label", "fx-label", label);
             input.id = id;
             labelEl.htmlFor = id;
-            return [labelEl, input];
+            wrap.append(labelEl, input);
+            return wrap;
         };
 
-        const titleInput = el("input", "modal-input");
+        const titleInput = el("input", "fx-input");
         titleInput.maxLength = 150;
         titleInput.value = event?.title ?? "";
         titleInput.placeholder = "Ex.: Encontro mensal";
-        const startInput = el("input", "modal-input");
+        const startInput = el("input", "fx-input");
         startInput.type = "datetime-local";
         startInput.value = toLocalInput(event?.startsAt ?? null);
-        const endInput = el("input", "modal-input");
+        const endInput = el("input", "fx-input");
         endInput.type = "datetime-local";
         endInput.value = toLocalInput(event?.endsAt ?? null);
-        const locationInput = el("input", "modal-input");
+        const locationInput = el("input", "fx-input");
         locationInput.maxLength = 300;
         locationInput.value = event?.location ?? "";
         locationInput.placeholder = "Endereço ou link (https://...)";
-        const descriptionInput = el("textarea", "modal-textarea");
+        const descriptionInput = el("textarea", "fx-input");
         descriptionInput.maxLength = 5000;
         descriptionInput.value = event?.description ?? "";
         descriptionInput.placeholder = "O que vai acontecer, o que levar...";
 
         const row = el("div", "modal-row");
-        const startCol = el("div");
-        startCol.append(...field("Início", startInput, "eventEditorStart"));
-        const endCol = el("div");
-        endCol.append(...field("Fim (opcional)", endInput, "eventEditorEnd"));
-        row.append(startCol, endCol);
+        row.append(field("Início", startInput, "eventEditorStart"), field("Fim (opcional)", endInput, "eventEditorEnd"));
 
-        const actions = el("div", "modal-actions");
-        const cancel = el("button", "modal-btn-secondary", "Cancelar");
+        const actions = el("div", "fx-dialog-actions");
+        const cancel = el("button", "fx-btn fx-btn--secondary", "Cancelar");
         cancel.type = "button";
-        const submit = el("button", "modal-btn-primary", event ? "Salvar alterações" : "Criar evento");
+        const submit = el("button", "fx-btn fx-btn--primary", event ? "Salvar alterações" : "Criar evento");
         submit.type = "submit";
         actions.append(cancel, submit);
 
         form.append(
             header,
             error,
-            ...field("Título", titleInput, "eventEditorTitleInput", false),
+            field("Título", titleInput, "eventEditorTitleInput"),
             row,
-            ...field("Local ou link", locationInput, "eventEditorLocation"),
-            ...field("Descrição", descriptionInput, "eventEditorDescription"),
+            field("Local ou link", locationInput, "eventEditorLocation"),
+            field("Descrição", descriptionInput, "eventEditorDescription"),
             actions,
         );
         overlay.append(form);
@@ -177,7 +172,7 @@ function openEventEditor(communityId: string, event?: CommunityEvent): Promise<C
 
         const showError = (message: string | null): void => {
             error.textContent = message ?? "";
-            error.classList.toggle("show", message !== null);
+            error.hidden = message === null;
         };
         let releaseFocus = (): void => {};
         const finish = (result: CommunityEvent | null): void => {
@@ -240,11 +235,11 @@ export function createEventsView(root: HTMLElement, options: EventsViewOptions):
     let seq = 0;
 
     const toolbar = el("div", "tf-events-toolbar");
-    const tabs = el("div", "tf-lb-tabs tf-events-tabs");
+    const tabs = el("div", "tf-events-tabs");
     tabs.setAttribute("role", "tablist");
     tabs.setAttribute("aria-label", "Quais eventos");
     const tabButton = (label: string, value: Scope) => {
-        const b = el("button", `tf-lb-tab${value === scope ? " active" : ""}`, label);
+        const b = el("button", "fx-chip", label);
         b.type = "button";
         b.setAttribute("role", "tab");
         b.setAttribute("aria-selected", String(value === scope));
@@ -252,7 +247,7 @@ export function createEventsView(root: HTMLElement, options: EventsViewOptions):
         return b;
     };
     tabs.append(tabButton("Próximos", "upcoming"), tabButton("Anteriores", "past"));
-    const create = el("button", "tf-btn-join", "Novo evento");
+    const create = el("button", "fx-btn fx-btn--primary fx-btn--pill", "Novo evento");
     create.type = "button";
     create.hidden = true;
     toolbar.append(tabs, create);
@@ -260,7 +255,7 @@ export function createEventsView(root: HTMLElement, options: EventsViewOptions):
     const list = el("div", "tf-events-list");
     list.setAttribute("aria-live", "polite");
     const status = el("p", "tf-feed-status");
-    const more = el("button", "tf-load-more", "Carregar mais");
+    const more = el("button", "fx-btn fx-btn--outline fx-btn--pill list-more", "Carregar mais");
     more.type = "button";
     more.hidden = true;
     root.replaceChildren(toolbar, list, status, more);
@@ -290,7 +285,12 @@ export function createEventsView(root: HTMLElement, options: EventsViewOptions):
 
         // "Vou": membros, em evento que ainda não terminou. Visitante vai ao login.
         if (!event.isPast && (isMember() || !getToken())) {
-            const going = el("button", `tf-event-going${event.attending ? " is-going" : ""}`, event.attending ? "✓ Vou" : "Vou");
+            // Marcado é Button success; desmarcado, contornado dentro do cartão branco.
+            const going = el(
+                "button",
+                `fx-btn fx-btn--sm fx-btn--pill ${event.attending ? "fx-btn--success" : "fx-btn--outline-ink"}`,
+                event.attending ? "✓ Vou" : "Vou",
+            );
             going.type = "button";
             going.setAttribute("aria-pressed", String(event.attending));
             going.addEventListener("click", async () => {
@@ -394,7 +394,6 @@ export function createEventsView(root: HTMLElement, options: EventsViewOptions):
         scope = next;
         tabs.querySelectorAll<HTMLButtonElement>("[data-scope]").forEach((b) => {
             const active = b.dataset.scope === scope;
-            b.classList.toggle("active", active);
             b.setAttribute("aria-selected", String(active));
         });
         void load(true);

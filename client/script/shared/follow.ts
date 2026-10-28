@@ -40,7 +40,10 @@ export function bindFollowButton(
 
     const render = (): void => {
         button.textContent = following ? "Seguindo" : "Seguir";
-        button.classList.toggle("is-following", following);
+        // Seguir é a ação principal; "Seguindo" vira contornado (Button outline).
+        button.classList.add("fx-btn", "fx-btn--pill");
+        button.classList.toggle("fx-btn--primary", !following);
+        button.classList.toggle("fx-btn--outline", following);
         button.setAttribute("aria-pressed", String(following));
     };
     render();
@@ -75,7 +78,7 @@ function renderListItem(item: FollowListItem): HTMLLIElement {
 
     const link = el("a", "follow-list-user");
     link.href = profileUrl(item.userId);
-    const avatar = el("span", "follow-list-avatar");
+    const avatar = el("span", "fx-avatar fx-avatar--md");
     if (item.avatarUrl) {
         const img = el("img");
         img.src = item.avatarUrl;
@@ -93,7 +96,7 @@ function renderListItem(item: FollowListItem): HTMLLIElement {
 
     // Botão ao lado de cada pessoa, menos a própria conta (e só com sessão).
     if (getToken() && item.userId !== getCurrentUserId()) {
-        const button = el("button", "follow-btn follow-btn--small");
+        const button = el("button", "fx-btn--sm");
         button.type = "button";
         bindFollowButton(button, item.userId, item.followedByMe);
         li.append(button);
@@ -104,16 +107,16 @@ function renderListItem(item: FollowListItem): HTMLLIElement {
 /** Diálogo com a lista "Seguidores" ou "Seguindo" de alguém. */
 export function openFollowList(userId: string, kind: "followers" | "following", ownerName: string): void {
 
-    const overlay = el("div", "dialog-overlay");
-    const box = el("div", "dialog-box follow-list-box");
+    const overlay = el("div", "fx-overlay");
+    const box = el("div", "fx-dialog follow-list-box");
     box.setAttribute("role", "dialog");
     box.setAttribute("aria-modal", "true");
 
-    const header = el("div", "follow-list-header");
-    const title = el("h2", "dialog-title", kind === "followers" ? "Seguidores" : "Seguindo");
+    const header = el("div", "fx-dialog-head");
+    const title = el("h2", "fx-dialog-title", kind === "followers" ? "Seguidores" : "Seguindo");
     title.id = `follow-list-${Date.now()}`;
     box.setAttribute("aria-labelledby", title.id);
-    const close = el("button", "follow-list-close", "×");
+    const close = el("button", "fx-btn fx-btn--icon", "×");
     close.type = "button";
     close.setAttribute("aria-label", "Fechar");
     header.append(title, close);
@@ -125,7 +128,7 @@ export function openFollowList(userId: string, kind: "followers" | "following", 
     );
     const list = el("ul", "follow-list");
     const status = el("p", "follow-list-status", "Carregando...");
-    const more = el("button", "dialog-btn follow-list-more", "Carregar mais");
+    const more = el("button", "fx-btn fx-btn--outline fx-btn--pill follow-list-more", "Carregar mais");
     more.type = "button";
     more.hidden = true;
 
