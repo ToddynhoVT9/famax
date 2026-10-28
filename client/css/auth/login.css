@@ -22,7 +22,7 @@
     padding: 10px 12px;
     border-radius: 6px;
     background-color: rgba(127, 211, 138, 0.15);
-    color: var(--color-success-on-dark);
+    color: var(--color-success-text);
     font-size: 0.9rem;
     text-align: center;
 }

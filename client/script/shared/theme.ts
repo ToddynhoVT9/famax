@@ -3,7 +3,7 @@
  *
  * Três escolhas: "system" (segue o sistema — prefers-color-scheme, o
  * padrão), "light" ou "dark". A escolha manual vai para data-theme no <html>
- * e para o localStorage; os tokens de cor que mudam ficam em global.css.
+ * e para o localStorage; os tokens de cor que mudam ficam em tokens.css.
  *
  * Cada HTML aplica a escolha salva num <script> curto no <head>, antes da
  * primeira pintura (sem isso a página piscaria no tema errado); este módulo

@@ -181,11 +181,11 @@
 }
 
 .report-btn--primary:hover {
-    background-color: var(--color-dark-4);
+    background-color: var(--color-dark-1);
 }
 
 .report-btn--danger {
-    border-color: var(--color-danger-border);
+    border-color: var(--color-danger);
     color: var(--color-danger);
 }
 

@@ -1,203 +1,26 @@
+@import "./tokens.css";
+
 /* ===================================
-   FAMAX — Global Reset, Tokens & Base Styles
+   FAMAX — Global Reset & Base Styles
    =================================== */
 
-/* ===========================================================================
-   Tokens
-   ---------------------------------------------------------------------------
-   O FAMAX tem dois mundos de cor:
-     - o "chrome" escuro — página, diálogos, campos — que INVERTE no tema
-       claro (--color-bg, --color-surface-*, --color-text-*, --color-border*);
-     - os cartões brancos (posts, dropdowns, chat), que ficam brancos nos dois
-       temas (--color-paper*, --color-ink*).
-   O cinza do header/sidebar (--color-chrome) e as cores de destaque também
-   são iguais nos dois temas.
+/* Tokens: ficam em tokens.css (gerado do design system, com o bloco das
+   pranchas R no fim). O tema claro agora é escrito uma vez só: o arquivo
+   gerado aplica os mesmos valores ao data-theme="light" e à preferência do
+   sistema. Tema: escuro por padrão; claro pelo sistema ou pelo menu do
+   usuário (data-theme no <html>, ver shared/theme.ts). */
 
-   Contraste (WCAG AA, 4.5:1 para texto): o cinza do header escureceu de
-   #828282 (3.8:1 com branco) para #737373, os avatares ganharam tons mais
-   fechados para as iniciais brancas, e cinzas de texto sobre branco mais
-   claros que #666 foram para #666.
-
-   Tema: escuro por padrão; claro com prefers-color-scheme: light, ou à mão
-   pelo menu do usuário (data-theme no <html>, ver shared/theme.ts).
-   =========================================================================== */
-:root {
-    color-scheme: dark;
-
-    /* Chrome escuro (inverte no tema claro) */
-    --color-bg: #222222;
-    --color-bg-deep: #1a1a1a;
-    --color-surface: #2b2b2b;
-    --color-surface-2: #333333;
-    --color-surface-3: #3a3a3a;
-    --color-surface-4: #444444;
-    --color-surface-5: #555555;
-    --color-surface-6: #666666;
-    /* Fundo dos campos: escuro o bastante para o placeholder (#ddd) passar de 4.5:1. */
-    --color-control: #555555;
-    --color-control-hover: #5e5e5e;
-    --color-text: #ffffff;
-    --color-text-soft: #dddddd;
-    --color-text-muted: #bbbbbb;
-    --color-text-faint: #aaaaaa;
-    --color-border: #444444;
-    --color-border-strong: #666666;
-    --color-overlay: rgba(0, 0, 0, 0.65);
-
-    /* Header, sidebar e botões de marca (iguais nos dois temas) */
-    --color-chrome: #737373;
-    --color-chrome-hover: #666666;
-    --color-on-chrome: #ffffff;
-    /* Botão "Criar conta" da tela inicial: o cinza quente da marca. */
-    --color-chrome-warm: #7d7272;
-    --color-chrome-warm-hover: #6e6464;
-
-    /* Cartões brancos (iguais nos dois temas) */
-    --color-paper: #ffffff;
-    --color-paper-2: #f4f4f4;
-    --color-paper-3: #e8e8e8;
-    --color-paper-border: #e0e0e0;
-    --color-paper-border-strong: #c4c4c4;
-    --color-ink: #111111;
-    --color-ink-soft: #333333;
-    --color-ink-muted: #555555;
-    --color-ink-faint: #666666;
-
-    /* Peças escuras dentro de cartões brancos (fixas) */
-    --color-dark-0: #000000;
-    --color-dark-1: #111111;
-    --color-dark-2: #222222;
-    --color-dark-3: #333333;
-    --color-dark-4: #444444;
-
-    /* Destaques */
-    --color-on-accent: #ffffff;
-    --color-primary: #0067cc;
-    --color-link: #1a5fb4;
-    --color-danger: #c0392b;
-    --color-danger-strong: #b3261e;
-    --color-danger-deep: #8b2e2b;
-    --color-danger-border: #e3a3a0;
-    --color-danger-surface: #3a1a1a;
-    --color-danger-on-dark: #ff9aa4;
-    --color-danger-on-dark-soft: #ffdede;
-    --color-success: #23803f;
-    --color-success-strong: #1e6b34;
-    --color-success-surface: #e3f4e8;
-    --color-success-on-dark: #7fd38a;
-    --color-warning-surface: #fff3cd;
-    --color-warning-ink: #5c4400;
-    --color-warning-strong: #7a5a00;
-    --color-warning-on-dark: #ffd27a;
-    --color-info-surface: #eef4fc;
-    --color-info-surface-strong: #e3edf9;
-    --color-highlight-surface: #fff6d6;
-    --color-highlight-border: #e8c96a;
-    --color-gold: #8a6508;
-    --color-bronze: #a0522d;
-    /* Foco em duas cores (anel azul + halo branco): nenhuma cor sozinha passa de
-       3:1 ao mesmo tempo sobre o fundo escuro, o cartão branco e o header cinza. */
-    --color-focus: #0b57d0;
-    --color-focus-halo: #ffffff;
-
-    /* Avatares (iniciais brancas: todos com 4.5:1 ou mais) */
-    --avatar-blue: #0067cc;
-    --avatar-pink: #c2407c;
-    --avatar-gray: #6b6b6b;
-    --avatar-orange: #b85a1e;
-    --avatar-lightblue: #2b78a8;
-    --avatar-teal: #1f7f69;
-
-    /* Espaços, raios, sombras, tipografia */
-    --space-1: 4px;
-    --space-2: 8px;
-    --space-3: 12px;
-    --space-4: 16px;
-    --space-5: 24px;
-    --space-6: 32px;
-    --radius-sm: 4px;
-    --radius-md: 6px;
-    --radius-lg: 10px;
-    --radius-pill: 999px;
-    --shadow-sm: 0 2px 6px rgba(0, 0, 0, 0.2);
-    --shadow-md: 0 4px 14px rgba(0, 0, 0, 0.3);
-    --shadow-lg: 0 10px 30px rgba(0, 0, 0, 0.45);
-    --font-sans: system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
-    --font-mono: Consolas, 'Courier New', monospace;
-    --text-xs: 0.75rem;
-    --text-sm: 0.875rem;
-    --text-md: 1rem;
-    --text-lg: 1.25rem;
-    --text-xl: 1.6rem;
-    --header-height: 80px;
-    --touch-target: 44px;
-}
-
-/* Tema claro: os mesmos nomes, valores claros para o chrome. Duas vezes,
-   porque o CSS não deixa um bloco valer para um seletor E uma media query:
-   escolha manual (data-theme="light") e preferência do sistema, quando a
-   pessoa não fixou o escuro à mão. Mudou um valor? Mude nos dois. */
-:root[data-theme="light"] {
-    color-scheme: light;
-    --color-bg: #f0f0f3;
-    --color-bg-deep: #e4e4e9;
-    --color-surface: #ffffff;
-    --color-surface-2: #ffffff;
-    --color-surface-3: #ffffff;
-    --color-surface-4: #e9e9ee;
-    --color-surface-5: #f4f4f7;
-    --color-surface-6: #dcdce3;
-    --color-control: #ffffff;
-    --color-control-hover: #f4f4f7;
-    --color-text: #16161a;
-    --color-text-soft: #2d2d33;
-    --color-text-muted: #45454d;
-    --color-text-faint: #595960;
-    --color-border: #cfcfd6;
-    --color-border-strong: #a9a9b2;
-    --color-overlay: rgba(20, 20, 30, 0.45);
-    --color-chrome: #5f5f68;
-    --color-chrome-hover: #4f4f57;
-    --color-danger-surface: #fde8e8;
-    --color-danger-on-dark: #b3261e;
-    --color-danger-on-dark-soft: #5a1712;
-    --color-success-on-dark: #1e6b34;
-    --color-warning-on-dark: #7a5a00;
-    --shadow-md: 0 4px 14px rgba(0, 0, 0, 0.12);
-    --shadow-lg: 0 10px 30px rgba(0, 0, 0, 0.18);
-}
-
-@media (prefers-color-scheme: light) {
-    :root:not([data-theme="dark"]) {
-        color-scheme: light;
-        --color-bg: #f0f0f3;
-        --color-bg-deep: #e4e4e9;
-        --color-surface: #ffffff;
-        --color-surface-2: #ffffff;
-        --color-surface-3: #ffffff;
-        --color-surface-4: #e9e9ee;
-        --color-surface-5: #f4f4f7;
-        --color-surface-6: #dcdce3;
-        --color-control: #ffffff;
-        --color-control-hover: #f4f4f7;
-        --color-text: #16161a;
-        --color-text-soft: #2d2d33;
-        --color-text-muted: #45454d;
-        --color-text-faint: #595960;
-        --color-border: #cfcfd6;
-        --color-border-strong: #a9a9b2;
-        --color-overlay: rgba(20, 20, 30, 0.45);
-        --color-chrome: #5f5f68;
-        --color-chrome-hover: #4f4f57;
-        --color-danger-surface: #fde8e8;
-        --color-danger-on-dark: #b3261e;
-        --color-danger-on-dark-soft: #5a1712;
-        --color-success-on-dark: #1e6b34;
-        --color-warning-on-dark: #7a5a00;
-        --shadow-md: 0 4px 14px rgba(0, 0, 0, 0.12);
-        --shadow-lg: 0 10px 30px rgba(0, 0, 0, 0.18);
-    }
-}
+/* Faixas (pranchas R). Variável CSS não funciona dentro de @media: escreva
+   os números. Fora das media queries, leia --r-gutter, --r-header, --r-bar
+   e --r-touch, que já mudam sozinhas por faixa.
+     celular           @media (max-width: 599px)
+     tablet            @media (min-width: 600px) and (max-width: 1023px)
+     desktop compacto  @media (min-width: 1024px) and (max-width: 1279px)
+     desktop           @media (min-width: 1280px)
+     tablet e celular  @media (max-width: 1023px)
+     desktop e compacto @media (min-width: 1024px)
+   As quebras antigas (480, 560, 600, 640, 768, 1024) saem quando a tela
+   delas passar pelo seu prompt da up2. */
 
 * {
     margin: 0;
@@ -326,7 +149,7 @@ a {
     flex-direction: column;
     align-items: center;
     gap: var(--space-2);
-    padding: var(--space-6) var(--space-4);
+    padding: var(--space-8) var(--space-4);
     text-align: center;
     color: var(--color-text);
 }
@@ -348,7 +171,7 @@ a {
     display: inline-flex;
     align-items: center;
     min-height: 44px;
-    padding: 0 var(--space-5);
+    padding: 0 var(--space-6);
     border: none;
     border-radius: var(--radius-pill, 999px);
     background-color: var(--color-primary);

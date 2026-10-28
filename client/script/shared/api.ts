@@ -1,3 +1,4 @@
+import "./dev.js";
 import { isAuthPage, loginUrlReturningHere, pages } from "./pages.js";
 import { buildEndpoints } from "./api-endpoints.js";
 import type { Me, SocialLink } from "../../../shared/api-types.js";

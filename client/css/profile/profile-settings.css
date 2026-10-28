@@ -68,11 +68,14 @@
     min-width: 80px;
 }
 
-/* TOGGLE VISUAL */
+/* TOGGLE VISUAL
+   Trilho transparente com borda, como o Switch do design system: um fundo
+   cinza (#444) sumia no cartão e no fundo; a borda passa de 3:1. */
 .toggle-switch-ui {
     width: 54px;
     height: 28px;
-    background-color: var(--color-surface-4);
+    background-color: transparent;
+    border: 1px solid var(--color-border-strong);
     border-radius: 15px;
     position: relative;
     cursor: pointer;
@@ -90,13 +93,14 @@
     background-color: var(--color-text-faint);
     border-radius: 50%;
     position: absolute;
-    top: 2px;
-    left: 2px;
+    /* Dentro da borda: a caixa interna tem 52 × 26px. */
+    top: 1px;
+    left: 1px;
     transition: left 0.3s, background-color 0.3s;
 }
 
 .toggle-switch-ui.on .toggle-circle {
-    left: 28px;
+    left: 27px;
     background-color: var(--color-on-accent);
 }
 
@@ -175,7 +179,7 @@
 
 .modal-success {
     font-size: 1.4rem;
-    color: var(--color-success-on-dark);
+    color: var(--color-success-text);
     font-weight: 600;
     text-align: center;
     padding: 40px 0;
@@ -320,7 +324,7 @@
 }
 
 .btn-media--danger {
-    border-color: var(--color-danger-on-dark);
+    border-color: var(--color-danger-text);
 }
 
 .btn-media:disabled {
@@ -337,11 +341,11 @@
 .settings-status {
     margin-top: 8px;
     font-size: 0.95rem;
-    color: var(--color-danger-on-dark);
+    color: var(--color-danger-text);
 }
 
 .settings-status.is-ok {
-    color: var(--color-success-on-dark);
+    color: var(--color-success-text);
 }
 
 .settings-status[hidden],
@@ -439,9 +443,9 @@
     color: var(--color-text-muted);
 }
 
-/* Os toggles agora são <button role="switch">. */
+/* Os toggles agora são <button role="switch">. Sem "border: none" aqui: a
+   borda do .toggle-switch-ui é o que mostra o trilho. */
 button.toggle-switch-ui {
-    border: none;
     padding: 0;
 }
 
@@ -477,7 +481,7 @@ button.toggle-switch-ui:focus-visible {
 }
 
 .modal-error {
-    color: var(--color-danger-on-dark);
+    color: var(--color-danger-text);
     font-size: 0.95rem;
     margin-top: 15px;
     text-align: center;
@@ -669,7 +673,7 @@ button.toggle-switch-ui:focus-visible {
 }
 
 .security-line--warn {
-    color: var(--color-warning-on-dark);
+    color: var(--color-warning-text);
     font-size: 0.9rem;
 }
 
@@ -710,7 +714,7 @@ button.toggle-switch-ui:focus-visible {
 }
 
 .btn-modal--danger:hover {
-    background-color: var(--color-danger-deep);
+    background-color: var(--color-danger-strong);
 }
 
 .twofa-qr {

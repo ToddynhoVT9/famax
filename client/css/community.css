@@ -195,7 +195,7 @@
     width: 24px;
     height: 24px;
     border-radius: 50%;
-    background-color: var(--color-dark-3);
+    background-color: var(--color-ink-soft);
     color: var(--color-on-accent);
     display: flex;
     align-items: center;
@@ -530,7 +530,7 @@
     display: none;
     background: rgba(220, 53, 69, 0.15);
     border: 1px solid rgba(220, 53, 69, 0.5);
-    color: var(--color-danger-on-dark);
+    color: var(--color-danger-text);
     border-radius: 8px;
     padding: 10px 14px;
     font-size: 0.9rem;
@@ -1048,7 +1048,7 @@ button.tf-tab:focus-visible {
 .tf-banned-badge {
     margin-left: auto;
     font-size: 0.9rem;
-    color: var(--color-danger-on-dark);
+    color: var(--color-danger-text);
     border: 1px solid rgba(220, 53, 69, 0.5);
     border-radius: 8px;
     padding: 8px 14px;
@@ -1182,7 +1182,7 @@ button.tf-tab:focus-visible {
 }
 
 .tf-member-action--danger {
-    border-color: var(--color-danger-border);
+    border-color: var(--color-danger);
     color: var(--color-danger);
 }
 
@@ -1544,7 +1544,7 @@ button.tf-tab:focus-visible {
 }
 
 .md-spoiler {
-    background-color: var(--color-dark-3);
+    background-color: var(--color-ink-soft);
     color: transparent;
     border-radius: 3px;
     padding: 0 3px;
@@ -2007,7 +2007,7 @@ button.tf-tab:focus-visible {
     border-radius: 8px;
     background-color: var(--color-danger-surface);
     border: 1px solid var(--color-danger-strong);
-    color: var(--color-danger-on-dark-soft);
+    color: var(--color-danger-text-soft);
 }
 
 .tf-nsfw-banner a {

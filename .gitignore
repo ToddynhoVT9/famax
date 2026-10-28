@@ -3,6 +3,9 @@ dist/
 
 # Dados do Postgres embarcado (DB_MODE=embedded)
 data/
+
+# Saída do conferidor das pranchas R (_upgrade/up2/.../conferir-todas.mjs)
+conferencia/
 .env
 
 # Editor

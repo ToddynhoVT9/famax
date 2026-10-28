@@ -185,7 +185,7 @@
     transform: translate(-50%, -50%);
     width: 8px;
     height: 8px;
-    background-color: var(--color-dark-0);
+    background-color: var(--color-dark-1);
     border-radius: 50%;
 }
 
@@ -344,7 +344,7 @@
     display: block;
     width: 26px;
     height: 3px;
-    background-color: var(--color-dark-0);
+    background-color: var(--color-dark-1);
     border-radius: 2px;
 }
 
@@ -543,7 +543,7 @@
     padding: 10px 12px;
     border-radius: 6px;
     border: 1px solid var(--color-border-strong);
-    background-color: var(--color-surface-4);
+    background-color: var(--color-control);
     color: var(--color-text);
     font: inherit;
 }
@@ -603,7 +603,7 @@
 }
 
 .toast--error {
-    background-color: var(--color-danger-deep);
+    background-color: var(--color-danger-strong);
     color: var(--color-on-accent);
 }
 
@@ -761,7 +761,7 @@
 }
 
 .dialog-error {
-    color: var(--color-danger-on-dark);
+    color: var(--color-danger-text);
     margin: 0 0 12px;
     font-size: 0.92rem;
 }

@@ -121,7 +121,7 @@ body.community-new-page {
     display: none;
     background: rgba(220, 53, 69, 0.12);
     border: 1px solid rgba(220, 53, 69, 0.5);
-    color: var(--color-danger-on-dark);
+    color: var(--color-danger-text);
     border-radius: 12px;
     padding: 12px 16px;
     font-size: 0.92rem;
@@ -200,7 +200,7 @@ body.community-new-page {
 .danger-zone h2 {
     font-size: 1.15rem;
     margin-bottom: 8px;
-    color: var(--color-danger-on-dark);
+    color: var(--color-danger-text);
 }
 
 .danger-zone p {

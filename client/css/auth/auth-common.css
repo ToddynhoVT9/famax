@@ -46,7 +46,9 @@ body {
 .input-field {
     width: 100%;
     padding: 14px;
-    border: none;
+    /* Com o --color-control novo o campo é um poço quase da cor do fundo:
+       quem marca o limite é a borda. */
+    border: 1px solid var(--color-border-strong);
     border-radius: 6px;
     background-color: var(--color-control);
     color: var(--color-text);
@@ -68,7 +70,7 @@ body {
 
 /* Mensagem de erro genérica */
 .error-message {
-    color: var(--color-danger-on-dark);
+    color: var(--color-danger-text);
     font-size: 0.85rem;
     text-align: center;
     margin-top: 10px;
@@ -78,14 +80,14 @@ body {
    formulário; o conteúdo ganha respiro nas laterais. ----- */
 @media (max-width: 768px) {
     body {
-        padding: 0 var(--space-4) var(--space-6);
+        padding: 0 var(--space-4) var(--space-8);
         box-sizing: border-box;
     }
 
     .header {
         position: static;
         justify-content: center;
-        margin: var(--space-6) auto var(--space-4);
+        margin: var(--space-8) auto var(--space-4);
     }
 
     .header-name {

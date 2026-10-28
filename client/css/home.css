@@ -157,7 +157,7 @@
 }
 
 .feed-status.error {
-    color: var(--color-danger-on-dark);
+    color: var(--color-danger-text);
 }
 
 /* ----- Abas Comunidades / Seguindo ----- */
