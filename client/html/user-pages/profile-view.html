@@ -19,61 +19,76 @@
 
     <!-- CONTEÚDO PRINCIPAL DO PERFIL PÚBLICO -->
     <main class="main-content" id="main-content">
-        <!-- Preenchido por profile-view.ts a partir de GET /api/users/:id -->
-        <div class="perfil-container" id="profileContainer" aria-busy="true">
+        <!-- Preenchido por profile-view.ts a partir de GET /api/users/:id.
+             O topo fica na coluna de 1080; a lista, em 760 no centro. -->
+        <div class="r-col r-col--wide" id="profileContainer" aria-busy="true">
 
-            <div class="banner" id="profileBanner">
-                <div class="profile-picture" id="profileAvatar"></div>
-            </div>
+            <section class="pv-profile" aria-labelledby="profileName">
+                <div class="fx-profile-banner pv-banner" id="profileBanner">
+                    <div class="fx-avatar pv-pic" id="profileAvatar" aria-hidden="true"></div>
+                </div>
 
-            <div class="profile-header-actions">
-                <a href="profile-settings.html" class="fx-btn fx-btn--outline fx-btn--pill" id="btnEditProfile" hidden>Editar perfil</a>
-                <!-- Perfil de outra pessoa: Seguir / Seguindo (shared/follow.ts) -->
-                <button type="button" class="fx-btn fx-btn--pill fx-btn--primary" id="btnFollow" hidden>Seguir</button>
-                <!-- Abre o widget de chat na conversa com a pessoa (shared/chat-bus.ts) -->
-                <button type="button" class="fx-btn fx-btn--outline fx-btn--pill" id="btnMessage" hidden>Enviar mensagem</button>
-                <!-- Perfil de outra pessoa, com sessão: "⋯" com Denunciar. -->
-                <div class="profile-more" id="profileMore" hidden>
-                    <button type="button" class="fx-btn fx-btn--outline fx-btn--pill" id="profileMoreBtn"
-                            aria-haspopup="menu" aria-expanded="false" aria-label="Mais opções">⋯</button>
-                    <div class="fx-menu" id="profileMoreMenu" role="menu" hidden>
-                        <button type="button" class="fx-menu-item fx-menu-item--danger" role="menuitem" id="btnBlockUser">Bloquear</button>
-                        <button type="button" class="fx-menu-item fx-menu-item--danger" role="menuitem" id="btnReportUser">Denunciar usuário</button>
+                <!-- Faixa das ações, à direita da foto (nunca embaixo dela). No
+                     celular, profile-view.ts muda as ações para baixo do nome. -->
+                <div class="pv-bar" id="profileBar">
+                    <div class="pv-acts" id="profileActions">
+                        <a href="profile-settings.html" class="fx-btn fx-btn--outline fx-btn--pill" id="btnEditProfile" hidden>Editar perfil</a>
+                        <!-- Perfil de outra pessoa: Seguir / Seguindo (shared/follow.ts) -->
+                        <button type="button" class="fx-btn fx-btn--pill fx-btn--primary" id="btnFollow" hidden>Seguir</button>
+                        <!-- Abre o widget de chat na conversa com a pessoa (shared/chat-bus.ts) -->
+                        <button type="button" class="fx-btn fx-btn--outline fx-btn--pill" id="btnMessage" hidden>Enviar mensagem</button>
+                        <!-- Perfil de outra pessoa, com sessão: "⋯" com Bloquear e Denunciar. -->
+                        <div class="pv-more" id="profileMore" hidden>
+                            <button type="button" class="fx-btn fx-btn--outline fx-btn--pill pv-iconbtn" id="profileMoreBtn"
+                                    aria-haspopup="menu" aria-expanded="false" aria-label="Mais opções do perfil"></button>
+                            <div class="fx-menu" id="profileMoreMenu" role="menu" hidden>
+                                <button type="button" class="fx-menu-item fx-menu-item--danger" role="menuitem" id="btnBlockUser">Bloquear</button>
+                                <button type="button" class="fx-menu-item fx-menu-item--danger" role="menuitem" id="btnReportUser">Denunciar usuário</button>
+                            </div>
+                        </div>
                     </div>
                 </div>
-            </div>
 
-            <div class="profile-info-section">
-                <h1 class="profile-name">
-                    <span id="profileName" class="skeleton-text">Carregando...</span>
-                    <span id="privatePadlockProfile" class="private-padlock" title="Perfil privado" hidden>
-                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
-                        <span class="visually-hidden">Perfil privado</span>
-                    </span>
-                </h1>
-                <h2 class="profile-username" id="profileUsername"></h2>
-                <p class="profile-bio" id="profileBio" hidden></p>
-                <p class="profile-joined" id="profileJoined" hidden></p>
-                <ul class="profile-social" id="profileSocial" hidden></ul>
-                <div class="profile-stats" id="profileStats" hidden></div>
-            </div>
+                <div class="pv-info">
+                    <div class="pv-id">
+                        <h1 class="fx-profile-name" id="profileName">
+                            <span id="profileNameText" class="skeleton-text">Carregando...</span>
+                            <span id="privatePadlockProfile" class="private-padlock" title="Perfil privado" hidden>
+                                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
+                                <span class="visually-hidden">Perfil privado</span>
+                            </span>
+                        </h1>
+                        <p class="fx-profile-user" id="profileUsername"></p>
+                    </div>
+                    <!-- Celular: as ações vêm para cá, numa linha própria. -->
+                    <div class="pv-acts-slot" id="profileActionsPhone"></div>
+                    <p class="fx-profile-bio" id="profileBio" hidden></p>
+                    <p class="fx-profile-joined" id="profileJoined" hidden></p>
+                    <ul class="fx-profile-social" id="profileSocial" hidden></ul>
+                    <div class="fx-profile-stats" id="profileStats" hidden></div>
+                </div>
+            </section>
 
-            <!-- Perfil privado de outra pessoa: aviso no lugar das abas -->
-            <div class="fx-empty" id="privateNotice" hidden>
-                Este perfil é privado. Só o dono pode ver os posts e as respostas.
-            </div>
+            <div class="pv-listcol">
+                <!-- Perfil privado de outra pessoa: aviso no lugar das abas -->
+                <div class="fx-empty" id="privateNotice" hidden>
+                    Este perfil é privado. Só o dono pode ver os posts e as respostas.
+                </div>
 
-            <div class="fx-tabs profile-tabs" id="profileTabs" role="tablist" aria-label="Atividade do perfil" hidden>
-                <button type="button" class="fx-tab" role="tab" aria-selected="true" aria-controls="profileFeed" data-tab="posts">Posts</button>
-                <button type="button" class="fx-tab" role="tab" aria-selected="false" aria-controls="profileFeed" data-tab="comments">Respostas</button>
-                <!-- Só no próprio perfil: a lista de salvos é privada. -->
-                <button type="button" class="fx-tab" role="tab" aria-selected="false" aria-controls="profileFeed" data-tab="saved" id="tabSaved" hidden>Salvos</button>
-            </div>
+                <div class="r-tabs" id="profileTabsBar" hidden>
+                    <div class="fx-tabs" id="profileTabs" role="tablist" aria-label="Atividade do perfil">
+                        <button type="button" class="fx-tab" role="tab" aria-selected="true" aria-controls="profileFeed" data-tab="posts">Posts</button>
+                        <button type="button" class="fx-tab" role="tab" aria-selected="false" aria-controls="profileFeed" data-tab="comments">Respostas</button>
+                        <!-- Só no próprio perfil: a lista de salvos é privada. -->
+                        <button type="button" class="fx-tab" role="tab" aria-selected="false" aria-controls="profileFeed" data-tab="saved" id="tabSaved" hidden>Salvos</button>
+                    </div>
+                </div>
 
-            <div class="profile-feed" id="profileFeed" role="tabpanel" hidden>
-                <div class="profile-feed-list" id="profileFeedList"></div>
-                <div class="fx-empty" id="profileFeedStatus" hidden></div>
-                <button type="button" class="fx-btn fx-btn--outline fx-btn--pill list-more" id="btnLoadMore" hidden>Carregar mais</button>
+                <div class="pv-feed" id="profileFeed" role="tabpanel" hidden>
+                    <div class="pv-list" id="profileFeedList"></div>
+                    <div class="fx-empty" id="profileFeedStatus" hidden></div>
+                    <button type="button" class="fx-btn fx-btn--outline fx-btn--pill list-more" id="btnLoadMore" hidden>Carregar mais</button>
+                </div>
             </div>
 
         </div>

@@ -11,6 +11,10 @@
  * Salvos (GET /me/saved — privada, só o dono vê). A aba "Recursos" do protótipo
  * foi removida: não há nada no modelo de dados que a sustente, e uma aba que
  * só diz "em breve" é um clique sem saída.
+ *
+ * Desenho: ProfileHeader (capa, foto metade sobre a capa e as ações à direita
+ * da foto) em 1080, e a lista em 760 (profile-view.css). No celular as ações
+ * descem para uma linha própria, abaixo do nome.
  */
 import { api, getMe, getToken, type SocialLink } from "../shared/api.js";
 import { requireLogin } from "../shared/auth-guard.js";
@@ -25,6 +29,7 @@ import { markdownToText } from "../shared/markdown.js";
 import { openChatWith } from "../shared/chat-bus.js";
 import { skeleton } from "../shared/skeleton.js";
 import { bindTabKeys } from "../shared/tabs.js";
+import { ICONS } from "../shared/icons.js";
 import type { Page } from "../../../shared/api-types.js";
 import type { ProfileComment, ProfilePost, PublicProfile } from "../../../shared/api-types.js";
 
@@ -48,7 +53,7 @@ const container = $("profileContainer");
 const bannerEl = $("profileBanner");
 const avatarEl = $("profileAvatar");
 const editBtn = $<HTMLAnchorElement>("btnEditProfile");
-const nameEl = $("profileName");
+const nameEl = $("profileNameText");
 const padlockEl = $("privatePadlockProfile");
 const usernameEl = $("profileUsername");
 const bioEl = $("profileBio");
@@ -57,10 +62,27 @@ const socialEl = $("profileSocial");
 const statsEl = $("profileStats");
 const privateNotice = $("privateNotice");
 const tabsEl = $("profileTabs");
+const tabsBar = $("profileTabsBar");
 const feedEl = $("profileFeed");
 const feedList = $("profileFeedList");
 const feedStatus = $("profileFeedStatus");
 const loadMoreBtn = $<HTMLButtonElement>("btnLoadMore");
+
+// ===========================================================================
+// Ações: à direita da foto; no celular, numa linha abaixo do nome
+// ===========================================================================
+
+const actionsEl = $("profileActions");
+const phone = window.matchMedia("(max-width: 599px)");
+function placeActions(): void {
+    const slot = phone.matches ? $("profileActionsPhone") : $("profileBar");
+    if (actionsEl && slot && actionsEl.parentElement !== slot) slot.append(actionsEl);
+}
+placeActions();
+phone.addEventListener("change", placeActions);
+
+const moreBtn = $("profileMoreBtn");
+if (moreBtn) moreBtn.innerHTML = ICONS.dots; // ícone fixo, sem dado
 
 // ===========================================================================
 // Cabeçalho do perfil
@@ -69,7 +91,7 @@ const loadMoreBtn = $<HTMLButtonElement>("btnLoadMore");
 function renderAvatar(profile: PublicProfile): void {
     if (!avatarEl) return;
     avatarEl.replaceChildren();
-    avatarEl.className = "profile-picture";
+    avatarEl.className = "fx-avatar pv-pic";
 
     if (profile.avatarUrl) {
         const img = document.createElement("img");
@@ -79,12 +101,9 @@ function renderAvatar(profile: PublicProfile): void {
         return;
     }
 
-    // Sem foto: iniciais na mesma cor estável do header e dos posts. Num
-    // elemento interno porque .profile-picture já tem cor de fundo própria.
-    const fallback = document.createElement("span");
-    fallback.className = `profile-initials ${avatarColor(profile.userId)}`;
-    fallback.textContent = initials(profile.displayName ?? profile.username);
-    avatarEl.append(fallback);
+    // Sem foto: iniciais na mesma cor estável do header e dos posts.
+    avatarEl.classList.add(avatarColor(profile.userId));
+    avatarEl.textContent = initials(profile.displayName ?? profile.username);
 }
 
 function renderSocialLinks(links: SocialLink[]): void {
@@ -125,7 +144,7 @@ function renderStats(profile: PublicProfile): void {
     const followList = (count: number, one: string, many: string, kind: "followers" | "following") => {
         const button = statNode(count, one, many, "button") as HTMLButtonElement;
         button.type = "button";
-        button.className = "profile-stat-link";
+        button.className = "fx-stat-link";
         button.dataset.stat = kind;
         button.addEventListener("click", () => openFollowList(profile.userId, kind, name));
         return button;
@@ -196,7 +215,7 @@ function renderProfile(profile: PublicProfile): void {
     renderSocialLinks(profile.socialLinks ?? []);
     renderStats(profile);
 
-    if (tabsEl) tabsEl.hidden = false;
+    if (tabsBar) tabsBar.hidden = false;
     const savedTab = document.getElementById("tabSaved");
     if (savedTab) savedTab.hidden = !profile.isOwner;
     if (feedEl) feedEl.hidden = false;
@@ -217,33 +236,33 @@ let currentPage = 0;
 let requestSeq = 0;
 
 function itemMeta(communityId: string, communityName: string, createdAt: string): HTMLElement {
-    const meta = document.createElement("div");
-    meta.className = "profile-item-meta";
+    const meta = document.createElement("p");
+    meta.className = "pv-item-meta";
     const link = document.createElement("a");
     link.href = communityUrl(communityId);
     link.textContent = communityName;
-    meta.append(link, ` • ${timeAgo(createdAt)}`);
+    meta.append(link, ` · ${timeAgo(createdAt)}`);
     return meta;
 }
 
 function renderPostItem(post: ProfilePost): HTMLElement {
     const item = document.createElement("article");
-    item.className = "profile-item";
+    item.className = "pv-item r-edge";
 
     const title = document.createElement("a");
-    title.className = "profile-item-title";
+    title.className = "pv-item-title";
     title.href = postUrl(post.postId);
     title.textContent = post.title;
 
     const snippet = document.createElement("p");
-    snippet.className = "profile-item-snippet";
+    snippet.className = "pv-item-snip";
     snippet.textContent = post.nsfwHidden
         ? "Conteúdo para maiores de 18."
         : truncate(markdownToText(post.content), 220);
 
-    const stats = document.createElement("div");
-    stats.className = "profile-item-stats";
-    stats.textContent = `👍 ${post.likesCount}  💬 ${post.commentsCount}`;
+    const stats = document.createElement("p");
+    stats.className = "pv-item-stats";
+    stats.textContent = `${post.likesCount} ${post.likesCount === 1 ? "curtida" : "curtidas"} · ${post.commentsCount} ${post.commentsCount === 1 ? "comentário" : "comentários"}`;
 
     item.append(itemMeta(post.communityId, post.communityName, post.createdAt), title, snippet, stats);
     return item;
@@ -251,17 +270,17 @@ function renderPostItem(post: ProfilePost): HTMLElement {
 
 function renderCommentItem(comment: ProfileComment): HTMLElement {
     const item = document.createElement("article");
-    item.className = "profile-item";
+    item.className = "pv-item r-edge";
 
-    const context = document.createElement("div");
-    context.className = "profile-item-context";
+    const context = document.createElement("p");
+    context.className = "pv-item-context";
     const postLink = document.createElement("a");
     postLink.href = postUrl(comment.postId, comment.commentId);
     postLink.textContent = comment.postTitle;
     context.append("Em resposta a ", postLink);
 
     const content = document.createElement("p");
-    content.className = "profile-item-snippet";
+    content.className = "pv-item-snip";
     content.textContent = truncate(markdownToText(comment.content), 300);
 
     item.append(itemMeta(comment.communityId, comment.communityName, comment.createdAt), context, content);
@@ -436,6 +455,12 @@ function setupReportMenu(profile: PublicProfile): void {
     });
     document.addEventListener("click", (event) => {
         if (!wrapper.contains(event.target as Node)) setOpen(false);
+    });
+    wrapper.addEventListener("keydown", (event) => {
+        if (event.key === "Escape" && !menu.hidden) {
+            setOpen(false);
+            button.focus();
+        }
     });
     report.addEventListener("click", () => {
         setOpen(false);

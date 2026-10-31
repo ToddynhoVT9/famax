@@ -5,8 +5,10 @@
  *
  * Comunidades: o feed de GET /api/communities, agrupado por categoria, com
  * chips para filtrar uma categoria só (?categoryId=, refletido na URL). Cada
- * card mostra a capa — ou um gradiente com a inicial —, membros e o começo
- * da descrição.
+ * categoria é uma fileira que rola na horizontal, de cartões (CommunityCard:
+ * a capa — ou um gradiente com a inicial —, membros e o começo da
+ * descrição). No desktop e no compacto, setas ‹ › rolam a fileira; no tablet
+ * e no celular, ela rola com o dedo e vai até a borda da tela.
  *
  * Seguindo: posts recentes de quem o usuário segue (GET /api/feed/following),
  * desenhados por shared/post-thread.ts como no feed da comunidade.
@@ -17,7 +19,8 @@ import { communityUrl, pages } from "./shared/pages.js";
 import { avatarColor, escapeHtml, truncate } from "./shared/dom.js";
 import { toast } from "./shared/dialog.js";
 import { createPostThread, type Post } from "./shared/post-thread.js";
-import { emptyState, skeleton } from "./shared/skeleton.js";
+import { emptyState, skeleton, skeletonRows } from "./shared/skeleton.js";
+import { ICONS } from "./shared/icons.js";
 import type { Category, CommunityCard } from "../../shared/api-types.js";
 
 initLayout();
@@ -32,23 +35,23 @@ function renderCard(community: CommunityCard): string {
     const href = escapeHtml(communityUrl(community.communityId));
     const members = `${community.membersCount} ${community.membersCount === 1 ? "membro" : "membros"}`;
     const description = community.description
-        ? `<span class="card-description">${escapeHtml(truncate(community.description, 90))}</span>`
+        ? `<span class="fx-ccard-desc">${escapeHtml(truncate(community.description, 90))}</span>`
         : "";
 
-    // A capa entra como background-image porque .card já define tamanho e
-    // cantos. Sem capa: gradiente na cor estável da comunidade + a inicial.
+    // A capa entra como background-image (o tamanho e os cantos são do
+    // cartão). Sem capa: gradiente na cor estável da comunidade + a inicial.
     const cover = community.coverImageUrl
-        ? `<div class="card-cover" style="background-image:url('${escapeHtml(community.coverImageUrl)}')"></div>`
-        : `<div class="card-cover card-cover--placeholder ${avatarColor(community.communityId)}">
-               <span class="card-initial" aria-hidden="true">${escapeHtml(community.name.trim().charAt(0).toUpperCase())}</span>
+        ? `<div class="fx-ccard-cover has-image" style="background-image:url('${escapeHtml(community.coverImageUrl)}')"></div>`
+        : `<div class="fx-ccard-cover ${avatarColor(community.communityId)}">
+               <span class="fx-ccard-initial" aria-hidden="true">${escapeHtml(community.name.trim().charAt(0).toUpperCase())}</span>
            </div>`;
 
     return `
-        <a href="${href}" class="card">
+        <a href="${href}" class="fx-ccard">
             ${cover}
-            <div class="card-footer">
-                <span class="card-name">${escapeHtml(community.name)}</span>
-                <span class="card-members">${escapeHtml(members)}</span>
+            <div class="fx-ccard-foot">
+                <span class="fx-ccard-name">${escapeHtml(community.name)}</span>
+                <span class="fx-ccard-members">${escapeHtml(members)}</span>
                 ${description}
             </div>
         </a>
@@ -74,7 +77,8 @@ function syncUrl(): void {
 async function loadFeed(): Promise<void> {
     if (!feed) return;
     const seq = ++feedSeq;
-    feed.replaceChildren(skeleton("card", 6, "Carregando comunidades..."));
+    // A forma das fileiras prontas: o título e 4 cartões por fileira.
+    feed.replaceChildren(skeletonRows(2, 4, "Carregando comunidades..."));
 
     try {
         const params = new URLSearchParams({ limit: "50" });
@@ -104,18 +108,24 @@ async function loadFeed(): Promise<void> {
             else groups.set(key, [community]);
         }
 
-        feed.innerHTML = Array.from(groups.entries())
+        // As setas (desktop e compacto) são ícones fixos; o resto passa por escapeHtml.
+        feed.innerHTML = `<div class="home-cats">${Array.from(groups.entries())
             .map(
                 ([categoryName, communities]) => `
-                    <section class="category-section">
-                        <h2 class="category-title">${escapeHtml(categoryName)}</h2>
-                        <div class="cards-container">
-                            ${communities.map(renderCard).join("")}
+                    <section class="home-cat">
+                        <h2 class="home-cat-title">${escapeHtml(categoryName)}</h2>
+                        <div class="home-rowwrap">
+                            <div class="home-row" data-row>
+                                ${communities.map(renderCard).join("")}
+                            </div>
+                            <button type="button" class="fx-btn fx-btn--icon home-rownav home-rownav--prev" data-row-nav="-1" aria-label="Ver anteriores" hidden>${ICONS.prev}</button>
+                            <button type="button" class="fx-btn fx-btn--icon home-rownav home-rownav--next" data-row-nav="1" aria-label="Ver próximas" hidden>${ICONS.next}</button>
                         </div>
                     </section>
                 `,
             )
-            .join("");
+            .join("")}</div>`;
+        feed.querySelectorAll<HTMLElement>("[data-row]").forEach(syncRowNav);
     } catch (err) {
         if (seq !== feedSeq) return;
         showStatus(
@@ -126,6 +136,46 @@ async function loadFeed(): Promise<void> {
         );
     }
 }
+
+// ===========================================================================
+// Setas das fileiras (desktop e compacto)
+// ===========================================================================
+
+const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
+
+/** Sem setas quando a fileira cabe inteira; nas pontas, a seta daquele lado desativa. */
+function syncRowNav(row: HTMLElement): void {
+    const wrap = row.parentElement;
+    const prev = wrap?.querySelector<HTMLButtonElement>('[data-row-nav="-1"]');
+    const next = wrap?.querySelector<HTMLButtonElement>('[data-row-nav="1"]');
+    if (!prev || !next) return;
+    const max = row.scrollWidth - row.clientWidth;
+    const fits = max <= 1;
+    prev.hidden = fits;
+    next.hidden = fits;
+    prev.disabled = row.scrollLeft <= 1;
+    next.disabled = row.scrollLeft >= max - 1;
+}
+
+feed?.addEventListener("click", (event) => {
+    const button = (event.target as Element).closest<HTMLButtonElement>("[data-row-nav]");
+    const row = button?.parentElement?.querySelector<HTMLElement>("[data-row]");
+    if (!button || !row) return;
+    // Quase uma largura visível: o último cartão visto continua à vista.
+    const step = Math.max(row.clientWidth - 80, 200) * Number(button.dataset.rowNav);
+    row.scrollBy({ left: step, behavior: reduceMotion.matches ? "auto" : "smooth" });
+});
+
+// scroll não borbulha: a captura pega o de todas as fileiras.
+feed?.addEventListener(
+    "scroll",
+    (event) => {
+        const row = event.target as HTMLElement;
+        if (row.dataset?.row !== undefined) syncRowNav(row);
+    },
+    true,
+);
+window.addEventListener("resize", () => feed?.querySelectorAll<HTMLElement>("[data-row]").forEach(syncRowNav));
 
 function renderChips(categories: Category[]): void {
     if (!chipsEl) return;

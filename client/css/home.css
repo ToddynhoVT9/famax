@@ -1,115 +1,129 @@
 /* ===================================
-   FAMAX — Home Page (Feed)
+   FAMAX — Página inicial
+   Comunidades (HomeShowcase e CommunityCard) e Seguindo. A coluna de 1080
+   (.r-col--wide), as abas (.r-tabs) e os chips que rolam (.r-hscroll) vêm do
+   layout.css; o post do Seguindo, do post.css.
    =================================== */
 
-.category-section {
-    margin-bottom: 40px;
-}
-
-.category-title {
-    font-size: 2.5rem;
-    font-weight: 700;
-    margin-bottom: 20px;
-    margin-left: 5px;
-    letter-spacing: 0.5px;
-}
-
-.cards-container {
-    display: flex;
-    gap: 20px;
-    overflow-x: auto;
-    padding-bottom: 15px;
-    scrollbar-width: thin;
-    scrollbar-color: var(--color-border-strong) transparent;
-}
-
-.cards-container::-webkit-scrollbar {
-    height: 8px;
-    display: block;
-}
-
-.cards-container::-webkit-scrollbar-track {
-    background: rgba(255, 255, 255, 0.05);
-    border-radius: 10px;
-}
-
-.cards-container::-webkit-scrollbar-thumb {
-    background-color: var(--color-chrome);
-    border-radius: 10px;
-}
-
-.cards-container::-webkit-scrollbar-thumb:hover {
-    background-color: var(--color-chrome-hover);
-}
-
-.card {
-    width: 250px;
-    min-width: 250px;
-    height: 400px;
-    background-color: var(--color-surface-3);
-    border-radius: 8px;
+/* ----- Comunidades: categorias em coluna, 32px entre elas ----- */
+#homeCommunities {
     display: flex;
     flex-direction: column;
-    position: relative;
-    flex-shrink: 0;
-    overflow: hidden;
-    color: var(--color-text);
-    cursor: pointer;
-    transition: transform 0.2s ease, filter 0.2s ease;
-    text-decoration: none;
+    gap: var(--space-6);
+    min-width: 0;
 }
 
-.card:hover {
-    transform: translateY(-5px);
+.home-cats {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-8);
+}
+
+.home-cat {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-4);
+    min-width: 0;
+}
+
+.home-cat-title {
+    margin: 0;
+    font-size: var(--text-2xl);
+    line-height: 2rem;
+    font-weight: var(--weight-bold);
+}
+
+/* A fileira rola na horizontal; as setas ficam por cima, no meio da capa. */
+.home-rowwrap {
+    position: relative;
+}
+
+.home-row {
+    display: flex;
+    gap: var(--space-5);
+    overflow-x: auto;
+    scrollbar-width: none;
+}
+
+.home-row::-webkit-scrollbar {
+    display: none;
+}
+
+/* ----- CommunityCard: 250 × 300, com a capa em 3:2 ----- */
+.fx-ccard {
+    flex-shrink: 0;
+    width: var(--card-width);
+    height: var(--card-height);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    border-radius: var(--radius-lg);
+    background: var(--color-surface-3);
+    color: var(--color-text);
+    text-decoration: none;
+    transition: filter 0.2s ease;
+}
+
+.fx-ccard:hover {
     filter: brightness(1.1);
 }
 
-/* Capa (ou o gradiente com a inicial) ocupa o topo do card. */
-.card-cover {
-    flex: 1;
+.fx-ccard-cover {
+    position: relative;
+    flex: none;
+    aspect-ratio: 3 / 2;
+    display: flex;
+    align-items: center;
+    justify-content: center;
     background-size: cover;
     background-position: center;
 }
 
-.card-cover--placeholder {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    /* A cor vem de .bg-* (avatarColor); o gradiente escurece por cima. */
-    background-image: linear-gradient(160deg, rgba(255, 255, 255, 0.18), rgba(0, 0, 0, 0.35));
+/* Sem capa: a cor estável da comunidade (bg-*) escurecida por um gradiente. */
+.fx-ccard-cover:not(.has-image)::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(160deg, var(--color-tint-chrome), var(--color-scrim));
+    opacity: 0.6;
 }
 
-.card-initial {
+.fx-ccard-initial {
+    position: relative;
+    z-index: 1;
     font-size: 5rem;
-    font-weight: 800;
-    color: rgba(255, 255, 255, 0.9);
-    text-shadow: 0 2px 8px rgba(0, 0, 0, 0.25);
+    line-height: 1;
+    font-weight: var(--weight-heavy);
+    color: var(--color-on-accent);
 }
 
-.card-footer {
-    padding: 14px 16px 16px;
+.fx-ccard-foot {
     display: flex;
     flex-direction: column;
-    gap: 4px;
+    gap: var(--space-1);
+    min-height: 0;
+    padding: var(--space-4);
 }
 
-.card-name {
-    font-size: 1.15rem;
-    font-weight: 700;
+.fx-ccard-name {
+    font-size: var(--text-lg);
+    line-height: 1.625rem;
+    font-weight: var(--weight-bold);
+    white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
-    white-space: nowrap;
 }
 
-.card-members {
-    font-size: 0.85rem;
+.fx-ccard-members {
+    font-size: var(--text-sm);
+    line-height: 1.25rem;
     color: var(--color-text-muted);
 }
 
-.card-description {
-    font-size: 0.85rem;
+.fx-ccard-desc {
+    font-size: var(--text-sm);
+    line-height: 1.25rem;
     color: var(--color-text-soft);
-    line-height: 1.4;
     display: -webkit-box;
     -webkit-line-clamp: 2;
     line-clamp: 2;
@@ -117,20 +131,35 @@
     overflow: hidden;
 }
 
-/* ----- CHIPS DE CATEGORIA ----- */
-.home-chips {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 8px;
-    margin-bottom: 28px;
+/* ----- Setas ‹ › (desktop e compacto), no meio da capa ----- */
+.home-rownav {
+    position: absolute;
+    top: calc(var(--card-width) / 3);
+    z-index: 2;
+    transform: translateY(-50%);
+    background: var(--color-paper);
+    color: var(--color-ink);
+    border: 1px solid var(--color-paper-border-strong);
+    box-shadow: var(--shadow-md);
 }
 
-/* ----- ESTADOS DO FEED ----- */
+.home-rownav:hover {
+    background: var(--color-paper-2);
+}
+
+.home-rownav--prev {
+    left: calc(-1 * var(--space-3));
+}
+
+.home-rownav--next {
+    right: calc(-1 * var(--space-3));
+}
+
+/* ----- Carregando, vazio, erro ----- */
 .feed-status {
-    padding: 60px 20px;
+    padding: var(--space-12) var(--space-5);
     text-align: center;
     color: var(--color-text-faint);
-    font-size: 1.05rem;
 }
 
 .feed-status.error {
@@ -153,4 +182,24 @@
 
 .home-following .list-more {
     margin-top: 0;
+}
+
+/* ----- Tablet e celular: a fileira vai até a borda da tela, sem setas ----- */
+@media (max-width: 1023px) {
+    .home-rowwrap {
+        margin: 0 calc(-1 * var(--r-gutter));
+    }
+
+    .home-row {
+        padding: 0 var(--r-gutter);
+        scroll-padding: 0 var(--r-gutter);
+    }
+
+    .home-rownav {
+        display: none;
+    }
+
+    .fx-skel-row-cards {
+        margin-right: calc(-1 * var(--r-gutter));
+    }
 }

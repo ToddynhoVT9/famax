@@ -457,14 +457,21 @@ textarea.fx-input { min-height: 96px; resize: vertical; }
 
 .fx-skel-line--title { height: 18px; }
 
+/* Fileiras de cartões (vitrine da home): o título e cartões de 250 × 300. */
+.fx-skel-rows { display: flex; flex-direction: column; gap: var(--space-8); width: 100%; }
+.fx-skel-row { display: flex; flex-direction: column; gap: var(--space-4); min-width: 0; }
+.fx-skel-row-title { width: 180px; height: 24px; }
+.fx-skel-row-cards { display: flex; gap: var(--space-5); overflow: hidden; }
+.fx-skel--card { flex: 0 0 var(--card-width); height: var(--card-height); padding: 0; background: var(--color-surface-3); }
+
 @keyframes fx-skel-shimmer {
     from { background-position: 100% 0; }
     to { background-position: -100% 0; }
 }
 
 /* ----- MemberList ----- */
-/* Lista de pessoas num cartão branco: banidos da moderação (e, no prompt 06,
-   os membros da comunidade). */
+/* Lista de pessoas num cartão branco: os membros da comunidade e os banidos
+   da moderação. */
 .fx-members { margin: 0; padding: 0; list-style: none; overflow: hidden; background: var(--color-paper); border: 1px solid var(--color-border); border-radius: var(--radius-lg); }
 .fx-member { display: flex; align-items: center; gap: var(--space-3); padding: var(--space-4) var(--space-5); color: var(--color-ink); border-bottom: 1px solid var(--color-paper-border); }
 .fx-member:last-child { border-bottom: none; }

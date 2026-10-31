@@ -1,152 +1,198 @@
 /* ===================================
-   FAMAX — Profile View (Perfil Público)
+   FAMAX — Perfil (ProfileHeader e a lista)
+   O topo fica na coluna de 1080 (.r-col--wide) e a lista em 760 no centro.
+   As medidas da capa e da foto mudam com a faixa pelas variáveis --pv-pic
+   (tamanho da foto) e --pv-pic-left (distância da esquerda).
    =================================== */
 
-.perfil-container {
-    max-width: 1000px;
-    margin: 0 auto;
+.pv-profile {
+    --pv-pic: var(--profile-pic);
+    --pv-pic-left: var(--space-8);
     display: flex;
     flex-direction: column;
 }
 
-/* BANNER */
-.banner {
-    width: 100%;
-    height: 220px;
-    background-color: var(--color-paper);
+/* ----- Capa e foto: a foto fica metade sobre a capa ----- */
+.fx-profile-banner {
     position: relative;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    border-radius: 8px 8px 0 0;
+    flex-shrink: 0;
+    height: var(--cover-height);
+    border-radius: var(--radius-lg);
+    background: var(--color-paper);
 }
 
-/* IMAGEM DE USUÁRIO */
-.profile-picture {
-    position: absolute;
-    width: 150px;
-    height: 150px;
-    background-color: var(--color-chrome);
-    border-radius: 50%;
-    bottom: -75px;
-    left: 30px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    color: var(--color-ink);
-    font-size: 1rem;
-    font-weight: 500;
-    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
-    border: 4px solid var(--color-border);
-}
-
-/* Botão de edição */
-.profile-header-actions {
-    display: flex;
-    justify-content: flex-end;
-    padding: 15px 30px;
-    height: 75px;
-}
-
-/* "⋯" do perfil de outra pessoa (Denunciar) */
-.profile-header-actions {
-    gap: 10px;
-    align-items: flex-start;
-}
-
-.profile-more {
-    position: relative;
-}
-
-/* O menu (fx-menu) abre sob o "⋯", alinhado à direita. */
-.profile-more > .fx-menu {
-    position: absolute;
-    right: 0;
-    top: calc(100% + 6px);
-    z-index: var(--z-popover);
-}
-
-/* INFORMAÇÕES DO USUÁRIO */
-.profile-info-section {
-    padding: 10px 30px 20px;
-}
-
-.profile-name {
-    font-size: 2rem;
-    font-weight: 800;
-    margin-bottom: 2px;
-}
-
-.profile-username {
-    font-size: 1.1rem;
-    font-weight: 400;
-    color: var(--color-text-faint);
-    margin-bottom: 15px;
-}
-
-.profile-bio {
-    font-size: 1.05rem;
-    line-height: 1.5;
-    margin-bottom: 15px;
-    max-width: 800px;
-}
-
-.profile-stats {
-    display: flex;
-    gap: 20px;
-    font-size: 1.05rem;
-    color: var(--color-text-faint);
-}
-
-.profile-stats strong {
-    color: var(--color-text);
-    font-weight: 700;
-}
-
-/* ABAS DE NAVEGAÇÃO DO PERFIL (fx-tabs) */
-.profile-tabs {
-    margin-top: 10px;
-}
-
-/* FEED DO PERFIL */
-.profile-feed {
-    padding: 30px 0;
-}
-
-/* Aviso de perfil privado e lista vazia (fx-empty): o texto vem direto no bloco. */
-.perfil-container .fx-empty {
-    color: var(--color-text-muted);
-}
-
-/* ----- DADOS VINDOS DA API (profile-view.ts) ----- */
-
-.banner.has-image {
+.fx-profile-banner.has-image {
     background-size: cover;
     background-position: center;
 }
 
-/* Foto ou iniciais preenchendo o círculo do avatar. */
-.profile-picture img,
-.profile-initials {
+.pv-pic {
+    position: absolute;
+    left: var(--pv-pic-left);
+    bottom: calc(var(--pv-pic) / -2);
+    width: var(--pv-pic);
+    height: var(--pv-pic);
+    overflow: hidden;
+    border: 4px solid var(--color-bg);
+    background: var(--color-chrome);
+    font-size: calc(var(--pv-pic) / 3);
+}
+
+.pv-pic img {
     width: 100%;
     height: 100%;
-    border-radius: 50%;
     object-fit: cover;
 }
 
-.profile-initials {
+/* ----- Ações: à direita da foto, nunca embaixo dela ----- */
+.pv-bar {
     display: flex;
-    align-items: center;
-    justify-content: center;
-    color: var(--color-on-accent);
-    font-size: 3rem;
-    font-weight: 800;
+    justify-content: flex-end;
+    align-items: flex-start;
+    min-height: calc(var(--pv-pic) / 2 + var(--space-4));
+    padding: var(--space-4) 0 0 calc(var(--pv-pic-left) + var(--pv-pic) + var(--space-4));
 }
 
-.profile-name {
+.pv-acts {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    gap: var(--space-3);
+}
+
+.pv-acts .fx-btn {
+    white-space: nowrap;
+}
+
+/* Botão só com ícone (⋯), da mesma altura dos outros. */
+.pv-iconbtn {
+    width: var(--touch-target);
+    padding: 0;
+    flex-shrink: 0;
+}
+
+.pv-iconbtn .r-ico {
+    width: 20px;
+    height: 20px;
+}
+
+.pv-more {
+    position: relative;
+    display: inline-flex;
+}
+
+.pv-more > .fx-menu {
+    position: absolute;
+    top: calc(100% + var(--space-1));
+    right: 0;
+    z-index: var(--z-popover);
+    min-width: 200px;
+}
+
+/* ----- Dados do perfil ----- */
+.pv-info {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-3);
+    padding-top: var(--space-2);
+}
+
+.pv-id {
+    display: flex;
+    flex-direction: column;
+}
+
+/* Lugar das ações no celular; vazio nas outras faixas. */
+.pv-acts-slot:empty {
+    display: none;
+}
+
+.fx-profile-name {
+    margin: 0;
     display: flex;
     align-items: center;
-    gap: 12px;
+    gap: var(--space-3);
+    font-size: var(--text-3xl);
+    line-height: 2.5rem;
+    font-weight: var(--weight-heavy);
+    overflow-wrap: anywhere;
+}
+
+.fx-profile-user {
+    margin: 0;
+    font-size: var(--text-lg);
+    line-height: 1.625rem;
+    color: var(--color-text-faint);
+}
+
+.fx-profile-bio {
+    margin: 0;
+    max-width: var(--prose-measure);
+    white-space: pre-line;
+    overflow-wrap: anywhere;
+}
+
+.fx-profile-joined {
+    margin: 0;
+    font-size: var(--text-sm);
+    line-height: 1.25rem;
+    color: var(--color-text-faint);
+}
+
+.fx-profile-social {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-2);
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+
+.fx-profile-social a {
+    display: inline-flex;
+    align-items: center;
+    min-height: var(--r-touch);
+    padding: 0 var(--space-3);
+    border: 1px solid var(--color-border-strong);
+    border-radius: var(--radius-pill);
+    color: var(--color-text);
+    font-size: var(--text-sm);
+    text-decoration: none;
+}
+
+.fx-profile-social a:hover {
+    background: var(--color-tint-page);
+}
+
+/* "N seguidores" e "N seguindo" abrem a lista (shared/follow.ts): alvo da faixa. */
+.fx-profile-stats {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0 var(--space-5);
+    color: var(--color-text-faint);
+}
+
+.fx-profile-stats strong {
+    color: var(--color-text);
+}
+
+.fx-stat-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25em;
+    min-height: var(--r-touch);
+    padding: 0;
+    border: none;
+    background: none;
+    color: inherit;
+    font: inherit;
+    cursor: pointer;
+}
+
+.fx-stat-link:hover strong,
+.fx-stat-link:focus-visible strong {
+    text-decoration: underline;
 }
 
 .private-padlock {
@@ -154,15 +200,11 @@
     color: var(--color-text);
 }
 
-.private-padlock[hidden] {
-    display: none;
-}
-
 /* Enquanto o perfil carrega: um bloco no lugar do nome. */
 .skeleton-text {
     color: transparent;
-    background-color: rgba(255, 255, 255, 0.12);
-    border-radius: 6px;
+    background: var(--color-tint-page);
+    border-radius: var(--radius-md);
     min-width: 220px;
     animation: skeleton-pulse 1.2s ease-in-out infinite;
 }
@@ -171,132 +213,146 @@
     50% { opacity: 0.5; }
 }
 
-.profile-bio {
-    white-space: pre-line;
-}
-
-.profile-joined {
-    color: var(--color-text-faint);
-    margin-bottom: 12px;
-}
-
-.profile-social {
-    list-style: none;
-    display: flex;
-    flex-wrap: wrap;
-    gap: 10px;
-    margin-bottom: 15px;
-    padding: 0;
-}
-
-.profile-social a {
-    display: inline-block;
-    padding: 6px 12px;
-    border: 1px solid var(--color-border-strong);
-    border-radius: 16px;
-    color: var(--color-text);
-    text-decoration: none;
-    font-size: 0.95rem;
-}
-
-.profile-social a:hover {
-    background-color: rgba(255, 255, 255, 0.08);
-}
-
-/* ----- ITENS DAS ABAS ----- */
-
-.profile-feed-list {
+/* ----- Abas e lista, em 760 no centro ----- */
+.pv-listcol {
     display: flex;
     flex-direction: column;
-    gap: 12px;
+    gap: var(--space-4);
+    width: 100%;
+    max-width: var(--content-width);
+    margin: var(--space-4) auto 0;
 }
 
-.profile-item {
-    background-color: rgba(255, 255, 255, 0.04);
-    border-radius: 8px;
-    padding: 16px 20px;
+/* Aviso de perfil privado e lista vazia (fx-empty): o texto vem direto no bloco. */
+.pv-listcol .fx-empty {
+    color: var(--color-text-muted);
 }
 
-.profile-item-meta,
-.profile-item-context {
-    font-size: 0.9rem;
+.pv-feed {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-4);
+}
+
+.pv-feed > .list-more {
+    margin-top: 0;
+}
+
+.pv-list {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-3);
+}
+
+/* O cartão próprio da lista (não é o PostCard: ponto em aberto). */
+.pv-item {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-1);
+    padding: var(--space-4) var(--space-5);
+    border-radius: var(--radius-lg);
+    background: var(--color-tint-page);
+}
+
+.pv-item-meta,
+.pv-item-context,
+.pv-item-stats {
+    margin: 0;
+    font-size: var(--text-sm);
+    line-height: 1.25rem;
     color: var(--color-text-faint);
-    margin-bottom: 6px;
 }
 
-.profile-item-meta a,
-.profile-item-context a {
+.pv-item-meta a,
+.pv-item-context a {
     color: var(--color-text-soft);
 }
 
-.profile-item-title {
-    display: block;
-    font-size: 1.15rem;
-    font-weight: 700;
+.pv-item-title {
+    /* Alvo da faixa na altura; a margem negativa devolve o espaço. */
+    padding: calc((var(--r-touch) - 1.625rem) / 2) 0;
+    margin: calc((1.625rem - var(--r-touch)) / 2) 0;
     color: var(--color-text);
+    font-size: var(--text-lg);
+    line-height: 1.625rem;
+    font-weight: var(--weight-bold);
     text-decoration: none;
-    margin-bottom: 6px;
+    overflow-wrap: anywhere;
 }
 
-.profile-item-title:hover {
+.pv-item-title:hover {
     text-decoration: underline;
 }
 
-.profile-item-snippet {
-    line-height: 1.5;
+.pv-item-snip {
+    margin: 0;
+    max-width: var(--prose-measure);
     color: var(--color-text-soft);
+    line-height: 1.5;
     white-space: pre-line;
     overflow-wrap: anywhere;
 }
 
-.profile-item-stats {
-    margin-top: 8px;
-    font-size: 0.9rem;
-    color: var(--color-text-faint);
+.pv-item-stats {
+    margin-top: var(--space-1);
 }
 
-
-
-#privateNotice {
-    margin-top: 20px;
-}
-
-@media (max-width: 768px) {
-    .profile-header-actions {
-        padding: 15px 10px;
-    }
-
-    .profile-info-section {
-        padding: 10px 10px 20px;
-    }
-
-    .profile-picture {
-        width: 110px;
-        height: 110px;
-        bottom: -55px;
-        left: 15px;
-    }
-
-    .profile-stats {
-        flex-wrap: wrap;
+/* ----- Compacto e tablet: foto de 120px a 24px da esquerda ----- */
+@media (min-width: 600px) and (max-width: 1279px) {
+    .pv-profile {
+        --pv-pic: var(--profile-pic-sm);
+        --pv-pic-left: var(--space-6);
     }
 }
 
-/* Seguidores / Seguindo: abrem a lista (shared/follow.ts) */
-.profile-stats {
-    flex-wrap: wrap;
-}
+/* ----- Celular ----- */
+@media (max-width: 599px) {
+    .pv-profile {
+        --pv-pic: var(--profile-pic-phone);
+        --pv-pic-left: var(--r-gutter);
+    }
 
-.profile-stat-link {
-    background: none;
-    border: none;
-    padding: 0;
-    color: inherit;
-    font: inherit;
-    cursor: pointer;
-}
+    /* Capa de 120px de ponta a ponta, encostada no header. */
+    .fx-profile-banner {
+        height: var(--cover-height-phone);
+        margin: calc(-1 * var(--space-6)) calc(-1 * var(--r-gutter)) 0;
+        border-radius: 0;
+    }
 
-.profile-stat-link:hover strong,
-.profile-stat-link:focus-visible strong {
-    text-decoration: underline;
+    /* As ações vêm para baixo do nome (profile-view.ts); a faixa só reserva
+       o espaço da metade da foto que sai da capa. */
+    .pv-bar {
+        min-height: 0;
+        padding: 0;
+    }
+
+    .pv-info {
+        padding-top: calc(var(--pv-pic) / 2 + var(--space-3));
+    }
+
+    .fx-profile-name {
+        font-size: var(--text-2xl);
+        line-height: 2rem;
+    }
+
+    .pv-acts {
+        flex-wrap: nowrap;
+        justify-content: flex-start;
+        gap: var(--space-2);
+    }
+
+    .pv-acts > .fx-btn {
+        flex: 1 1 auto;
+        min-width: 0;
+        padding: 0 var(--space-3);
+    }
+
+    /* Lista de ponta a ponta, com 4px entre os cartões. */
+    .pv-list {
+        gap: var(--space-1);
+    }
+
+    .pv-item {
+        padding: var(--space-4) var(--r-gutter);
+    }
 }

@@ -49,6 +49,40 @@ export function skeleton(kind: SkeletonKind, count = 3, label = "Carregando...")
     return group;
 }
 
+/**
+ * Fileiras de cartões (a vitrine da home): o título e `cards` cartões de
+ * 250 × 300 por fileira, com a mesma forma das fileiras prontas.
+ */
+export function skeletonRows(rows = 2, cards = 4, label = "Carregando..."): HTMLElement {
+    const group = document.createElement("div");
+    group.className = "fx-skel-rows";
+    group.setAttribute("role", "status");
+    group.setAttribute("aria-busy", "true");
+
+    const text = document.createElement("span");
+    text.className = "visually-hidden";
+    text.textContent = label;
+    group.append(text);
+
+    for (let r = 0; r < rows; r++) {
+        const section = document.createElement("div");
+        section.className = "fx-skel-row";
+        section.setAttribute("aria-hidden", "true");
+        const title = document.createElement("span");
+        title.className = "fx-skel-line fx-skel-line--title fx-skel-row-title";
+        const row = document.createElement("div");
+        row.className = "fx-skel-row-cards";
+        for (let c = 0; c < cards; c++) {
+            const card = document.createElement("span");
+            card.className = "fx-skel fx-skel--card";
+            row.append(card);
+        }
+        section.append(title, row);
+        group.append(section);
+    }
+    return group;
+}
+
 export interface EmptyAction {
     label: string;
     /** Link (navega) ou função (ex.: abrir o modal de novo post). */
