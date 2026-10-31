@@ -305,9 +305,11 @@ export function conferir(): Resultado {
     // ----- Caracteres por linha -----
     const lo = faixa === "celular" ? 35 : 45;
     const hi = faixa === "celular" ? 60 : 80;
-    const amostras = Array.from((janela || document).querySelectorAll(TEXTO)).filter(
-        (el) => !dentroDaConferencia(el) && visivel(el) && (el.textContent || "").trim().length > 80,
-    );
+    // Os marcados (data-conferir-cpl) primeiro: querySelectorAll devolve na
+    // ordem do documento, e um texto acima (a descrição da comunidade) vencia.
+    const amostras = Array.from((janela || document).querySelectorAll(TEXTO))
+        .filter((el) => !dentroDaConferencia(el) && visivel(el) && (el.textContent || "").trim().length > 80)
+        .sort((a, b) => Number(b.hasAttribute("data-conferir-cpl")) - Number(a.hasAttribute("data-conferir-cpl")));
     for (const el of amostras) {
         const c = contarCaracteres(el);
         if (!c) continue;

@@ -99,10 +99,9 @@ export function createMembersView(root: HTMLElement, options: MembersViewOptions
         item.dataset.userId = member.userId;
         item.dataset.name = name;
 
-        const avatar = el("a", "fx-avatar fx-avatar--md");
-        avatar.href = profileUrl(member.userId);
+        // O nome já leva ao perfil: o avatar é só imagem (antes, um segundo link de 40px).
+        const avatar = el("span", "fx-avatar fx-avatar--md");
         avatar.setAttribute("aria-hidden", "true");
-        avatar.tabIndex = -1;
         if (member.avatarUrl) {
             const img = el("img");
             img.src = member.avatarUrl;

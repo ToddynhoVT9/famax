@@ -1103,6 +1103,11 @@ export function createPostThread(container: HTMLElement, options: PostThreadOpti
             const html = list.map((post) => renderPost(post, options)).join("");
             container.insertAdjacentHTML(position === "append" ? "beforeend" : "afterbegin", html);
             markOverflow(container);
+            // Régua da conferência (?conferir): um parágrafo do texto do post,
+            // e não o bloco com listas. O atributo não muda nada fora dela.
+            container
+                .querySelector(".fx-post-snippet > p, .fx-post--single .fx-md > p")
+                ?.setAttribute("data-conferir-cpl", "");
         },
         replace: redraw,
         clear() {

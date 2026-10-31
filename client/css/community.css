@@ -610,7 +610,10 @@
     overflow-wrap: anywhere;
 }
 
+/* O link do local: alvo da faixa na altura, sem mudar a linha. */
 .fx-event-place a {
+    padding: calc((var(--r-touch) - 1.25rem) / 2) 0;
+    margin: calc((1.25rem - var(--r-touch)) / 2) 0;
     color: var(--color-link);
 }
 
