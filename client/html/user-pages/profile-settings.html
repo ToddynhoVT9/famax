@@ -19,240 +19,277 @@
     <header id="app-header" class="header"></header>
     <aside id="app-sidebar" class="sidebar"></aside>
 
-    <!-- CONTEÚDO PRINCIPAL: preenchido por profile-settings.ts a partir de GET /api/me -->
+    <!-- CONTEÚDO PRINCIPAL: preenchido por profile-settings.ts a partir de GET /api/me.
+         Coluna única de 760 em blocos: Perfil, Conta, Privacidade, Notificações,
+         Sessões e Conta e segurança. -->
     <main class="main-content" id="main-content">
-        <h1 class="visually-hidden">Configurações do perfil</h1>
-        <div class="perfil-container" id="settingsContainer" aria-busy="true">
+        <div class="r-col" id="settingsContainer" aria-busy="true">
+            <h1 class="r-ptitle">Configurações</h1>
 
-            <!-- Banner e foto -->
-            <div class="banner" id="settingsBanner">
-                <div class="media-actions media-actions--banner">
-                    <button type="button" class="fx-btn fx-btn--on-photo fx-btn--sm fx-btn--pill" id="btnBannerChange">Alterar banner</button>
-                    <button type="button" class="fx-btn fx-btn--on-photo fx-btn--sm fx-btn--pill" id="btnBannerRemove" hidden>Remover banner</button>
-                </div>
-                <input type="file" id="bannerInput" accept="image/png,image/jpeg,image/webp" hidden>
+            <div class="st-sets">
 
-                <div class="profile-picture" id="settingsAvatar"></div>
-            </div>
+                <!-- ----- Perfil ----- -->
+                <section class="st-set" aria-labelledby="setPerfil">
+                    <h2 class="st-set-title" id="setPerfil">Perfil</h2>
 
-            <div class="media-actions media-actions--avatar">
-                <button type="button" class="fx-btn fx-btn--on-photo fx-btn--sm fx-btn--pill" id="btnAvatarChange">Alterar foto</button>
-                <button type="button" class="fx-btn fx-btn--on-photo fx-btn--sm fx-btn--pill" id="btnAvatarRemove" hidden>Remover foto</button>
-                <input type="file" id="avatarInput" accept="image/png,image/jpeg,image/webp" hidden>
-            </div>
-            <p class="settings-hint">Foto: PNG, JPEG ou WebP, até 1MB. Banner: até 2MB.</p>
-            <p class="settings-status" id="mediaStatus" role="status" hidden></p>
+                    <!-- Capa e foto: as medidas do perfil (profile-view.css), aqui no profile-settings.css. -->
+                    <div class="st-media">
+                        <div class="st-banner" id="settingsBanner">
+                            <div class="st-banner-actions">
+                                <button type="button" class="fx-btn fx-btn--on-photo fx-btn--sm fx-btn--pill" id="btnBannerChange">Alterar banner</button>
+                                <button type="button" class="fx-btn fx-btn--on-photo fx-btn--sm fx-btn--pill" id="btnBannerRemove" hidden>Remover banner</button>
+                            </div>
+                            <input type="file" id="bannerInput" accept="image/png,image/jpeg,image/webp" hidden>
+                            <div class="fx-avatar st-pic" id="settingsAvatar" aria-hidden="true"></div>
+                        </div>
+                        <div class="st-picacts">
+                            <button type="button" class="fx-btn fx-btn--secondary fx-btn--sm fx-btn--pill" id="btnAvatarChange">Alterar foto</button>
+                            <button type="button" class="fx-btn fx-btn--secondary fx-btn--sm fx-btn--pill" id="btnAvatarRemove" hidden>Remover foto</button>
+                            <input type="file" id="avatarInput" accept="image/png,image/jpeg,image/webp" hidden>
+                        </div>
+                    </div>
+                    <p class="st-hint">Foto: PNG, JPEG ou WebP, até 1 MB. Banner: até 2 MB.</p>
+                    <p class="settings-status" id="mediaStatus" role="status" hidden></p>
 
-            <!-- Grade de Informações -->
-            <div class="perfil-info-grid">
-
-                <!-- Coluna Esquerda -->
-                <div class="col-esq">
-                    <form class="settings-form" id="identityForm" novalidate>
-                        <label class="settings-field">
-                            <span>Nome de exibição</span>
+                    <form class="st-set" id="identityForm" novalidate>
+                        <div class="fx-field">
+                            <label class="fx-label" for="displayNameInput">Nome de exibição</label>
                             <input type="text" class="fx-input" id="displayNameInput" maxlength="100" required>
-                        </label>
-                        <label class="settings-field">
-                            <span>Apelido <small>(opcional)</small></span>
+                        </div>
+                        <div class="fx-field">
+                            <label class="fx-label" for="nicknameInput">Apelido <span class="st-opt">(opcional)</span></label>
                             <input type="text" class="fx-input" id="nicknameInput" maxlength="50">
-                        </label>
-                        <div class="settings-form-actions">
-                            <button type="submit" class="fx-btn fx-btn--primary" id="btnIdentitySave">Salvar</button>
+                        </div>
+
+                        <div class="st-line">
+                            <span class="st-key">Sobre</span>
+                            <span class="st-text st-faint">nascimento, gênero e bio</span>
+                            <button type="button" class="fx-btn fx-btn--link" id="btnSobre" aria-label="Editar sobre">editar</button>
+                        </div>
+                        <div class="st-line">
+                            <span class="st-key">Redes</span>
+                            <span class="st-text st-faint" id="socialCount"></span>
+                            <button type="button" class="fx-btn fx-btn--link" id="btnSocial" aria-label="Editar redes sociais">editar</button>
+                        </div>
+
+                        <!-- "Salvar" no fim do bloco: grava nome e apelido. -->
+                        <div class="st-save">
                             <span class="settings-status" id="identityStatus" role="status" hidden></span>
+                            <button type="submit" class="fx-btn fx-btn--primary" id="btnIdentitySave">Salvar</button>
                         </div>
                     </form>
+                </section>
 
-                    <div class="profile-line">
-                        <button type="button" class="fx-btn fx-btn--link" id="btnSobre">Sobre</button>
-                        <span class="line-hint">nascimento, gênero e bio</span>
+                <!-- ----- Conta ----- -->
+                <section class="st-set" aria-labelledby="setConta">
+                    <h2 class="st-set-title" id="setConta">Conta</h2>
+                    <div class="st-line">
+                        <span class="st-key">E-mail</span>
+                        <span class="st-text" id="emailValue"></span>
                     </div>
-                    <div class="profile-line">
-                        <span class="line-label" id="adultLabel">Conteúdo adulto</span>
-                        <button type="button" class="fx-switch" id="toggleAdult" role="switch"
-                            aria-checked="false" aria-labelledby="adultLabel" disabled></button>
+                    <div class="st-line">
+                        <span class="st-key">Usuário</span>
+                        <span class="st-text" id="usernameValue"></span>
                     </div>
-                </div>
+                    <div class="st-line">
+                        <span class="st-key">Senha</span>
+                        <span class="st-text" aria-hidden="true">••••••••</span>
+                        <button type="button" class="fx-btn fx-btn--link" id="btnChangePassword" aria-label="Alterar senha">alterar</button>
+                    </div>
+                </section>
 
-                <!-- Divisor -->
-                <div class="divider-vertical"></div>
-
-                <!-- Coluna Direita -->
-                <div class="col-dir">
-                    <div class="profile-line">
-                        <span class="line-label">E-mail:</span>
-                        <span class="line-value" id="emailValue"></span>
-                    </div>
-                    <div class="profile-line">
-                        <span class="line-label">Usuário:</span>
-                        <span class="line-value" id="usernameValue"></span>
-                    </div>
-                    <div class="profile-line">
-                        <button type="button" class="fx-btn fx-btn--link" id="btnChangePassword">Senha</button>
-                        <span class="line-hint">alterar</span>
-                    </div>
-                    <div class="profile-line">
-                        <span class="line-label" id="privateLabel">Perfil privado</span>
+                <!-- ----- Privacidade: cada interruptor salva na hora ----- -->
+                <section class="st-set" aria-labelledby="setPrivacidade">
+                    <h2 class="st-set-title" id="setPrivacidade">Privacidade</h2>
+                    <div class="st-line">
+                        <span class="st-text" id="privateLabel">Perfil privado</span>
                         <button type="button" class="fx-switch" id="togglePrivate" role="switch"
                             aria-checked="false" aria-labelledby="privateLabel" disabled></button>
                     </div>
-                    <div class="profile-line is-disabled">
-                        <span class="line-label">Outros perfis</span>
+                    <div class="st-line">
+                        <span class="st-text" id="adultLabel">Conteúdo adulto</span>
+                        <button type="button" class="fx-switch" id="toggleAdult" role="switch"
+                            aria-checked="false" aria-labelledby="adultLabel" disabled></button>
+                    </div>
+                    <div class="st-line st-off">
+                        <span class="st-text">Outros perfis</span>
                         <span class="fx-badge fx-badge--outline">Em breve</span>
                     </div>
-                    <div class="profile-line">
-                        <button type="button" class="fx-btn fx-btn--link" id="btnSocial">Suas redes sociais</button>
-                        <span class="line-hint" id="socialCount"></span>
-                    </div>
-                    <!-- Notificações: o que gera aviso no sininho. -->
-                    <h2 class="settings-subtitle">Notificações</h2>
-                    <div class="profile-line">
-                        <span class="line-label" id="notifyCommentsLabel">Comentários nas suas discussões</span>
+                </section>
+
+                <!-- ----- Notificações: o que gera aviso no sino; cada interruptor salva na hora ----- -->
+                <section class="st-set" aria-labelledby="setNotificacoes">
+                    <h2 class="st-set-title" id="setNotificacoes">Notificações</h2>
+                    <div class="st-line">
+                        <span class="st-text" id="notifyCommentsLabel">Comentários nas suas discussões</span>
                         <button type="button" class="fx-switch" id="toggleNotifyComments" role="switch"
                             aria-checked="false" aria-labelledby="notifyCommentsLabel" disabled></button>
                     </div>
-                    <div class="profile-line">
-                        <span class="line-label" id="notifyRepliesLabel">Respostas aos seus comentários e menções</span>
+                    <div class="st-line">
+                        <span class="st-text" id="notifyRepliesLabel">Respostas aos seus comentários e menções</span>
                         <button type="button" class="fx-switch" id="toggleNotifyReplies" role="switch"
                             aria-checked="false" aria-labelledby="notifyRepliesLabel" disabled></button>
                     </div>
-                    <div class="profile-line">
-                        <span class="line-label" id="notifyLikesLabel">Curtidas</span>
+                    <div class="st-line">
+                        <span class="st-text" id="notifyLikesLabel">Curtidas</span>
                         <button type="button" class="fx-switch" id="toggleNotifyLikes" role="switch"
                             aria-checked="false" aria-labelledby="notifyLikesLabel" disabled></button>
                     </div>
-                    <div class="profile-line">
-                        <span class="line-label" id="notifyFollowsLabel">Novos seguidores</span>
+                    <div class="st-line">
+                        <span class="st-text" id="notifyFollowsLabel">Novos seguidores</span>
                         <button type="button" class="fx-switch" id="toggleNotifyFollows" role="switch"
                             aria-checked="false" aria-labelledby="notifyFollowsLabel" disabled></button>
                     </div>
-                    <div class="profile-line">
-                        <span class="line-label" id="notifyEventsLabel">Eventos novos nas suas comunidades</span>
+                    <div class="st-line">
+                        <span class="st-text" id="notifyEventsLabel">Eventos novos nas suas comunidades</span>
                         <button type="button" class="fx-switch" id="toggleNotifyEvents" role="switch"
                             aria-checked="false" aria-labelledby="notifyEventsLabel" disabled></button>
                     </div>
-                    <div class="profile-line">
-                        <button type="button" class="fx-btn fx-btn--link" id="btnLogoutAll"
-                            title="Encerrar todas as sessões, inclusive esta">Sair de todos os dispositivos</button>
+                    <p class="settings-status" id="settingsStatus" role="status" hidden></p>
+                </section>
+
+                <!-- ----- Sessões ----- -->
+                <section class="st-set" aria-labelledby="setSessoes">
+                    <h2 class="st-set-title" id="setSessoes">Sessões</h2>
+                    <div class="st-line">
+                        <span class="st-text">Encerra todas as sessões, inclusive esta.</span>
+                        <button type="button" class="fx-btn fx-btn--link" id="btnLogoutAll">Sair de todos os dispositivos</button>
                     </div>
-                </div>
+                </section>
 
+                <!-- ----- Conta e segurança: cartões montados por account-security.ts ----- -->
+                <section class="st-security" aria-labelledby="securityTitle">
+                    <h2 class="st-set-title" id="securityTitle">Conta e segurança</h2>
+                    <div class="st-seccards" id="securityCards"></div>
+                </section>
             </div>
-            <p class="settings-status" id="settingsStatus" role="status" hidden></p>
-
-            <!-- Conta e segurança: cartões montados por account-security.ts -->
-            <section class="security-section" aria-labelledby="securityTitle">
-                <h2 class="security-title" id="securityTitle">Conta e segurança</h2>
-                <div class="security-cards" id="securityCards"></div>
-            </section>
         </div>
     </main>
 
-    <!-- MODAL DE SENHA -->
-    <div class="fx-overlay" id="senhaModalOverlay" hidden>
-        <div class="fx-dialog fx-dialog--form" role="dialog" aria-modal="true" aria-labelledby="senhaModalTitle">
+    <!-- JANELA DE SENHA (a janela de formulário da R: r-win; os passos trocam dentro dela) -->
+    <div class="r-win-veil" id="senhaModalOverlay" hidden>
+        <div class="r-win" role="dialog" aria-modal="true" aria-labelledby="senhaModalTitle">
             <!-- Passo 1: Senha atual -->
-            <form class="settings-modal-step" id="modalStep1" novalidate>
-                <h2 class="fx-dialog-title" id="senhaModalTitle">Senha</h2>
-                <div class="fx-field">
-                    <label class="fx-label" for="currentPasswordInput">Qual a sua senha atual?</label>
-                    <input type="password" class="fx-input" id="currentPasswordInput" autocomplete="current-password">
+            <form class="r-win-step" id="modalStep1" novalidate>
+                <div class="r-win-head">
+                    <div class="r-win-titles"><h2 class="r-win-title" id="senhaModalTitle">Senha</h2></div>
+                    <button type="button" class="fx-btn fx-btn--icon r-win-close" data-close-modal aria-label="Fechar"><svg class="r-ico" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
                 </div>
-                <label class="fx-check">
-                    <input type="checkbox" data-toggle-password="currentPasswordInput">
-                    Mostrar senha
-                </label>
-                <div class="fx-error" id="step1Error" role="alert" hidden></div>
-                <div class="fx-dialog-actions">
+                <div class="r-win-body">
+                    <div class="fx-field">
+                        <label class="fx-label" for="currentPasswordInput">Qual a sua senha atual?</label>
+                        <input type="password" class="fx-input" id="currentPasswordInput" autocomplete="current-password">
+                    </div>
+                    <label class="fx-check">
+                        <input type="checkbox" data-toggle-password="currentPasswordInput">
+                        Mostrar senha
+                    </label>
+                    <div class="fx-error" id="step1Error" role="alert" hidden></div>
+                </div>
+                <div class="r-win-foot">
                     <button type="button" class="fx-btn fx-btn--secondary" data-close-modal>Cancelar</button>
-                    <button type="submit" class="fx-btn fx-btn--primary">Continuar</button>
+                    <button type="submit" class="fx-btn fx-btn--primary" data-win-primary>Continuar</button>
                 </div>
             </form>
 
             <!-- Passo 2: Nova senha -->
-            <form class="settings-modal-step" id="modalStep2" novalidate hidden>
-                <h2 class="fx-dialog-title">Senha</h2>
-                <div class="modal-two-cols">
-                    <div class="fx-field">
-                        <label class="fx-label" for="newPasswordInput">Qual a sua nova senha?</label>
-                        <input type="password" class="fx-input" id="newPasswordInput" autocomplete="new-password">
-                    </div>
-                    <div class="fx-field">
-                        <label class="fx-label" for="confirmPasswordInput">Confirme a sua nova senha.</label>
-                        <input type="password" class="fx-input" id="confirmPasswordInput" autocomplete="new-password">
-                    </div>
+            <form class="r-win-step" id="modalStep2" novalidate hidden>
+                <div class="r-win-head">
+                    <div class="r-win-titles"><h2 class="r-win-title">Senha</h2></div>
+                    <button type="button" class="fx-btn fx-btn--icon r-win-close" data-close-modal aria-label="Fechar"><svg class="r-ico" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
                 </div>
-                <p class="fx-hint">Mínimo de 8 caracteres, com 3 números e 1 caractere especial. As outras sessões serão encerradas.</p>
-                <label class="fx-check">
-                    <input type="checkbox" data-toggle-password="newPasswordInput confirmPasswordInput">
-                    Mostrar senhas
-                </label>
-                <div class="fx-error" id="step2Error" role="alert" hidden></div>
-                <div class="fx-dialog-actions">
+                <div class="r-win-body">
+                    <div class="st-two">
+                        <div class="fx-field">
+                            <label class="fx-label" for="newPasswordInput">Qual a sua nova senha?</label>
+                            <input type="password" class="fx-input" id="newPasswordInput" autocomplete="new-password">
+                        </div>
+                        <div class="fx-field">
+                            <label class="fx-label" for="confirmPasswordInput">Confirme a sua nova senha.</label>
+                            <input type="password" class="fx-input" id="confirmPasswordInput" autocomplete="new-password">
+                        </div>
+                    </div>
+                    <p class="fx-hint">Mínimo de 8 caracteres, com 3 números e 1 caractere especial. As outras sessões serão encerradas.</p>
+                    <label class="fx-check">
+                        <input type="checkbox" data-toggle-password="newPasswordInput confirmPasswordInput">
+                        Mostrar senhas
+                    </label>
+                    <div class="fx-error" id="step2Error" role="alert" hidden></div>
+                </div>
+                <div class="r-win-foot">
                     <button type="button" class="fx-btn fx-btn--secondary" id="btnPasswordBack">Voltar</button>
-                    <button type="submit" class="fx-btn fx-btn--primary" id="btnPasswordSave">Alterar senha</button>
+                    <button type="submit" class="fx-btn fx-btn--primary" id="btnPasswordSave" data-win-primary>Alterar senha</button>
                 </div>
             </form>
 
             <!-- Passo 3: Sucesso (só depois da confirmação da API) -->
-            <div id="modalStep3" hidden>
-                <div class="modal-success" role="status">Senha alterada com sucesso!</div>
+            <div class="r-win-step" id="modalStep3" hidden>
+                <div class="r-win-head">
+                    <div class="r-win-titles"><h2 class="r-win-title">Senha</h2></div>
+                    <button type="button" class="fx-btn fx-btn--icon r-win-close" data-close-modal aria-label="Fechar"><svg class="r-ico" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
+                </div>
+                <div class="r-win-body">
+                    <div class="fx-banner fx-banner--success" role="status">Senha alterada com sucesso!</div>
+                </div>
             </div>
         </div>
     </div>
 
-    <!-- MODAL SOBRE -->
-    <div class="fx-overlay" id="sobreModalOverlay" hidden>
-        <form class="fx-dialog fx-dialog--form" id="sobreForm" role="dialog" aria-modal="true"
-            aria-labelledby="sobreModalTitle" novalidate>
-            <h2 class="fx-dialog-title" id="sobreModalTitle">Sobre</h2>
-
-            <div class="sobre-flex-row">
-                <div class="sobre-idade-section">
+    <!-- JANELA SOBRE -->
+    <div class="r-win-veil" id="sobreModalOverlay" hidden>
+        <form class="r-win" id="sobreForm" role="dialog" aria-modal="true" aria-labelledby="sobreModalTitle" novalidate>
+            <div class="r-win-head">
+                <div class="r-win-titles"><h2 class="r-win-title" id="sobreModalTitle">Sobre</h2></div>
+                <button type="button" class="fx-btn fx-btn--icon r-win-close" data-close-modal aria-label="Fechar"><svg class="r-ico" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
+            </div>
+            <div class="r-win-body">
+                <div class="fx-field">
                     <label class="fx-label" for="sobreBirthDate">Data de nascimento</label>
-                    <input type="date" class="fx-input" id="sobreBirthDate">
+                    <input type="date" class="fx-input st-date" id="sobreBirthDate">
                 </div>
 
-                <div class="sobre-genero-section">
+                <div class="fx-field">
                     <div class="fx-label" id="generoLabel">Gênero</div>
-                    <div class="genero-options" id="generoOptionsContainer" role="radiogroup" aria-labelledby="generoLabel">
+                    <div class="st-chips" id="generoOptionsContainer" role="radiogroup" aria-labelledby="generoLabel">
                         <button type="button" class="fx-chip" role="radio" aria-checked="false" data-gender="">Não informar</button>
                         <button type="button" class="fx-chip" role="radio" aria-checked="false" data-gender="outro">Outro</button>
                         <button type="button" class="fx-chip" role="radio" aria-checked="false" data-gender="masculino">Masculino</button>
                         <button type="button" class="fx-chip" role="radio" aria-checked="false" data-gender="feminino">Feminino</button>
                     </div>
                 </div>
-            </div>
 
-            <div class="sobre-bio-section">
-                <label class="fx-label" for="sobreBio">Bio</label>
-                <textarea class="fx-input sobre-bio" id="sobreBio" rows="8" maxlength="500"
-                    placeholder="Escreva sobre você..."></textarea>
-                <span class="char-counter" id="sobreBioCounter" aria-live="polite"></span>
-            </div>
+                <div class="fx-field">
+                    <label class="fx-label" for="sobreBio">Bio</label>
+                    <textarea class="fx-input st-bio" id="sobreBio" rows="6" maxlength="500"
+                        placeholder="Escreva sobre você..."></textarea>
+                    <span class="char-counter" id="sobreBioCounter" aria-live="polite"></span>
+                </div>
 
-            <div class="fx-error" id="sobreError" role="alert" hidden></div>
-            <div class="fx-dialog-actions">
+                <div class="fx-error" id="sobreError" role="alert" hidden></div>
+            </div>
+            <div class="r-win-foot">
                 <button type="button" class="fx-btn fx-btn--secondary" data-close-modal>Cancelar</button>
-                <button type="submit" class="fx-btn fx-btn--primary" id="btnSobreSave">Salvar</button>
+                <button type="submit" class="fx-btn fx-btn--primary" id="btnSobreSave" data-win-primary>Salvar</button>
             </div>
         </form>
     </div>
 
-    <!-- MODAL REDES SOCIAIS -->
-    <div class="fx-overlay" id="socialModalOverlay" hidden>
-        <form class="fx-dialog fx-dialog--form" id="socialForm" role="dialog" aria-modal="true"
-            aria-labelledby="socialModalTitle" novalidate>
-            <h2 class="fx-dialog-title" id="socialModalTitle">Suas redes sociais</h2>
-            <p class="fx-hint">Os links aparecem no seu perfil. Só endereços https://.</p>
-
-            <div class="social-rows" id="socialRows"></div>
-            <button type="button" class="fx-btn fx-btn--secondary social-add" id="btnSocialAdd">+ Adicionar</button>
-
-            <div class="fx-error" id="socialError" role="alert" hidden></div>
-            <div class="fx-dialog-actions">
+    <!-- JANELA REDES SOCIAIS -->
+    <div class="r-win-veil" id="socialModalOverlay" hidden>
+        <form class="r-win" id="socialForm" role="dialog" aria-modal="true" aria-labelledby="socialModalTitle" novalidate>
+            <div class="r-win-head">
+                <div class="r-win-titles"><h2 class="r-win-title" id="socialModalTitle">Suas redes sociais</h2></div>
+                <button type="button" class="fx-btn fx-btn--icon r-win-close" data-close-modal aria-label="Fechar"><svg class="r-ico" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
+            </div>
+            <div class="r-win-body">
+                <p class="fx-hint">Os links aparecem no seu perfil. Só endereços https://.</p>
+                <div class="social-rows" id="socialRows"></div>
+                <button type="button" class="fx-btn fx-btn--secondary social-add" id="btnSocialAdd">+ Adicionar</button>
+                <div class="fx-error" id="socialError" role="alert" hidden></div>
+            </div>
+            <div class="r-win-foot">
                 <button type="button" class="fx-btn fx-btn--secondary" data-close-modal>Cancelar</button>
-                <button type="submit" class="fx-btn fx-btn--primary" id="btnSocialSave">Salvar</button>
+                <button type="submit" class="fx-btn fx-btn--primary" id="btnSocialSave" data-win-primary>Salvar</button>
             </div>
         </form>
     </div>

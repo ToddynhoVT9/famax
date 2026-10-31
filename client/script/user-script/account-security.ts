@@ -39,11 +39,11 @@ export function errorMessage(err: unknown, fallback: string): string {
 }
 
 function card(title: string, description?: string): { element: HTMLElement; body: HTMLElement } {
-    const element = el("section", "security-card");
-    const heading = el("h3", "security-card-title", title);
+    const element = el("section", "fx-sec-card r-edge");
+    const heading = el("h3", "fx-sec-title", title);
     element.append(heading);
-    if (description) element.append(el("p", "security-card-text", description));
-    const body = el("div", "security-card-body");
+    if (description) element.append(el("p", "fx-sec-text", description));
+    const body = el("div", "fx-sec-body");
     element.append(body);
     return { element, body };
 }
@@ -77,9 +77,9 @@ export function passwordInput(label: string, autocomplete: AutoFill = "current-p
 function emailCard(ctx: SecurityContext): Card {
     const { element, body } = card("E-mail");
 
-    const current = el("p", "security-line");
-    const pending = el("p", "security-line security-line--warn");
-    const actions = el("div", "security-actions");
+    const current = el("p", "fx-sec-line");
+    const pending = el("p", "fx-sec-line fx-sec-line--warn");
+    const actions = el("div", "fx-sec-actions");
     const resend = el("button", "fx-btn fx-btn--chrome", "Reenviar link de confirmação");
     resend.type = "button";
     const cancelPending = el("button", "fx-btn fx-btn--chrome", "Cancelar troca");
@@ -179,13 +179,13 @@ function recoveryCodesBox(codes: string[]): HTMLElement {
     box.append(
         el(
             "p",
-            "security-card-text",
+            "fx-sec-text",
             "Guarde estes códigos num lugar seguro. Cada um entra uma vez, se você perder o celular. Eles não aparecem de novo.",
         ),
     );
     const list = el("ol", "recovery-codes");
     for (const code of codes) list.append(el("li", "", code));
-    const actions = el("div", "security-actions");
+    const actions = el("div", "fx-sec-actions");
     const copy = el("button", "fx-btn fx-btn--chrome", "Copiar");
     copy.type = "button";
     copy.addEventListener("click", async () => {
@@ -211,8 +211,8 @@ function twoFactorCard(ctx: SecurityContext): Card {
         "Verificação em duas etapas",
         "Além da senha, o login pede um código do seu app autenticador (Google Authenticator, Authy, 1Password...).",
     );
-    const state = el("p", "security-line");
-    const area = el("div", "security-card-body");
+    const state = el("p", "fx-sec-line");
+    const area = el("div", "fx-sec-body");
     const message = status();
     body.append(state, area, message);
     let current: Me | null = null;
@@ -230,7 +230,7 @@ function twoFactorCard(ctx: SecurityContext): Card {
             const qr = el("img", "twofa-qr");
             qr.src = setup.qrCode;
             qr.alt = "QR code para o app autenticador";
-            const manual = el("p", "security-card-text");
+            const manual = el("p", "fx-sec-text");
             manual.append("Não consegue escanear? Digite no app: ", el("code", "twofa-secret", setup.secret));
             const form = el("form", "settings-form security-form");
             form.noValidate = true;
@@ -244,11 +244,11 @@ function twoFactorCard(ctx: SecurityContext): Card {
             confirm.type = "submit";
             const cancel = el("button", "fx-btn fx-btn--chrome", "Cancelar");
             cancel.type = "button";
-            const actions = el("div", "security-actions");
+            const actions = el("div", "fx-sec-actions");
             actions.append(confirm, cancel);
             form.append(label, actions);
             area.replaceChildren(
-                el("p", "security-card-text", "1. Escaneie o QR com o app. 2. Digite o código que ele mostrar."),
+                el("p", "fx-sec-text", "1. Escaneie o QR com o app. 2. Digite o código que ele mostrar."),
                 qr,
                 manual,
                 form,
@@ -295,7 +295,7 @@ function twoFactorCard(ctx: SecurityContext): Card {
         submit.type = "submit";
         const cancel = el("button", "fx-btn fx-btn--chrome", "Cancelar");
         cancel.type = "button";
-        const actions = el("div", "security-actions");
+        const actions = el("div", "fx-sec-actions");
         actions.append(submit, cancel);
         form.append(passwordLabel, label, actions);
         area.replaceChildren(form);
@@ -331,7 +331,7 @@ function twoFactorCard(ctx: SecurityContext): Card {
                 el("span", "fx-badge fx-badge--moderator", "ativa"),
                 el(
                     "span",
-                    me.recoveryCodesLeft <= 2 ? "security-line--warn" : "security-card-text",
+                    me.recoveryCodesLeft <= 2 ? "fx-sec-line--warn" : "fx-sec-text",
                     `${me.recoveryCodesLeft} ${me.recoveryCodesLeft === 1 ? "código de recuperação restante" : "códigos de recuperação restantes"}`,
                 ),
             );
@@ -341,7 +341,7 @@ function twoFactorCard(ctx: SecurityContext): Card {
             const disable = el("button", "fx-btn fx-btn--danger", "Desativar");
             disable.type = "button";
             disable.addEventListener("click", () => confirmForm("disable"));
-            const actions = el("div", "security-actions");
+            const actions = el("div", "fx-sec-actions");
             actions.append(codes, disable);
             area.replaceChildren(actions);
         } else {
@@ -365,7 +365,7 @@ function sessionsCard(): Card {
         "Sessões ativas",
         "Onde sua conta está conectada. Encerre o que você não reconhecer.",
     );
-    const list = el("ul", "security-list");
+    const list = el("ul", "fx-sessions");
     const revokeOthers = el("button", "fx-btn fx-btn--chrome", "Sair de todos os outros");
     revokeOthers.type = "button";
     const message = status();
@@ -377,12 +377,12 @@ function sessionsCard(): Card {
             const { data } = await api.me.sessions();
             list.replaceChildren(
                 ...data.map((session) => {
-                    const item = el("li", "security-list-item");
-                    const info = el("div", "security-list-info");
+                    const item = el("li", "fx-session");
+                    const info = el("div", "fx-session-info");
                     const name = el("strong", "", session.device);
                     if (session.current) name.append(" ", el("span", "fx-badge fx-badge--moderator", "este dispositivo"));
                     const meta = [session.ip, `ativo ${timeAgo(session.lastSeenAt)}`].filter(Boolean).join(" · ");
-                    info.append(name, el("span", "security-list-meta", meta));
+                    info.append(name, el("span", "fx-session-meta", meta));
                     item.append(info);
                     if (!session.current) {
                         const end = el("button", "fx-btn fx-btn--chrome", "Encerrar");
@@ -445,7 +445,7 @@ function blocksCard(): Card {
         "Usuários bloqueados",
         "Quem você bloqueou não troca mensagens com você nem te segue, e o conteúdo dessa pessoa aparece recolhido.",
     );
-    const list = el("ul", "security-list");
+    const list = el("ul", "fx-sessions");
     const message = status();
     body.append(list, message);
     let loaded = false;
@@ -454,16 +454,16 @@ function blocksCard(): Card {
         try {
             const { data } = await api.me.blocks();
             if (data.length === 0) {
-                list.replaceChildren(el("li", "security-card-text", "Você não bloqueou ninguém."));
+                list.replaceChildren(el("li", "fx-sec-text", "Você não bloqueou ninguém."));
                 return;
             }
             list.replaceChildren(
                 ...data.map((user) => {
-                    const item = el("li", "security-list-item");
-                    const info = el("div", "security-list-info");
+                    const item = el("li", "fx-session");
+                    const info = el("div", "fx-session-info");
                     const link = el("a", "", user.displayName?.trim() || user.username);
                     link.href = profileUrl(user.userId);
-                    info.append(link, el("span", "security-list-meta", `@${user.username}`));
+                    info.append(link, el("span", "fx-session-meta", `@${user.username}`));
                     const unblock = el("button", "fx-btn fx-btn--chrome", "Desbloquear");
                     unblock.type = "button";
                     unblock.addEventListener("click", async () => {
@@ -509,9 +509,9 @@ function dataCard(): Card {
     exportBtn.type = "button";
     const deleteBtn = el("button", "fx-btn fx-btn--danger", "Excluir minha conta");
     deleteBtn.type = "button";
-    const actions = el("div", "security-actions");
+    const actions = el("div", "fx-sec-actions");
     actions.append(exportBtn, deleteBtn);
-    const area = el("div", "security-card-body");
+    const area = el("div", "fx-sec-body");
     const message = status();
     body.append(actions, area, message);
     let current: Me | null = null;
@@ -554,7 +554,7 @@ function dataCard(): Card {
         form.append(
             el(
                 "p",
-                "security-card-text",
+                "fx-sec-text",
                 "Seu perfil some na hora e você sai de todos os dispositivos. Por 30 dias dá para voltar atrás entrando com a senha; depois a exclusão é definitiva. Posts, comentários e mensagens continuam, como “Usuário removido”.",
             ),
         );
@@ -573,7 +573,7 @@ function dataCard(): Card {
         submit.type = "submit";
         const cancel = el("button", "fx-btn fx-btn--chrome", "Cancelar");
         cancel.type = "button";
-        const formActions = el("div", "security-actions");
+        const formActions = el("div", "fx-sec-actions");
         formActions.append(submit, cancel);
         form.append(formActions);
         area.replaceChildren(form);

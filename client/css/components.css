@@ -409,6 +409,9 @@ textarea.fx-input { min-height: 96px; resize: vertical; }
     border-bottom: 1px solid var(--color-border);
 }
 
+/* Janela em passos (senha nas configurações): cada passo tem cabeçalho, corpo e rodapé. */
+.r-win-step { display: flex; flex: 1 1 auto; flex-direction: column; min-height: 0; }
+
 .r-win-titles { flex: 1 1 auto; min-width: 0; }
 .r-win-title { margin: 0; font-size: var(--text-2xl); line-height: 2rem; font-weight: var(--weight-bold); }
 .r-win-sub { margin: 0; font-size: var(--text-sm); line-height: 1.25rem; color: var(--color-text-faint); }

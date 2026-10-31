@@ -17,6 +17,8 @@ import { MAX_SOCIAL_LINKS, SOCIAL_PLATFORM_LABELS } from "../shared/social.js";
 import { initAccountSecurity } from "./account-security.js";
 import { attachCharCounter } from "../shared/char-counter.js";
 import { trapFocus } from "../shared/focus-trap.js";
+import { bindWindowActions, lockPageScroll } from "../shared/window.js";
+import { followKeyboard } from "../shared/keyboard.js";
 
 requireLogin();
 initLayout();
@@ -89,6 +91,7 @@ function setToggle(button: HTMLButtonElement | null, on: boolean): void {
 function renderAvatar(user: Me, previewUrl?: string): void {
     if (!avatarEl) return;
     avatarEl.replaceChildren();
+    avatarEl.className = "fx-avatar st-pic";
 
     const url = previewUrl ?? user.avatarUrl;
     if (url) {
@@ -97,10 +100,9 @@ function renderAvatar(user: Me, previewUrl?: string): void {
         img.alt = "";
         avatarEl.append(img);
     } else {
-        const fallback = document.createElement("span");
-        fallback.className = `profile-initials ${avatarColor(user.userId)}`;
-        fallback.textContent = initials(user.displayName ?? user.username);
-        avatarEl.append(fallback);
+        // Sem foto: iniciais na mesma cor estável do header e do perfil.
+        avatarEl.classList.add(avatarColor(user.userId));
+        avatarEl.textContent = initials(user.displayName ?? user.username);
     }
     const remove = $("btnAvatarRemove");
     if (remove) remove.hidden = !user.avatarUrl;
@@ -325,17 +327,27 @@ setupMedia({
 });
 
 // ===========================================================================
-// Modais (comum)
+// Janelas (comum): a janela de formulário da R (r-win), escrita no HTML
 // ===========================================================================
 
-/** Modal aberto -> função que solta o foco (e o devolve a quem abriu). */
+/** Janela aberta -> função que desfaz tudo (foco, trava da página, ações, teclado). */
 const openModals = new Map<HTMLElement, () => void>();
 
 function openModal(overlay: HTMLElement | null, focus?: HTMLElement | null): void {
     if (!overlay || openModals.has(overlay)) return;
     overlay.hidden = false;
     const box = overlay.querySelector<HTMLElement>('[role="dialog"]') ?? overlay;
-    openModals.set(overlay, trapFocus(box, { onEscape: () => closeModal(overlay), initialFocus: focus }));
+    // No celular, tela cheia com a ação principal no topo.
+    const unbindActions = bindWindowActions(box);
+    const unlock = lockPageScroll();
+    const stopKeyboard = followKeyboard(box);
+    const release = trapFocus(box, { onEscape: () => closeModal(overlay), initialFocus: focus });
+    openModals.set(overlay, () => {
+        unbindActions();
+        unlock();
+        stopKeyboard();
+        release();
+    });
 }
 
 function closeModal(overlay: HTMLElement | null): void {
@@ -345,7 +357,7 @@ function closeModal(overlay: HTMLElement | null): void {
     openModals.delete(overlay);
 }
 
-for (const overlay of document.querySelectorAll<HTMLElement>(".fx-overlay")) {
+for (const overlay of document.querySelectorAll<HTMLElement>(".r-win-veil")) {
     // Clique fora da caixa e botões "Cancelar" fecham.
     overlay.addEventListener("click", (event) => {
         const target = event.target as Element;

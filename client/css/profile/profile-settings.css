@@ -1,183 +1,99 @@
 /* ===================================
-   FAMAX — Profile Settings (Editar Perfil)
+   FAMAX — Configurações (SettingsSection e SecurityCard)
+   Coluna única de 760 (.r-col) em blocos: Perfil, Conta, Privacidade,
+   Notificações, Sessões e Conta e segurança. As janelas (Sobre, senha e
+   redes) são a r-win do components.css.
    =================================== */
 
-.perfil-container {
-    max-width: 1000px;
-    margin: 0 auto;
+.st-sets {
     display: flex;
     flex-direction: column;
+    gap: var(--space-8);
 }
 
-/* BANNER */
-.banner {
-    width: 100%;
-    height: 220px;
-    background-color: var(--color-paper);
-    position: relative;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    border-radius: 4px;
-}
-
-/* IMAGEM DE USUÁRIO */
-.profile-picture {
-    position: absolute;
-    width: 200px;
-    height: 200px;
-    background-color: var(--color-chrome);
-    border-radius: 50%;
-    bottom: -70px;
-    left: 0;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    color: var(--color-ink);
-    font-size: 1rem;
-    font-weight: 500;
-    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
-    transform: translateX(-10px);
-}
-
-/* GRADES DE INFORMAÇÕES DIVIDIDAS */
-.perfil-info-grid {
-    display: grid;
-    grid-template-columns: 1fr auto 1fr;
-    margin-top: 100px;
-    gap: 40px;
-    font-size: 1.3rem;
-}
-
-.divider-vertical {
-    width: 2px;
-    background-color: var(--color-border-strong);
-    height: 100%;
-    min-height: 250px;
-}
-
-.profile-line {
-    margin-bottom: 25px;
-    display: flex;
-    align-items: center;
-    gap: 15px;
-}
-
-.profile-line strong {
-    font-weight: 700;
-    min-width: 80px;
-}
-
-/* ----- JANELAS (fx-dialog de formulário): o que é só desta página ----- */
-.modal-two-cols {
-    display: flex;
-    gap: 20px;
-    width: 100%;
-}
-
-/* Cada passo da janela de senha: título, campos e ações em coluna. */
-.settings-modal-step {
+/* Um bloco (e o formulário de nome e apelido, dentro do Perfil). */
+.st-set {
     display: flex;
     flex-direction: column;
-    gap: var(--space-4);
+    gap: var(--space-3);
 }
 
-.modal-success {
-    font-size: 1.4rem;
-    color: var(--color-success-text);
-    font-weight: 600;
-    text-align: center;
-    padding: 40px 0;
+.st-set .fx-field {
+    flex: none;
 }
 
-/* ----- MODAL SOBRE ----- */
-.sobre-flex-row {
-    display: flex;
-    justify-content: space-between;
-    align-items: flex-end;
-    margin-bottom: 30px;
+.st-set-title {
+    margin: 0;
+    font-size: var(--text-xl);
+    line-height: 1.75rem;
+    font-weight: var(--weight-bold);
 }
 
-.sobre-idade-section {
-    display: flex;
-    flex-direction: column;
-}
-
-.sobre-genero-section {
-    display: flex;
-    flex-direction: column;
-    align-items: flex-end;
-}
-
-.genero-options {
-    display: flex;
-    gap: 10px;
-}
-
-.sobre-bio-section {
-    display: flex;
-    flex-direction: column;
-}
-
-.sobre-bio {
-    min-height: 150px;
-}
-
-/* ===================================
-   Dados reais (profile-settings.ts)
-   =================================== */
-
-.banner.has-image {
-    background-size: cover;
-    background-position: center;
-}
-
-.profile-picture {
-    overflow: hidden;
-}
-
-.profile-picture img,
-.profile-initials {
-    width: 100%;
-    height: 100%;
-    border-radius: 50%;
-    object-fit: cover;
-}
-
-.profile-initials {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    color: var(--color-on-accent);
-    font-size: 3.5rem;
-    font-weight: 800;
-}
-
-/* ----- Botões de imagem ----- */
-.media-actions {
-    display: flex;
-    gap: 8px;
-}
-
-.media-actions--banner {
-    position: absolute;
-    right: 12px;
-    bottom: 12px;
-}
-
-.media-actions--avatar {
-    margin: 80px 0 0 0;
-}
-
-.settings-hint {
-    margin-top: 8px;
-    font-size: 0.85rem;
+.st-opt {
+    font-weight: var(--weight-regular);
     color: var(--color-text-faint);
 }
 
+.st-hint {
+    margin: 0;
+    font-size: var(--text-sm);
+    line-height: 1.25rem;
+    color: var(--color-text-faint);
+}
+
+/* ----- Linhas: rótulo, valor e a ação à direita ----- */
+.st-line {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-3);
+    min-height: var(--r-touch);
+}
+
+.st-key {
+    flex-shrink: 0;
+    min-width: 88px;
+    font-weight: var(--weight-bold);
+}
+
+.st-text {
+    flex: 1 1 auto;
+    min-width: 0;
+    max-width: var(--prose-measure);
+    overflow-wrap: anywhere;
+}
+
+.st-faint {
+    color: var(--color-text-faint);
+}
+
+/* "editar", "alterar", "Sair de todos os dispositivos": a área de toque inteira. */
+.st-sets .fx-btn--link {
+    display: inline-flex;
+    flex-shrink: 0;
+    align-items: center;
+    justify-content: flex-end;
+    min-width: var(--r-touch);
+    min-height: var(--r-touch);
+}
+
+.st-off {
+    opacity: var(--opacity-disabled);
+}
+
+/* "Salvar" no fim do bloco, à direita (no celular, na largura toda). */
+.st-save {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: flex-end;
+    gap: var(--space-3);
+}
+
 .settings-status {
-    margin-top: 8px;
-    font-size: 0.95rem;
+    margin: 0;
+    font-size: var(--text-sm);
+    line-height: 1.25rem;
     color: var(--color-danger-text);
 }
 
@@ -185,291 +101,379 @@
     color: var(--color-success-text);
 }
 
-/* A grade não precisa mais empurrar 100px: os botões da foto ocupam o espaço. */
-.perfil-info-grid {
-    margin-top: 30px;
+/* ----- Interruptor: a aparência de hoje, com alvo de 44px (32 no desktop) ----- */
+/* O botão tem a altura do alvo; o trilho de 28px é o ::before, no meio. */
+.st-sets .fx-switch {
+    flex-shrink: 0;
+    width: 52px;
+    height: var(--r-touch);
+    border: 0;
+    background: transparent;
 }
 
-/* ----- Nome e apelido ----- */
-.settings-form {
+.st-sets .fx-switch::before {
+    content: "";
+    position: absolute;
+    top: 50%;
+    right: 0;
+    left: 0;
+    height: 28px;
+    transform: translateY(-50%);
+    border: 1px solid var(--color-border-strong);
+    border-radius: var(--radius-pill);
+}
+
+.st-sets .fx-switch::after {
+    top: 50%;
+    left: 3px;
+    transform: translateY(-50%);
+}
+
+.st-sets .fx-switch[aria-checked="true"] {
+    background: transparent;
+}
+
+.st-sets .fx-switch[aria-checked="true"]::before {
+    border-color: var(--color-success);
+    background: var(--color-success);
+}
+
+.st-sets .fx-switch[aria-checked="true"]::after {
+    left: 27px;
+}
+
+/* ----- Capa e foto: as medidas do perfil (prompt 07) ----- */
+.st-media {
+    --st-pic: var(--profile-pic);
+    --st-pic-left: var(--space-8);
     display: flex;
     flex-direction: column;
-    gap: 14px;
-    margin-bottom: 30px;
 }
 
-.settings-field {
+.st-banner {
+    position: relative;
+    height: var(--cover-height);
+    border-radius: var(--radius-lg);
+    background: var(--color-paper);
+}
+
+.st-banner.has-image {
+    background-size: cover;
+    background-position: center;
+}
+
+.st-banner-actions {
+    position: absolute;
+    right: var(--space-3);
+    bottom: var(--space-3);
     display: flex;
-    flex-direction: column;
-    gap: 6px;
-    font-size: 1rem;
-    font-weight: 700;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    gap: var(--space-2);
 }
 
-.settings-field small {
-    font-weight: 400;
-    color: var(--color-text-faint);
+.st-pic {
+    position: absolute;
+    left: var(--st-pic-left);
+    bottom: calc(var(--st-pic) / -2);
+    width: var(--st-pic);
+    height: var(--st-pic);
+    overflow: hidden;
+    border: 4px solid var(--color-bg);
+    background: var(--color-chrome);
+    font-size: calc(var(--st-pic) / 3);
 }
 
-.settings-form-actions {
+.st-pic img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+/* "Alterar foto" e "Remover foto": ao lado da foto (no celular, abaixo dela). */
+.st-picacts {
     display: flex;
-    align-items: center;
-    gap: 12px;
+    flex-wrap: wrap;
+    align-items: flex-start;
+    gap: var(--space-2);
+    min-height: calc(var(--st-pic) / 2 + var(--space-3));
+    padding: var(--space-3) 0 0 calc(var(--st-pic-left) + var(--st-pic) + var(--space-4));
 }
 
-.settings-form-actions .settings-status {
-    margin-top: 0;
+/* ----- Janelas: Sobre e senha ----- */
+.st-two {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: var(--space-4);
 }
 
-/* ----- Linhas ----- */
-/* "Sobre", "Senha"... (fx-btn--link) com o peso dos rótulos das linhas. */
-.profile-line > .fx-btn--link {
-    font-weight: 700;
-    text-underline-offset: 4px;
+.st-date {
+    max-width: 240px;
 }
 
-.line-label {
-    font-weight: 700;
-    min-width: 80px;
+.st-chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-2);
 }
 
-.line-value {
-    overflow-wrap: anywhere;
+.st-bio {
+    min-height: 160px;
 }
 
-.line-hint {
-    font-size: 0.95rem;
-    color: var(--color-text-faint);
-}
-
-.profile-line.is-disabled {
-    opacity: 0.55;
-}
-
-/* ----- Editor de redes sociais ----- */
+/* Redes sociais: plataforma, endereço e remover numa linha. */
 .social-rows {
     display: flex;
     flex-direction: column;
-    gap: 10px;
+    gap: var(--space-2);
+}
+
+.social-row {
+    display: grid;
+    grid-template-columns: 140px minmax(0, 1fr) auto;
+    gap: var(--space-2);
 }
 
 .social-add {
     align-self: flex-start;
 }
 
-.social-row {
-    display: grid;
-    grid-template-columns: 160px 1fr auto;
-    gap: 8px;
-}
-
-@media (max-width: 768px) {
-    .perfil-info-grid {
-        grid-template-columns: 1fr;
-        gap: 10px;
-        font-size: 1.1rem;
-    }
-
-    .divider-vertical {
-        display: none;
-    }
-
-    .profile-picture {
-        width: 120px;
-        height: 120px;
-        bottom: -50px;
-        transform: none;
-    }
-
-    .media-actions--avatar {
-        margin-top: 60px;
-        flex-wrap: wrap;
-    }
-
-    .modal-two-cols,
-    .sobre-flex-row {
-        flex-direction: column;
-        align-items: stretch;
-        gap: 16px;
-    }
-
-    .sobre-genero-section {
-        align-items: flex-start;
-    }
-
-    .genero-options {
-        flex-wrap: wrap;
-    }
-
-    .social-row {
-        grid-template-columns: 1fr;
-    }
-}
-
-/* Subtítulo de seção dentro da coluna (ex.: Notificações). */
-.settings-subtitle {
-    font-size: 1rem;
-    font-weight: 700;
-    margin: 18px 0 4px;
-    color: var(--color-text);
-}
-
 /* ===========================================================================
-   Conta e segurança (account-security.ts)
+   Conta e segurança (account-security.ts): SecurityCard
    =========================================================================== */
-.security-section {
-    margin-top: 32px;
-    padding-top: 20px;
+.st-security {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-4);
+    padding-top: var(--space-6);
     border-top: 1px solid var(--color-border);
 }
 
-.security-title {
-    font-size: 1.3rem;
-    font-weight: 800;
-    margin: 0 0 16px;
-    color: var(--color-text);
-}
-
-.security-cards {
+/* 2 colunas a partir do tablet, sem esticar a linha. */
+.st-seccards {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-    gap: 16px;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    align-items: start;
+    gap: var(--space-4);
 }
 
-.security-card {
-    background-color: var(--color-surface);
-    border: 1px solid var(--color-border);
-    border-radius: 10px;
-    padding: 18px;
-    color: var(--color-text);
+.fx-sec-card {
     display: flex;
     flex-direction: column;
-    gap: 10px;
+    gap: var(--space-3);
     min-width: 0;
+    padding: var(--space-5);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-lg);
+    background: var(--color-surface);
+    color: var(--color-text);
 }
 
-.security-card-title {
-    font-size: 1.05rem;
-    font-weight: 700;
+.fx-sec-title {
     margin: 0;
+    font-size: var(--text-lg);
+    line-height: 1.625rem;
+    font-weight: var(--weight-bold);
 }
 
-.security-card-text {
+.fx-sec-text {
     margin: 0;
-    color: var(--color-text-muted);
-    font-size: 0.9rem;
+    max-width: var(--prose-measure);
+    font-size: var(--text-sm);
     line-height: 1.5;
+    color: var(--color-text-muted);
 }
 
-.security-card-body {
+.fx-sec-body {
     display: flex;
     flex-direction: column;
-    gap: 10px;
+    gap: var(--space-3);
 }
 
-.security-line {
+.fx-sec-line {
     margin: 0;
     display: flex;
     flex-wrap: wrap;
     align-items: center;
-    gap: 8px;
+    gap: var(--space-2);
     overflow-wrap: anywhere;
 }
 
-.security-line--warn {
+.fx-sec-line--warn {
     color: var(--color-warning-text);
-    font-size: 0.9rem;
+    font-size: var(--text-sm);
 }
 
-.security-line[hidden],
-.security-actions[hidden] {
-    display: none;
-}
-
-.security-actions {
+.fx-sec-actions {
     display: flex;
     flex-wrap: wrap;
-    gap: 8px;
+    gap: var(--space-2);
 }
 
-.security-form {
-    gap: 8px;
+/* Formulários dentro dos cartões (trocar e-mail, 2FA, excluir conta). */
+.settings-form {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-3);
+}
+
+.settings-field {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-2);
+    font-size: var(--text-sm);
+    font-weight: var(--weight-semibold);
+}
+
+.settings-form-actions {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--space-3);
+}
+
+/* Excluir conta: zona de perigo (borda color-danger-strong), como a da comunidade. */
+.security-form.fx-danger-zone {
+    align-items: stretch;
 }
 
 .twofa-qr {
+    align-self: flex-start;
     width: 180px;
     height: 180px;
-    background-color: var(--color-paper);
-    border-radius: 8px;
     padding: 6px;
-    align-self: flex-start;
+    border-radius: var(--radius-lg);
+    background: var(--color-paper);
 }
 
 .twofa-secret,
 .recovery-codes {
-    font-family: Consolas, "Courier New", monospace;
+    font-family: var(--font-mono);
 }
 
 .twofa-secret {
-    overflow-wrap: anywhere;
-    background-color: var(--color-bg-deep);
     padding: 2px 6px;
-    border-radius: 4px;
+    border-radius: var(--radius-sm);
+    background: var(--color-bg-deep);
+    overflow-wrap: anywhere;
 }
 
 .recovery-box {
     display: flex;
     flex-direction: column;
-    gap: 10px;
+    gap: var(--space-3);
 }
 
 .recovery-codes {
     display: grid;
     grid-template-columns: repeat(2, 1fr);
-    gap: 4px 16px;
+    gap: var(--space-1) var(--space-4);
     margin: 0;
-    padding: 12px 12px 12px 34px;
-    background-color: var(--color-bg-deep);
-    border-radius: 8px;
+    padding: var(--space-3) var(--space-3) var(--space-3) 34px;
+    border-radius: var(--radius-lg);
+    background: var(--color-bg-deep);
 }
 
-.security-list {
-    list-style: none;
-    margin: 0;
-    padding: 0;
+/* Sessões ativas e usuários bloqueados. */
+.fx-sessions {
     display: flex;
     flex-direction: column;
-    gap: 8px;
+    gap: var(--space-2);
+    margin: 0;
+    padding: 0;
+    list-style: none;
 }
 
-.security-list-item {
+.fx-session {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    gap: 10px;
-    padding: 10px 12px;
-    background-color: var(--color-bg-deep);
-    border-radius: 8px;
+    gap: var(--space-3);
+    padding: var(--space-3);
+    border-radius: var(--radius-lg);
+    background: var(--color-bg-deep);
 }
 
-.security-list-info {
+.fx-session-info {
     display: flex;
     flex-direction: column;
     gap: 2px;
     min-width: 0;
 }
 
-.security-list-meta {
-    color: var(--color-text-faint);
-    font-size: 0.82rem;
-}
-
-/* Excluir conta (fx-danger-zone): os campos esticam como nos outros formulários. */
-.security-form.fx-danger-zone {
-    align-items: stretch;
-}
-
-.security-list-info a {
+.fx-session-info a {
     color: var(--color-text);
-    font-weight: 700;
+    font-weight: var(--weight-bold);
+}
+
+.fx-session-meta {
+    font-size: var(--text-sm);
+    line-height: 1.25rem;
+    color: var(--color-text-faint);
+}
+
+.fx-session > .fx-btn {
+    flex-shrink: 0;
+}
+
+/* ----- Compacto e tablet: foto de 120 a 24px da esquerda ----- */
+@media (min-width: 600px) and (max-width: 1279px) {
+    .st-media {
+        --st-pic: var(--profile-pic-sm);
+        --st-pic-left: var(--space-6);
+    }
+}
+
+/* ----- Celular ----- */
+@media (max-width: 599px) {
+    .st-media {
+        --st-pic: var(--profile-pic-phone);
+        --st-pic-left: var(--r-gutter);
+    }
+
+    /* Capa de 120px de ponta a ponta; os botões dela sobem para o topo,
+       para não tocar a foto. */
+    .st-banner {
+        height: var(--cover-height-phone);
+        margin: 0 calc(-1 * var(--r-gutter));
+        border-radius: 0;
+    }
+
+    .st-banner-actions {
+        top: var(--space-3);
+        bottom: auto;
+    }
+
+    .st-pic {
+        left: var(--st-pic-left);
+    }
+
+    /* As ações da foto descem para baixo dela. */
+    .st-picacts {
+        min-height: 0;
+        padding: calc(var(--st-pic) / 2 + var(--space-3)) 0 0;
+    }
+
+    .st-save .fx-btn {
+        flex: 1 1 auto;
+    }
+
+    .st-two,
+    .social-row {
+        grid-template-columns: minmax(0, 1fr);
+    }
+
+    .st-date {
+        max-width: none;
+    }
+
+    /* Cartões de segurança: 1 coluna de ponta a ponta, 4px entre eles. */
+    .st-seccards {
+        grid-template-columns: minmax(0, 1fr);
+        gap: var(--space-1);
+    }
+
+    .fx-sec-card {
+        padding: var(--space-5) var(--r-gutter);
+    }
 }

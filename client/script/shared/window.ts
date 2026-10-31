@@ -13,8 +13,8 @@
  * Foco preso (focus-trap.ts): Esc e ✕ pedem para fechar (onRequestClose
  * decide); ao fechar, o foco volta a quem abriu. A página de trás não rola
  * enquanto a janela está aberta. Usada pelo criar post e pela janela de
- * evento; os prompts seguintes reaproveitam (termos no cadastro,
- * configurações).
+ * evento (createFormWindow, montada aqui) e pelas janelas escritas no HTML
+ * das configurações e do cadastro (bindWindowActions e lockPageScroll).
  */
 import { trapFocus } from "./focus-trap.js";
 import { ICONS } from "./icons.js";
@@ -52,6 +52,35 @@ function el<K extends keyof HTMLElementTagNameMap>(tag: K, className = "", text?
     return node;
 }
 
+/**
+ * Janela escrita no HTML (veil.r-win-veil > .r-win, com .r-win-head,
+ * .r-win-body e .r-win-foot; ou passos .r-win-step, cada um com as três
+ * partes): a ação principal de cada parte ([data-win-primary]) fica no
+ * rodapé, e no celular sobe para o cabeçalho. Devolve a função que desliga.
+ */
+export function bindWindowActions(win: HTMLElement): () => void {
+    const place = (): void => {
+        win.querySelectorAll<HTMLElement>("[data-win-primary]").forEach((button) => {
+            const scope = button.closest<HTMLElement>(".r-win-step") ?? win;
+            const target = scope.querySelector(PHONE.matches ? ".r-win-head" : ".r-win-foot");
+            if (target && button.parentElement !== target) target.append(button);
+        });
+    };
+    place();
+    PHONE.addEventListener("change", place);
+    return () => PHONE.removeEventListener("change", place);
+}
+
+/** A página de trás não rola com uma janela aberta. Devolve a função que destrava. */
+export function lockPageScroll(): () => void {
+    const root = document.documentElement;
+    const previous = root.style.overflow;
+    root.style.overflow = "hidden";
+    return () => {
+        root.style.overflow = previous;
+    };
+}
+
 export function createFormWindow(options: WindowOptions): FormWindow {
     const veil = el("div", "r-win-veil");
     const form = el("form", "r-win");
@@ -80,7 +109,7 @@ export function createFormWindow(options: WindowOptions): FormWindow {
     let primary: HTMLButtonElement | null = null;
     let release: () => void = () => {};
     let stopKeyboard: () => void = () => {};
-    const previousOverflow = document.documentElement.style.overflow;
+    let unlock: () => void = () => {};
 
     // A ação principal: no rodapé, ou no topo no celular.
     const place = (): void => {
@@ -103,8 +132,7 @@ export function createFormWindow(options: WindowOptions): FormWindow {
             place();
             PHONE.addEventListener("change", place);
             document.body.append(veil);
-            // A página de trás não rola com a janela aberta.
-            document.documentElement.style.overflow = "hidden";
+            unlock = lockPageScroll();
             release = trapFocus(form, { onEscape: () => options.onRequestClose(), initialFocus });
             stopKeyboard = followKeyboard(form);
         },
@@ -112,7 +140,7 @@ export function createFormWindow(options: WindowOptions): FormWindow {
             PHONE.removeEventListener("change", place);
             stopKeyboard();
             veil.remove();
-            document.documentElement.style.overflow = previousOverflow;
+            unlock();
             release();
         },
     };
