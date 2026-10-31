@@ -46,7 +46,7 @@ const mention: TokenizerAndRendererExtension = {
     },
     renderer(token) {
         const username = String(token.username);
-        return `<a class="md-mention" href="${escapeHtml(mentionUrl(username))}">@${escapeHtml(username)}</a>`;
+        return `<a class="fx-mention" href="${escapeHtml(mentionUrl(username))}">@${escapeHtml(username)}</a>`;
     },
 };
 
@@ -64,7 +64,7 @@ const spoiler: TokenizerAndRendererExtension = {
     },
     renderer(token) {
         const inner = this.parser.parseInline((token as { tokens: Tokens.Generic[] }).tokens ?? []);
-        return `<span class="md-spoiler" role="button" tabindex="0" aria-label="Spoiler: clique para revelar">${inner}</span>`;
+        return `<span class="fx-spoiler" role="button" tabindex="0" aria-label="Spoiler: clique para revelar">${inner}</span>`;
     },
 };
 
@@ -97,7 +97,7 @@ const PURIFY_CONFIG = {
 // de usuário (ugc). Menção é link interno e abre aqui mesmo.
 DOMPurify.addHook("afterSanitizeAttributes", (node) => {
     if (node.tagName !== "A") return;
-    if (node.classList.contains("md-mention")) return;
+    if (node.classList.contains("fx-mention")) return;
     node.setAttribute("target", "_blank");
     node.setAttribute("rel", "noopener nofollow ugc");
 });
@@ -113,13 +113,15 @@ export function markdownToText(text: string): string {
     const box = document.createElement("div");
     box.innerHTML = renderMarkdown(text);
     // Spoiler não vaza no resumo.
-    box.querySelectorAll(".md-spoiler").forEach((el) => el.replaceWith("[spoiler]"));
+    box.querySelectorAll(".fx-spoiler").forEach((el) => el.replaceWith("[spoiler]"));
     return (box.textContent ?? "").replace(/\s+/g, " ").trim();
 }
 
 // Spoiler: clique (ou Enter/Espaço) revela. Um listener para a página toda.
+// O gancho é a classe, e não um data-*: o spoiler sai do HTML limpo pelo
+// DOMPurify, e a lista do que passa (PURIFY_CONFIG) fica como está.
 function reveal(target: EventTarget | null): boolean {
-    const el = (target as Element | null)?.closest?.(".md-spoiler:not(.is-revealed)");
+    const el = (target as Element | null)?.closest?.(".fx-spoiler:not(.is-revealed)");
     if (!el) return false;
     el.classList.add("is-revealed");
     el.removeAttribute("role");

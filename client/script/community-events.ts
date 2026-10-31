@@ -310,7 +310,7 @@ export function createEventsView(root: HTMLElement, options: EventsViewOptions):
         }
 
         if (isStaff()) {
-            const edit = el("button", "tf-comment-action", "Editar");
+            const edit = el("button", "fx-comment-action", "Editar");
             edit.type = "button";
             edit.addEventListener("click", async () => {
                 const saved = await openEventEditor(options.communityId, event);
@@ -320,7 +320,7 @@ export function createEventsView(root: HTMLElement, options: EventsViewOptions):
                     toast("Evento atualizado.");
                 }
             });
-            const remove = el("button", "tf-comment-action tf-comment-action--danger", "Cancelar evento");
+            const remove = el("button", "fx-comment-action fx-comment-action--danger", "Cancelar evento");
             remove.type = "button";
             remove.addEventListener("click", async () => {
                 const ok = await confirmDialog({

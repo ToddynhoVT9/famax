@@ -15,6 +15,9 @@
  *    de posts e comentários é markdown: passa por renderMarkdown (marked +
  *    DOMPurify, shared/markdown.ts), e o texto original fica em data-content
  *    para a edição.
+ *  - Classes do design system (fx-post, fx-comment..., no post.css) só
+ *    desenham; o código acha as partes pelos data-* (data-post-id,
+ *    data-comment-id, data-comment-list...).
  */
 import { api, getCurrentUserId, getToken } from "./api.js";
 import { goToLogin } from "./auth-guard.js";
@@ -43,6 +46,7 @@ import { renderMarkdown } from "./markdown.js";
 import { skeleton } from "./skeleton.js";
 import "./char-counter.js";
 import { imagesGridHtml, openLightbox, type PostImage } from "./post-images.js";
+import { ICONS, openSheet } from "./layout.js";
 import type { Comment, Post } from "../../../shared/api-types.js";
 export type { Comment, Post };
 
@@ -62,6 +66,11 @@ export interface PostThreadOptions {
 }
 
 const COMMENTS_PER_PAGE = 20;
+
+/** Abaixo de 1024px, o ⋯ do post aberto abre numa folha inferior. */
+const SHEET_MEDIA = window.matchMedia("(max-width: 1023px)");
+/** Abaixo de 600px, "Copiar link" fica no ⋯ (e sai da barra do topo). */
+const PHONE_MEDIA = window.matchMedia("(max-width: 599px)");
 
 // ===========================================================================
 // Utilidades
@@ -84,12 +93,24 @@ function ensureLoggedIn(): boolean {
 
 const cssId = (id: string) => CSS.escape(id);
 
+/** Copia o endereço do post; sem permissão, mostra o link para copiar à mão. */
+export async function copyPostLink(postId: string): Promise<void> {
+    const link = new URL(postUrl(postId), window.location.origin).toString();
+    try {
+        await navigator.clipboard.writeText(link);
+        toast("Link copiado.");
+    } catch {
+        // Sem permissão de área de transferência (ou contexto sem HTTPS).
+        toast(`Copie o link: ${link}`);
+    }
+}
+
 // ===========================================================================
 // Render
 // ===========================================================================
 
-const menuItem = (action: string, label: string, danger = false) =>
-    `<button type="button" class="fx-menu-item${danger ? " fx-menu-item--danger" : ""}" role="menuitem" data-action="${action}">${label}</button>`;
+const menuItem = (action: string, label: string, danger = false, extra = "") =>
+    `<button type="button" class="fx-menu-item${danger ? " fx-menu-item--danger" : ""}" role="menuitem" data-action="${action}"${extra}>${label}</button>`;
 
 /**
  * Itens do "⋯": o autor edita e exclui; os outros denunciam; dono e
@@ -115,71 +136,93 @@ function postMenuItems(post: Post): string {
     return items;
 }
 
+/**
+ * Post aberto, no celular: "Copiar link" sai da barra do topo e vai para o
+ * ⋯ (o post-page.css esconde o botão da barra; o post.css só mostra este
+ * item abaixo de 600px). Para o visitante, o ⋯ só existe no celular.
+ */
+const COPY_LINK_ITEM = menuItem("copy-link", `${ICONS.link}Copiar link`, false, " data-phone-only");
+
+function postMenuHtml(post: Post, single: boolean): string {
+    const items = postMenuItems(post);
+    if (!items && !single) return "";
+    return `<div class="fx-post-menu${items ? "" : " fx-post-menu--phone"}" data-post-menu>
+               <button type="button" class="fx-btn fx-btn--icon fx-btn--icon-paper" data-action="post-menu"
+                       aria-haspopup="menu" aria-expanded="false" aria-label="Opções do post">${ICONS.dots}</button>
+               <div class="fx-menu" role="menu" aria-label="Opções do post" hidden>${single ? COPY_LINK_ITEM : ""}${items}</div>
+           </div>`;
+}
+
 /** Selos "Fixado" e "Resolvido" acima do título. */
 function postBadges(post: Post): string {
     const badges = [
-        post.pinnedAt ? '<span class="fx-badge fx-badge--warning">📌 Fixado</span>' : "",
+        post.pinnedAt ? '<span class="fx-badge fx-badge--warning">Fixado</span>' : "",
         post.resolvedCommentId ? '<span class="fx-badge fx-badge--success">✓ Resolvido</span>' : "",
         post.isNsfw ? '<span class="fx-badge fx-badge--danger-solid">+18</span>' : "",
     ].join("");
-    return `<div class="tf-post-badges"${badges ? "" : " hidden"}>${badges}</div>`;
+    return `<div class="fx-post-badges" data-post-badges${badges ? "" : " hidden"}>${badges}</div>`;
 }
 
 export function renderPost(post: Post, options: { single?: boolean; showCommunity?: boolean } = {}): string {
     const name = authorName(post);
     const id = escapeHtml(post.postId);
     const title = escapeHtml(post.title);
-
-    const items = postMenuItems(post);
-    const menu = items
-        ? `<div class="tf-post-menu">
-               <button type="button" class="fx-btn fx-btn--icon fx-btn--icon-paper" data-action="post-menu"
-                       aria-haspopup="menu" aria-expanded="false" aria-label="Opções do post">⋯</button>
-               <div class="fx-menu" role="menu" hidden>${items}</div>
-           </div>`
-        : "";
+    const single = Boolean(options.single);
 
     // No feed o título leva à página do post; na própria página é só título.
-    const heading = options.single
-        ? `<h1 class="tf-post-title">${title}</h1>`
-        : `<h3 class="tf-post-title"><a class="tf-post-title-link" href="${escapeHtml(postUrl(post.postId))}">${title}</a></h3>`;
+    const heading = single
+        ? `<h1 class="fx-post-title">${title}</h1>`
+        : `<h3 class="fx-post-title"><a class="fx-post-title-link" href="${escapeHtml(postUrl(post.postId))}">${title}</a></h3>`;
 
+    const meta = [
+        `<strong data-author-id="${escapeHtml(post.authorId)}">${escapeHtml(name)}</strong>${roleBadgeHtml(post.authorRole)}`,
+        options.showCommunity
+            ? `em <a class="fx-post-community" href="${escapeHtml(communityUrl(post.communityId))}">${escapeHtml(post.communityName)}</a>`
+            : "",
+        post.categoryName ? `em ${escapeHtml(post.categoryName)}` : "",
+        `${escapeHtml(timeAgo(post.createdAt))}${post.editedAt ? ' <span class="fx-post-edited">(editado)</span>' : ""}`,
+    ]
+        .filter(Boolean)
+        .join(" · ");
+
+    // Post aberto: o texto inteiro. Feed: o trecho, cortado em 4 linhas.
+    const content = single
+        ? `<div class="fx-md">${renderMarkdown(post.content)}</div>`
+        : `<div class="fx-post-snippet fx-md" data-snippet>${renderMarkdown(post.content)}</div>
+           <button type="button" class="fx-read-more" data-action="read-more" hidden>ler mais</button>`;
+
+    // O campo de comentar fica logo abaixo das ações do post; a lista vem depois.
     return `
-        <article class="tf-post${options.single ? " tf-post--single" : ""}${post.authorBlockedByMe ? " is-blocked" : ""}" data-post-id="${id}">
+        <article class="fx-post${single ? " fx-post--single" : ""}${post.authorBlockedByMe ? " is-blocked" : ""}" data-post-id="${id}">
             ${post.authorBlockedByMe ? BLOCKED_NOTICE : ""}
-            <div class="tf-post-avatar-container" data-author-id="${escapeHtml(post.authorId)}">
-                <div class="fx-avatar fx-avatar--lg ${avatarColor(post.authorId)}">${escapeHtml(initials(name))}</div>
-            </div>
-            <div class="tf-post-body">
-                <div class="tf-post-meta">
-                    <span>
-                        <strong data-author-id="${escapeHtml(post.authorId)}">${escapeHtml(name)}</strong>${roleBadgeHtml(post.authorRole)}
-                        • ${options.showCommunity ? `em <a class="tf-post-community" href="${escapeHtml(communityUrl(post.communityId))}">${escapeHtml(post.communityName)}</a> • ` : ""}${post.categoryName ? `em ${escapeHtml(post.categoryName)} • ` : ""}${escapeHtml(timeAgo(post.createdAt))}${post.editedAt ? ' <span class="tf-edited">(editado)</span>' : ""}
-                    </span>
-                    ${menu}
+            <span class="fx-avatar fx-avatar--md ${avatarColor(post.authorId)}" data-author-id="${escapeHtml(post.authorId)}" aria-hidden="true">${escapeHtml(initials(name))}</span>
+            <div class="fx-post-body">
+                <div class="fx-post-head">
+                    <p class="fx-post-meta">${meta}</p>
+                    ${postMenuHtml(post, single)}
                 </div>
                 ${postBadges(post)}
                 ${heading}
-                ${post.nsfwHidden ? nsfwNoticeHtml() : `<div class="tf-post-snippet md${options.single ? " expanded" : ""}">${renderMarkdown(post.content)}</div>
-                <button type="button" class="tf-read-more" data-action="read-more" hidden>ler mais</button>
-                ${imagesGridHtml(post.images)}`}
-                <div class="tf-post-stats"${post.nsfwHidden ? " hidden" : ""}>
+                ${post.nsfwHidden ? nsfwNoticeHtml() : `${content}${imagesGridHtml(post.images, { scroll: single })}`}
+                <div class="fx-post-stats"${post.nsfwHidden ? " hidden" : ""}>
                     ${reactionControlHtml(post.myReaction ?? null, post.likesCount, post.reactionCounts ?? {})}
-                    <button type="button" class="tf-stat" data-action="toggle-comments"
-                            aria-expanded="${options.single ? "true" : "false"}" aria-label="Comentários">
-                        💬 <span class="comment-count">${post.commentsCount}</span>
+                    <button type="button" class="fx-stat" data-action="toggle-comments"
+                            aria-expanded="${single ? "true" : "false"}" aria-label="Comentários">
+                        ${ICONS.comment}<span data-count="comments">${post.commentsCount}</span>
                     </button>
                     ${saveButtonHtml(post.savedByMe)}
                 </div>
-                <div class="tf-post-comments"${options.single ? "" : " hidden"}>
-                    <div class="tf-comment-list"></div>
-                    <button type="button" class="fx-btn fx-btn--outline-ink fx-btn--sm fx-btn--pill" data-action="more-comments" hidden>Carregar mais comentários</button>
-                    <form class="tf-comment-form" data-form="comment">
+                <div class="fx-post-discussion" data-comments${single ? "" : " hidden"}>
+                    <form class="fx-compose" data-form="comment">
                         <input type="text" class="fx-input fx-input--paper fx-input--pill" maxlength="2000" data-char-counter="near"
                                placeholder="Escreva um comentário... (**negrito**, @menção, ||spoiler||)" aria-label="Comentário" />
-                        <button type="submit" class="fx-btn fx-btn--dark fx-btn--pill">Enviar</button>
+                        <button type="submit" class="fx-btn fx-btn--dark fx-btn--pill">Comentar</button>
                     </form>
-                    <div class="tf-inline-error" role="alert" hidden></div>
+                    <p class="fx-post-error" data-inline-error role="alert" hidden></p>
+                    <section class="fx-post-comments" aria-label="Comentários">
+                        <div class="fx-comments" data-comment-list></div>
+                        <button type="button" class="fx-btn fx-btn--outline-ink fx-btn--sm fx-btn--pill" data-action="more-comments" hidden>Carregar mais comentários</button>
+                    </section>
                 </div>
             </div>
         </article>
@@ -187,9 +230,9 @@ export function renderPost(post: Post, options: { single?: boolean; showCommunit
 }
 
 function saveButtonHtml(saved: boolean): string {
-    return `<button type="button" class="tf-stat tf-stat-save${saved ? " active" : ""}" data-action="save"
+    return `<button type="button" class="fx-stat fx-stat--save${saved ? " is-active" : ""}" data-action="save"
                     aria-pressed="${saved}" title="${saved ? "Tirar dos salvos" : "Salvar para ler depois"}">
-                🔖 <span class="save-label">${saved ? "Salvo" : "Salvar"}</span>
+                ${ICONS.bookmark}<span>${saved ? "Salvo" : "Salvar"}</span>
             </button>`;
 }
 
@@ -199,17 +242,17 @@ function saveButtonHtml(saved: boolean): string {
  * item tem .is-blocked.
  */
 const BLOCKED_NOTICE = `<p class="fx-notice">Conteúdo de usuário bloqueado —
-    <button type="button" class="tf-blocked-show" data-action="show-blocked">mostrar</button></p>`;
+    <button type="button" class="fx-link" data-action="show-blocked">mostrar</button></p>`;
 
 /** No lugar do conteúdo +18, para quem não pode ver (o servidor nem o mandou). */
 function nsfwNoticeHtml(): string {
-    return `<p class="fx-banner fx-banner--neutral tf-nsfw-hidden">Conteúdo para maiores de 18. Para ver, ative “Conteúdo adulto” nas
+    return `<p class="fx-banner fx-banner--neutral fx-post-nsfw">Conteúdo para maiores de 18. Para ver, ative “Conteúdo adulto” nas
         <a href="${escapeHtml(pages.settings)}">configurações</a> (exige 18 anos pela data de nascimento).</p>`;
 }
 
 /** "ler mais" só aparece onde o texto realmente foi cortado. */
 export function markOverflow(root: ParentNode): void {
-    root.querySelectorAll<HTMLElement>(".tf-post-snippet:not(.expanded)").forEach((snippet) => {
+    root.querySelectorAll<HTMLElement>("[data-snippet]:not(.is-expanded)").forEach((snippet) => {
         const button = snippet.nextElementSibling as HTMLElement | null;
         if (button?.dataset.action === "read-more") {
             button.hidden = snippet.scrollHeight <= snippet.clientHeight + 2;
@@ -241,35 +284,37 @@ const NO_CONTEXT: CommentContext = { viewerRole: null, resolvedId: null, viewerI
 function renderCommentMain(comment: Comment, context: CommentContext = NO_CONTEXT): string {
     const viewerRole = context.viewerRole;
     if (comment.isDeleted) {
-        return `<div class="tf-comment-main">
-                    <p class="tf-comment-removed">[comentário removido]</p>
-                    <span class="tf-comment-time">${escapeHtml(timeAgo(comment.createdAt))}</span>
+        return `<div class="fx-comment-main" data-comment-main>
+                    <p class="fx-comment-text is-removed">[comentário removido]</p>
+                    <div class="fx-comment-foot"><span class="fx-comment-time">${escapeHtml(timeAgo(comment.createdAt))}</span></div>
                 </div>`;
     }
     const mine = comment.authorId === getCurrentUserId();
     let actions = "";
     if (mine) {
-        actions = `<button type="button" class="tf-comment-action" data-action="edit-comment">Editar</button>
-                   <button type="button" class="tf-comment-action tf-comment-action--danger" data-action="delete-comment">Excluir</button>`;
+        actions = `<button type="button" class="fx-comment-action" data-action="edit-comment">Editar</button>
+                   <button type="button" class="fx-comment-action fx-comment-action--danger" data-action="delete-comment">Excluir</button>`;
     } else if (getToken()) {
-        actions = `<button type="button" class="tf-comment-action" data-action="report-comment">Denunciar</button>`;
+        actions = `<button type="button" class="fx-comment-action" data-action="report-comment">Denunciar</button>`;
         if (canModerate(viewerRole, comment.authorRole)) {
-            actions += `<button type="button" class="tf-comment-action tf-comment-action--danger" data-action="mod-remove-comment">Remover</button>
-                        <button type="button" class="tf-comment-action tf-comment-action--danger" data-action="ban-comment-author">Banir</button>`;
+            actions += `<button type="button" class="fx-comment-action fx-comment-action--danger" data-action="mod-remove-comment">Remover</button>
+                        <button type="button" class="fx-comment-action fx-comment-action--danger" data-action="ban-comment-author">Banir</button>`;
         }
     }
     const accepted = comment.commentId === context.resolvedId;
     if (context.viewerIsPostAuthor) {
         actions += accepted
-            ? '<button type="button" class="tf-comment-action" data-action="unaccept-answer">Desmarcar resposta</button>'
-            : '<button type="button" class="tf-comment-action" data-action="accept-answer">Marcar como resposta</button>';
+            ? '<button type="button" class="fx-comment-action" data-action="unaccept-answer">Desmarcar resposta</button>'
+            : '<button type="button" class="fx-comment-action" data-action="accept-answer">Marcar como resposta</button>';
     }
-    return `<div class="tf-comment-main">
-                <strong data-author-id="${escapeHtml(comment.authorId ?? "")}">${escapeHtml(authorName(comment))}</strong>${roleBadgeHtml(comment.authorRole)}${accepted ? '<span class="fx-badge fx-badge--success-solid" data-accepted-badge>✓ Resposta aceita</span>' : ""}
-                <div class="tf-comment-text md" data-content="${escapeHtml(comment.content ?? "")}">${renderMarkdown(comment.content ?? "")}</div>
-                <div class="tf-comment-footer">
-                    <span class="tf-comment-time">${escapeHtml(timeAgo(comment.createdAt))}${comment.editedAt ? " · editado" : ""}</span>
-                    <button type="button" class="tf-comment-action" data-action="reply">Responder</button>
+    return `<div class="fx-comment-main" data-comment-main>
+                <div class="fx-comment-head">
+                    <strong class="fx-comment-author" data-author-id="${escapeHtml(comment.authorId ?? "")}">${escapeHtml(authorName(comment))}</strong>${roleBadgeHtml(comment.authorRole)}${accepted ? '<span class="fx-badge fx-badge--success-solid" data-accepted-badge>✓ Resposta aceita</span>' : ""}
+                </div>
+                <div class="fx-comment-text fx-md" data-comment-text data-content="${escapeHtml(comment.content ?? "")}">${renderMarkdown(comment.content ?? "")}</div>
+                <div class="fx-comment-foot">
+                    <span class="fx-comment-time">${escapeHtml(timeAgo(comment.createdAt))}${comment.editedAt ? " · editado" : ""}</span>
+                    <button type="button" class="fx-comment-action" data-action="reply">Responder</button>
                     ${actions}
                 </div>
             </div>`;
@@ -278,14 +323,14 @@ function renderCommentMain(comment: Comment, context: CommentContext = NO_CONTEX
 function renderComment(comment: Comment, depth: number, context: CommentContext): string {
     const accepted = !comment.isDeleted && comment.commentId === context.resolvedId;
     // id: âncora #comment-<id> dos links de notificação.
-    return `<div class="tf-comment-item${comment.isDeleted ? " is-deleted" : ""}${accepted ? " is-accepted" : ""}${comment.authorBlockedByMe ? " is-blocked" : ""}"
+    return `<div class="fx-comment${comment.isDeleted ? " is-deleted" : ""}${accepted ? " is-accepted" : ""}${comment.authorBlockedByMe ? " is-blocked" : ""}"
                  id="comment-${escapeHtml(comment.commentId)}"
                  data-comment-id="${escapeHtml(comment.commentId)}" data-depth="${depth}"
                  data-created-at="${escapeHtml(comment.createdAt)}" data-edited="${comment.editedAt ? "true" : "false"}"
                  data-author-role="${escapeHtml(comment.authorRole ?? "")}">
                 ${comment.authorBlockedByMe ? BLOCKED_NOTICE : ""}
                 ${renderCommentMain(comment, context)}
-                <div class="tf-comment-replies"></div>
+                <div class="fx-replies" data-replies></div>
             </div>`;
 }
 
@@ -296,12 +341,12 @@ function renderComment(comment: Comment, depth: number, context: CommentContext)
  */
 function commentFromDom(item: HTMLElement, main: HTMLElement): Comment | null {
     const id = item.dataset.commentId;
-    const author = main.querySelector<HTMLElement>(":scope > strong[data-author-id]");
+    const author = main.querySelector<HTMLElement>("[data-author-id]");
     if (!id || !author) return null;
     return {
         commentId: id,
         parentCommentId: null,
-        content: main.querySelector<HTMLElement>(".tf-comment-text")?.dataset.content ?? "",
+        content: main.querySelector<HTMLElement>("[data-comment-text]")?.dataset.content ?? "",
         createdAt: item.dataset.createdAt ?? new Date().toISOString(),
         editedAt: item.dataset.edited === "true" ? item.dataset.createdAt ?? null : null,
         isDeleted: false,
@@ -341,7 +386,7 @@ export function createPostThread(container: HTMLElement, options: PostThreadOpti
     const commentCursors = new Map<string, string | null>();
 
     const postElement = (postId: string) =>
-        container.querySelector<HTMLElement>(`.tf-post[data-post-id="${cssId(postId)}"]`);
+        container.querySelector<HTMLElement>(`[data-post-id="${cssId(postId)}"]`);
 
     // ----- Reagir ---------------------------------------------------------
 
@@ -360,16 +405,16 @@ export function createPostThread(container: HTMLElement, options: PostThreadOpti
                 "aria-label",
                 reaction ? `Sua reação: ${reactionLabel(reaction)}. Clique para desfazer` : "Curtir",
             );
-            button.classList.toggle("active", reaction !== null);
-            const emoji = button.querySelector(".tf-reaction-emoji");
+            button.classList.toggle("is-active", reaction !== null);
+            const emoji = button.querySelector("[data-react-emoji]");
             if (emoji) emoji.textContent = reactionEmoji(reaction);
-            const countEl = button.querySelector(".like-count");
+            const countEl = button.querySelector('[data-count="likes"]');
             if (countEl) countEl.textContent = String(total);
         }
-        postEl.querySelectorAll<HTMLElement>(".tf-reaction-option").forEach((option) => {
+        postEl.querySelectorAll<HTMLElement>('[data-action="react"]').forEach((option) => {
             option.classList.toggle("is-mine", option.dataset.type === reaction);
         });
-        const summary = postEl.querySelector(".tf-reaction-summary");
+        const summary = postEl.querySelector("[data-react-summary]");
         summary?.insertAdjacentHTML("afterend", reactionSummaryHtml(counts));
         summary?.remove();
 
@@ -388,6 +433,12 @@ export function createPostThread(container: HTMLElement, options: PostThreadOpti
         const post = postId ? posts.get(postId) : undefined;
         if (!postId || !post || !ensureLoggedIn()) return;
 
+        // Uma reação por vez. aria-disabled, e não disabled: o botão
+        // desativado perderia o foco de quem escolheu pelo teclado.
+        const button = postEl.querySelector<HTMLButtonElement>('[data-action="like"]');
+        if (button?.getAttribute("aria-disabled") === "true") return;
+        button?.setAttribute("aria-disabled", "true");
+
         // Otimista: o clique responde na hora e volta atrás se a API recusar.
         const before = {
             reaction: post.myReaction ?? null,
@@ -398,8 +449,6 @@ export function createPostThread(container: HTMLElement, options: PostThreadOpti
         const delta = (guess ? 1 : 0) - (before.reaction ? 1 : 0);
         applyReaction(postEl, guess, Math.max(0, before.total + delta), applyToCounts(before.counts, before.reaction, guess));
 
-        const button = postEl.querySelector<HTMLButtonElement>('[data-action="like"]');
-        if (button) button.disabled = true;
         try {
             const result = await api.posts.react(postId, requested);
             applyReaction(
@@ -412,7 +461,7 @@ export function createPostThread(container: HTMLElement, options: PostThreadOpti
             applyReaction(postEl, before.reaction, before.total, before.counts);
             toast(errorMessage(err, "Não foi possível reagir."), "error");
         } finally {
-            if (button) button.disabled = false;
+            button?.removeAttribute("aria-disabled");
         }
     }
 
@@ -424,13 +473,13 @@ export function createPostThread(container: HTMLElement, options: PostThreadOpti
 
     function setPicker(wrapper: HTMLElement, open: boolean, focusFirst = false): void {
         window.clearTimeout(pickerTimers.get(wrapper));
-        const picker = wrapper.querySelector<HTMLElement>(".tf-reaction-picker");
+        const picker = wrapper.querySelector<HTMLElement>("[data-react-picker]");
         const button = wrapper.querySelector<HTMLElement>('[data-action="like"]');
         if (!picker || !button) return;
         if (open && !getToken()) return; // visitante: o clique leva ao login
         picker.hidden = !open;
         button.setAttribute("aria-expanded", String(open));
-        if (open && focusFirst) picker.querySelector<HTMLElement>(".tf-reaction-option")?.focus();
+        if (open && focusFirst) picker.querySelector<HTMLElement>('[data-action="react"]')?.focus();
     }
 
     function schedulePicker(wrapper: HTMLElement, open: boolean, delay: number): void {
@@ -439,17 +488,17 @@ export function createPostThread(container: HTMLElement, options: PostThreadOpti
     }
 
     container.addEventListener("mouseover", (event) => {
-        const wrapper = (event.target as Element).closest<HTMLElement>(".tf-reaction");
+        const wrapper = (event.target as Element).closest<HTMLElement>("[data-react]");
         if (wrapper && !wrapper.contains(event.relatedTarget as Node | null)) schedulePicker(wrapper, true, 450);
     });
     container.addEventListener("mouseout", (event) => {
-        const wrapper = (event.target as Element).closest<HTMLElement>(".tf-reaction");
+        const wrapper = (event.target as Element).closest<HTMLElement>("[data-react]");
         if (wrapper && !wrapper.contains(event.relatedTarget as Node | null)) schedulePicker(wrapper, false, 300);
     });
     container.addEventListener("pointerdown", (event) => {
         if (event.pointerType !== "touch") return;
         const button = (event.target as Element).closest<HTMLElement>('[data-action="like"]');
-        const wrapper = button?.closest<HTMLElement>(".tf-reaction");
+        const wrapper = button?.closest<HTMLElement>("[data-react]");
         if (!wrapper) return;
         pickerTimers.set(
             wrapper,
@@ -460,14 +509,14 @@ export function createPostThread(container: HTMLElement, options: PostThreadOpti
         );
     });
     container.addEventListener("pointerup", (event) => {
-        const wrapper = (event.target as Element).closest<HTMLElement>(".tf-reaction");
-        const picker = wrapper?.querySelector<HTMLElement>(".tf-reaction-picker");
+        const wrapper = (event.target as Element).closest<HTMLElement>("[data-react]");
+        const picker = wrapper?.querySelector<HTMLElement>("[data-react-picker]");
         // Soltou antes de abrir: era um toque normal.
         if (wrapper && picker?.hidden) window.clearTimeout(pickerTimers.get(wrapper));
     });
     container.addEventListener("keydown", (event) => {
         const target = event.target as HTMLElement;
-        const wrapper = target.closest<HTMLElement>(".tf-reaction");
+        const wrapper = target.closest<HTMLElement>("[data-react]");
         if (!wrapper) return;
         if (event.key === "ArrowUp" && target.dataset.action === "like") {
             event.preventDefault();
@@ -517,23 +566,23 @@ export function createPostThread(container: HTMLElement, options: PostThreadOpti
      * criação, então o pai de uma resposta sempre já está na tela.
      */
     function insertComments(postEl: HTMLElement, comments: Comment[]): void {
-        const list = postEl.querySelector<HTMLElement>(".tf-comment-list");
+        const list = postEl.querySelector<HTMLElement>("[data-comment-list]");
         if (!list) return;
-        list.querySelector(".tf-comment-status")?.remove();
+        list.querySelector("[data-comment-status]")?.remove();
         const context = commentContext(posts.get(postEl.dataset.postId ?? ""));
 
         for (const comment of comments) {
             const parent = comment.parentCommentId
-                ? list.querySelector<HTMLElement>(`.tf-comment-item[data-comment-id="${cssId(comment.parentCommentId)}"]`)
+                ? list.querySelector<HTMLElement>(`[data-comment-id="${cssId(comment.parentCommentId)}"]`)
                 : null;
-            const target = parent ? parent.querySelector<HTMLElement>(":scope > .tf-comment-replies") : list;
+            const target = parent ? parent.querySelector<HTMLElement>(":scope > [data-replies]") : list;
             const depth = parent ? Number(parent.dataset.depth ?? "0") + 1 : 0;
             target?.insertAdjacentHTML("beforeend", renderComment(comment, depth, context));
         }
     }
 
     function setInlineError(postEl: HTMLElement, message: string | null): void {
-        const el = postEl.querySelector<HTMLElement>(".tf-inline-error");
+        const el = postEl.querySelector<HTMLElement>("[data-inline-error]");
         if (!el) return;
         el.textContent = message ?? "";
         el.hidden = message === null;
@@ -541,7 +590,7 @@ export function createPostThread(container: HTMLElement, options: PostThreadOpti
 
     async function loadComments(postEl: HTMLElement, more = false): Promise<void> {
         const postId = postEl.dataset.postId;
-        const list = postEl.querySelector<HTMLElement>(".tf-comment-list");
+        const list = postEl.querySelector<HTMLElement>("[data-comment-list]");
         const moreBtn = postEl.querySelector<HTMLButtonElement>('[data-action="more-comments"]');
         if (!postId || !list || !moreBtn) return;
 
@@ -558,14 +607,14 @@ export function createPostThread(container: HTMLElement, options: PostThreadOpti
             if (!more) list.innerHTML = "";
             insertComments(postEl, data);
             if (list.childElementCount === 0) {
-                list.innerHTML = '<div class="tf-comment-status">Nenhum comentário ainda.</div>';
+                list.innerHTML = '<p class="fx-comment-status" data-comment-status>Nenhum comentário ainda.</p>';
             }
             moreBtn.hidden = !nextCursor;
         } catch (err) {
             if (!more) {
                 commentCursors.delete(postId);
-                list.innerHTML = '<div class="tf-comment-status"></div>';
-                const status = list.querySelector(".tf-comment-status");
+                list.innerHTML = '<p class="fx-comment-status" data-comment-status></p>';
+                const status = list.querySelector("[data-comment-status]");
                 if (status) status.textContent = errorMessage(err, "Erro ao carregar comentários.");
             } else {
                 toast(errorMessage(err, "Erro ao carregar comentários."), "error");
@@ -576,7 +625,7 @@ export function createPostThread(container: HTMLElement, options: PostThreadOpti
     }
 
     function bumpCommentCount(postEl: HTMLElement, delta: number): void {
-        const countEl = postEl.querySelector(".comment-count");
+        const countEl = postEl.querySelector('[data-count="comments"]');
         if (countEl) countEl.textContent = String(Math.max(0, Number(countEl.textContent ?? "0") + delta));
         const post = posts.get(postEl.dataset.postId ?? "");
         if (post) post.commentsCount = Math.max(0, post.commentsCount + delta);
@@ -608,36 +657,36 @@ export function createPostThread(container: HTMLElement, options: PostThreadOpti
 
     function openReplyForm(item: HTMLElement): void {
         if (!ensureLoggedIn()) return;
-        const existing = item.querySelector<HTMLFormElement>(":scope > .tf-reply-form");
+        const existing = item.querySelector<HTMLFormElement>(':scope > form[data-form="reply"]');
         if (existing) {
             existing.querySelector<HTMLInputElement>("input")?.focus();
             return;
         }
-        const name = item.querySelector(":scope > .tf-comment-main strong")?.textContent ?? "";
+        const name = item.querySelector(":scope > [data-comment-main] [data-author-id]")?.textContent ?? "";
         const form = document.createElement("form");
-        form.className = "tf-comment-form tf-reply-form";
+        form.className = "fx-compose fx-comment-reply";
         form.dataset.form = "reply";
         form.innerHTML = `
             <input type="text" class="fx-input fx-input--paper fx-input--pill" maxlength="2000" data-char-counter="near" aria-label="Resposta" />
             <button type="submit" class="fx-btn fx-btn--dark fx-btn--pill">Enviar</button>
-            <button type="button" class="tf-comment-action" data-action="cancel-form">Cancelar</button>`;
+            <button type="button" class="fx-comment-action" data-action="cancel-form">Cancelar</button>`;
         const input = form.querySelector<HTMLInputElement>("input");
         if (input) input.placeholder = `Responder a ${name}...`;
-        item.querySelector(":scope > .tf-comment-main")?.after(form);
+        item.querySelector(":scope > [data-comment-main]")?.after(form);
         input?.focus();
     }
 
     function openEditCommentForm(item: HTMLElement): void {
-        const text = item.querySelector<HTMLElement>(":scope > .tf-comment-main .tf-comment-text");
-        if (!text || item.querySelector(":scope > .tf-comment-main .tf-edit-form")) return;
+        const text = item.querySelector<HTMLElement>(":scope > [data-comment-main] [data-comment-text]");
+        if (!text || item.querySelector(':scope > [data-comment-main] form[data-form="edit-comment"]')) return;
 
         const form = document.createElement("form");
-        form.className = "tf-edit-form";
+        form.className = "fx-comment-edit";
         form.dataset.form = "edit-comment";
         form.innerHTML = `
             <textarea class="fx-input fx-input--paper" maxlength="2000" rows="3" data-char-counter="near" aria-label="Editar comentário"></textarea>
-            <div class="tf-edit-actions">
-                <button type="button" class="tf-comment-action" data-action="cancel-form">Cancelar</button>
+            <div class="fx-comment-edit-actions">
+                <button type="button" class="fx-comment-action" data-action="cancel-form">Cancelar</button>
                 <button type="submit" class="fx-btn fx-btn--dark fx-btn--sm">Salvar</button>
             </div>`;
         const textarea = form.querySelector<HTMLTextAreaElement>("textarea");
@@ -651,7 +700,7 @@ export function createPostThread(container: HTMLElement, options: PostThreadOpti
         const commentId = item.dataset.commentId;
         const textarea = form.querySelector<HTMLTextAreaElement>("textarea");
         const save = form.querySelector<HTMLButtonElement>('button[type="submit"]');
-        const postEl = item.closest<HTMLElement>(".tf-post");
+        const postEl = item.closest<HTMLElement>("[data-post-id]");
         if (!commentId || !textarea || !postEl) return;
 
         const content = textarea.value.trim();
@@ -661,7 +710,7 @@ export function createPostThread(container: HTMLElement, options: PostThreadOpti
         try {
             const { comment } = await api.comments.update(commentId, content);
             item.dataset.edited = "true";
-            const main = item.querySelector(":scope > .tf-comment-main");
+            const main = item.querySelector(":scope > [data-comment-main]");
             main?.insertAdjacentHTML(
                 "afterend",
                 renderCommentMain(comment, commentContext(posts.get(postEl.dataset.postId ?? ""))),
@@ -675,7 +724,7 @@ export function createPostThread(container: HTMLElement, options: PostThreadOpti
 
     async function deleteComment(item: HTMLElement, asModerator = false): Promise<void> {
         const commentId = item.dataset.commentId;
-        const postEl = item.closest<HTMLElement>(".tf-post");
+        const postEl = item.closest<HTMLElement>("[data-post-id]");
         if (!commentId || !postEl) return;
 
         const ok = await confirmDialog({
@@ -690,11 +739,11 @@ export function createPostThread(container: HTMLElement, options: PostThreadOpti
 
         try {
             await api.comments.remove(commentId);
-            const replies = item.querySelector(":scope > .tf-comment-replies");
+            const replies = item.querySelector(":scope > [data-replies]");
             if (replies && replies.childElementCount > 0) {
                 // Mantém a conversa: o comentário vira "[comentário removido]".
                 item.classList.add("is-deleted");
-                const main = item.querySelector(":scope > .tf-comment-main");
+                const main = item.querySelector(":scope > [data-comment-main]");
                 main?.insertAdjacentHTML(
                     "afterend",
                     renderCommentMain({
@@ -773,17 +822,17 @@ export function createPostThread(container: HTMLElement, options: PostThreadOpti
         if (!post) return;
         post.resolvedCommentId = commentId;
 
-        postEl.querySelector(".tf-post-badges")?.insertAdjacentHTML("afterend", postBadges(post));
-        postEl.querySelector(".tf-post-badges")?.remove();
+        postEl.querySelector("[data-post-badges]")?.insertAdjacentHTML("afterend", postBadges(post));
+        postEl.querySelector("[data-post-badges]")?.remove();
 
         const context = commentContext(post);
-        postEl.querySelectorAll<HTMLElement>(".tf-comment-item:not(.is-deleted)").forEach((item) => {
+        postEl.querySelectorAll<HTMLElement>("[data-comment-id]:not(.is-deleted)").forEach((item) => {
             const id = item.dataset.commentId;
             const isAccepted = id === commentId;
             const wasAccepted = item.classList.contains("is-accepted");
             item.classList.toggle("is-accepted", isAccepted);
             if (isAccepted === wasAccepted && !context.viewerIsPostAuthor) return;
-            const main = item.querySelector<HTMLElement>(":scope > .tf-comment-main");
+            const main = item.querySelector<HTMLElement>(":scope > [data-comment-main]");
             const comment = main && commentFromDom(item, main);
             if (!main || !comment) return;
             main.insertAdjacentHTML("afterend", renderCommentMain(comment, context));
@@ -823,11 +872,36 @@ export function createPostThread(container: HTMLElement, options: PostThreadOpti
     // ----- Menus e delegação de eventos ------------------------------------
 
     function closeMenus(except?: Element): void {
-        container.querySelectorAll<HTMLElement>('.tf-post-menu > [role="menu"]:not([hidden])').forEach((menu) => {
+        container.querySelectorAll<HTMLElement>('[data-post-menu] > [role="menu"]:not([hidden])').forEach((menu) => {
             if (except && menu.parentElement?.contains(except)) return;
             menu.hidden = true;
             menu.previousElementSibling?.setAttribute("aria-expanded", "false");
         });
+    }
+
+    /**
+     * Post aberto, no tablet e no celular: o ⋯ abre numa folha inferior. Os
+     * itens da folha são cópias; o clique fecha a folha e repete o clique no
+     * item original, que segue pela delegação abaixo como na lista.
+     */
+    function openMenuSheet(button: HTMLElement, menu: HTMLElement): void {
+        const phone = PHONE_MEDIA.matches;
+        const items = Array.from(menu.querySelectorAll<HTMLElement>('[role="menuitem"]'))
+            .filter((original) => phone || original.dataset.phoneOnly === undefined)
+            .map((original) => {
+                const copy = original.cloneNode(true) as HTMLElement;
+                copy.removeAttribute("data-action");
+                copy.addEventListener("click", () => {
+                    close();
+                    original.click();
+                });
+                return copy;
+            });
+        if (items.length === 0) return;
+        const title = document.createElement("span");
+        title.className = "r-sheet-name";
+        title.textContent = "Opções do post";
+        const close = openSheet({ label: "Opções do post", menuLabel: "Opções do post", head: [title], items, opener: button });
     }
 
     document.addEventListener("click", (event) => closeMenus(event.target as Element));
@@ -838,24 +912,24 @@ export function createPostThread(container: HTMLElement, options: PostThreadOpti
     container.addEventListener("click", (event) => {
         const target = event.target as Element;
         const actionEl = target.closest<HTMLElement>("[data-action]");
-        const postEl = target.closest<HTMLElement>(".tf-post");
+        const postEl = target.closest<HTMLElement>("[data-post-id]");
         const postId = postEl?.dataset.postId;
 
         if (actionEl && postEl && postId) {
-            const item = actionEl.closest<HTMLElement>(".tf-comment-item");
+            const item = actionEl.closest<HTMLElement>("[data-comment-id]");
             switch (actionEl.dataset.action) {
                 case "like": {
                     if (suppressNextClick) {
                         suppressNextClick = false;
                         return;
                     }
-                    const wrapper = actionEl.closest<HTMLElement>(".tf-reaction");
+                    const wrapper = actionEl.closest<HTMLElement>("[data-react]");
                     if (wrapper) setPicker(wrapper, false);
                     void react(postEl, null);
                     return;
                 }
                 case "react": {
-                    const wrapper = actionEl.closest<HTMLElement>(".tf-reaction");
+                    const wrapper = actionEl.closest<HTMLElement>("[data-react]");
                     if (wrapper) setPicker(wrapper, false);
                     const type = actionEl.dataset.type;
                     if (isReactionType(type)) void react(postEl, type);
@@ -863,7 +937,7 @@ export function createPostThread(container: HTMLElement, options: PostThreadOpti
                     return;
                 }
                 case "toggle-comments": {
-                    const panel = postEl.querySelector<HTMLElement>(".tf-post-comments");
+                    const panel = postEl.querySelector<HTMLElement>("[data-comments]");
                     if (!panel) return;
                     panel.hidden = !panel.hidden;
                     actionEl.setAttribute("aria-expanded", String(!panel.hidden));
@@ -877,8 +951,8 @@ export function createPostThread(container: HTMLElement, options: PostThreadOpti
                     void loadComments(postEl, true);
                     return;
                 case "read-more": {
-                    const snippet = postEl.querySelector<HTMLElement>(".tf-post-snippet");
-                    const expanded = snippet?.classList.toggle("expanded") ?? false;
+                    const snippet = postEl.querySelector<HTMLElement>("[data-snippet]");
+                    const expanded = snippet?.classList.toggle("is-expanded") ?? false;
                     actionEl.textContent = expanded ? "ler menos" : "ler mais";
                     return;
                 }
@@ -886,10 +960,18 @@ export function createPostThread(container: HTMLElement, options: PostThreadOpti
                     const menu = actionEl.nextElementSibling as HTMLElement | null;
                     if (!menu) return;
                     closeMenus(actionEl);
+                    if (options.single && SHEET_MEDIA.matches) {
+                        openMenuSheet(actionEl, menu);
+                        return;
+                    }
                     menu.hidden = !menu.hidden;
                     actionEl.setAttribute("aria-expanded", String(!menu.hidden));
                     return;
                 }
+                case "copy-link":
+                    closeMenus();
+                    void copyPostLink(postId);
+                    return;
                 case "edit-post": {
                     closeMenus();
                     const post = posts.get(postId);
@@ -961,7 +1043,7 @@ export function createPostThread(container: HTMLElement, options: PostThreadOpti
                     return;
                 case "ban-comment-author": {
                     const post = posts.get(postId);
-                    const author = item?.querySelector<HTMLElement>(":scope > .tf-comment-main strong[data-author-id]");
+                    const author = item?.querySelector<HTMLElement>(":scope > [data-comment-main] [data-author-id]");
                     if (post && author?.dataset.authorId) {
                         void banAuthor(post.communityId, author.dataset.authorId, author.textContent ?? "");
                     }
@@ -986,11 +1068,11 @@ export function createPostThread(container: HTMLElement, options: PostThreadOpti
     // submit borbulha: um listener cobre comentário, resposta e edição.
     container.addEventListener("submit", (event) => {
         const form = (event.target as Element).closest<HTMLFormElement>("form[data-form]");
-        const postEl = form?.closest<HTMLElement>(".tf-post");
+        const postEl = form?.closest<HTMLElement>("[data-post-id]");
         if (!form || !postEl) return;
         event.preventDefault();
 
-        const item = form.closest<HTMLElement>(".tf-comment-item");
+        const item = form.closest<HTMLElement>("[data-comment-id]");
         if (form.dataset.form === "comment") void submitComment(form, postEl, null);
         else if (form.dataset.form === "reply" && item) void submitComment(form, postEl, item.dataset.commentId ?? null);
         else if (form.dataset.form === "edit-comment" && item) void saveCommentEdit(form, item);
@@ -1029,8 +1111,7 @@ export function createPostThread(container: HTMLElement, options: PostThreadOpti
         async revealComment(postId, commentId) {
             const postEl = postElement(postId);
             if (!postEl) return false;
-            const find = () =>
-                postEl.querySelector<HTMLElement>(`.tf-comment-item[data-comment-id="${cssId(commentId)}"]`);
+            const find = () => postEl.querySelector<HTMLElement>(`[data-comment-id="${cssId(commentId)}"]`);
             // Limite de páginas: um link velho para um comentário apagado não
             // pode carregar a conversa inteira.
             for (let i = 0; i < 10 && !find() && commentCursors.get(postId); i++) {

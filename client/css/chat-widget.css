@@ -6,54 +6,87 @@
    antes do script rodar.
    =========================================================================== */
 
+/* O widget só agrupa o painel e o véu: o ícone que abre fica no header
+   (layout.ts, #headerChatSlot) e o painel se posiciona conforme o modo, que o
+   chat-widget.ts põe em data-modo: ao-lado (desktop), por-cima (compacto) ou
+   tela-cheia (tablet e celular). */
 .chat-widget {
-    position: fixed;
-    bottom: 16px;
-    right: 16px;
-    z-index: var(--z-chat);
-    display: flex;
-    flex-direction: column;
-    align-items: flex-end;
-    pointer-events: none;
+    display: contents;
 }
 
-.chat-toggle {
-    position: relative;
-    width: 56px;
-    height: 56px;
-    border: none;
-    border-radius: 50%;
-    background: linear-gradient(135deg, var(--color-paper-2), var(--color-paper-border-strong));
-    color: var(--color-ink);
-    font-size: 1.4rem;
-    cursor: pointer;
-    box-shadow: 0 8px 22px rgba(0, 0, 0, 0.25);
-    pointer-events: auto;
-}
-
-/* Contador (fx-counter-badge) de não lidas somando todas as conversas. */
-.chat-toggle > .fx-counter-badge {
-    position: absolute;
-    top: -2px;
-    right: -2px;
-}
-
+/* Ao lado e por cima: 380px colados à direita, do fim do header ao fim da tela. */
 .chat-panel {
+    position: fixed;
+    top: var(--r-header);
+    right: 0;
+    bottom: 0;
+    z-index: var(--z-chat);
     display: none;
-    width: min(380px, calc(100vw - 20px));
-    height: min(520px, calc(100vh - 90px));
-    margin-bottom: 10px;
+    flex-direction: column;
+    width: var(--chat-width);
+    max-width: 100%;
+    overflow: hidden;
     background: var(--color-paper);
     color: var(--color-ink);
-    border-radius: 16px;
-    overflow: hidden;
-    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.28);
-    pointer-events: auto;
-    flex-direction: column;
 }
 
 .chat-widget.open .chat-panel {
     display: flex;
+}
+
+/* Ao lado: divide a tela com a página, que ganha a margem do painel. */
+.chat-widget[data-modo="ao-lado"] .chat-panel {
+    border-left: 1px solid var(--color-border);
+}
+
+@media (min-width: 1280px) {
+    body.chat-is-open .main-content {
+        margin-right: var(--chat-width);
+    }
+}
+
+/* Por cima: sombra e um véu sobre a página, que fecha ao toque. */
+.chat-widget[data-modo="por-cima"] .chat-panel {
+    box-shadow: var(--shadow-lg);
+}
+
+.chat-veil {
+    display: none;
+}
+
+.chat-widget[data-modo="por-cima"].open .chat-veil {
+    display: block;
+    position: fixed;
+    top: var(--r-header);
+    right: 0;
+    bottom: 0;
+    left: 0;
+    z-index: var(--z-sidebar-backdrop);
+    background: var(--color-overlay);
+}
+
+/* Tela cheia (tablet e celular): cobre a página e a barra, com Voltar no topo. */
+.chat-widget[data-modo="tela-cheia"] .chat-panel {
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100dvh;
+}
+
+.chat-back,
+.chat-widget[data-modo="tela-cheia"] .chat-close {
+    display: none;
+}
+
+.chat-widget[data-modo="tela-cheia"] .chat-back {
+    display: inline-flex;
+}
+
+.chat-title {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    min-width: 0;
 }
 
 .chat-header {
@@ -280,48 +313,24 @@
     padding: 4px 10px;
 }
 
-@media (max-width: 640px) {
-    .chat-widget {
-        bottom: 12px;
-        right: 12px;
-        left: 12px;
-        align-items: stretch;
-    }
+/* Tela cheia: a lista de conversas vira uma fileira em cima. */
+.chat-widget[data-modo="tela-cheia"] .chat-body {
+    flex-direction: column;
+}
 
-    .chat-toggle {
-        width: 52px;
-        height: 52px;
-        align-self: flex-end;
-    }
+.chat-widget[data-modo="tela-cheia"] .chat-contacts {
+    width: 100%;
+    max-height: 112px;
+    border-right: none;
+    border-bottom: 1px solid var(--color-paper-border);
+    display: flex;
+    gap: 8px;
+    overflow-x: auto;
+}
 
-    .chat-panel {
-        width: 100%;
-        height: min(78vh, 520px);
-        margin-bottom: 8px;
-    }
-
-    .chat-body {
-        flex-direction: column;
-    }
-
-    .chat-contacts {
-        width: 100%;
-        max-height: 112px;
-        border-right: none;
-        border-bottom: 1px solid var(--color-paper-border);
-        display: flex;
-        gap: 8px;
-        overflow-x: auto;
-    }
-
-    .contact-item {
-        min-width: 78px;
-        margin-bottom: 0;
-    }
-
-    .chat-input-row {
-        padding: 8px;
-    }
+.chat-widget[data-modo="tela-cheia"] .contact-item {
+    min-width: 78px;
+    margin-bottom: 0;
 }
 
 /* ===========================================================================
@@ -564,26 +573,15 @@
 }
 
 /* ----- Celular: o chat aberto ocupa a tela inteira ----- */
-@media (max-width: 640px) {
-    .chat-widget.open .chat-panel {
-        position: fixed;
-        inset: 0;
-        width: 100%;
-        height: 100%;
-        height: 100dvh;
-        margin: 0;
-        border-radius: 0;
-        box-shadow: none;
-    }
-
-    /* O ✕ do painel fecha; o botão flutuante ficaria por cima do campo. */
-    .chat-widget.open .chat-toggle {
-        display: none;
-    }
-
-    /* A página atrás não rola junto. */
+/* Tablet e celular: o chat aberto cobre a barra inferior, e a página atrás
+   não rola junto. */
+@media (max-width: 1023px) {
     body.chat-is-open {
         overflow: hidden;
+    }
+
+    body.chat-is-open .r-bar {
+        display: none;
     }
 }
 

@@ -11,28 +11,28 @@
     <meta name="description" id="metaDescription" content="Discussão no FAMAX">
     <link rel="stylesheet" href="../css/global.css">
     <link rel="stylesheet" href="../css/layout.css">
-    <link rel="stylesheet" href="../css/community.css">
     <link rel="stylesheet" href="../css/post.css">
+    <link rel="stylesheet" href="../css/post-page.css">
 </head>
-<body>
+<body class="r">
     <!-- Header e sidebar: montados por script/shared/layout.ts -->
     <header id="app-header" class="header"></header>
     <aside id="app-sidebar" class="sidebar"></aside>
 
     <main class="main-content" id="main-content">
-        <div class="post-page">
+        <div class="r-col">
             <h1 class="visually-hidden" id="postPageTitle">Discussão</h1>
             <div class="post-page-bar">
                 <nav class="post-breadcrumb" aria-label="Você está em">
                     <a id="breadcrumbCommunity" href="home.html">Comunidade</a>
-                    <span aria-hidden="true">›</span>
+                    <span class="post-breadcrumb-sep" aria-hidden="true">›</span>
                     <span id="breadcrumbPost" aria-current="page">Discussão</span>
                 </nav>
-                <button type="button" class="post-copy-link" id="btnCopyLink" disabled>Copiar link</button>
+                <button type="button" class="fx-btn fx-btn--outline fx-btn--pill fx-btn--sm post-copy-link" id="btnCopyLink" disabled>Copiar link</button>
             </div>
 
             <!-- O post (com os comentários abertos) é desenhado por shared/post-thread.ts -->
-            <div class="tf-posts-list" id="postContainer">
+            <div class="fx-posts r-edge" id="postContainer">
                 <div class="tf-feed-status" id="postStatus">Carregando discussão...</div>
             </div>
         </div>

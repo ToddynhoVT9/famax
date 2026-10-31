@@ -11,29 +11,29 @@
     <link rel="stylesheet" href="../css/layout.css">
     <link rel="stylesheet" href="../css/search.css">
 </head>
-<body>
+<body class="r">
     <!-- Header e sidebar: montados por script/shared/layout.ts -->
     <header id="app-header" class="header"></header>
     <aside id="app-sidebar" class="sidebar"></aside>
 
     <main class="main-content" id="main-content">
-        <div class="search-page">
-            <h1 class="search-title" id="searchTitle">Pesquisa</h1>
+        <div class="r-col search-page">
+            <h1 class="r-ptitle" id="searchTitle">Pesquisa</h1>
 
-            <div class="fx-tabs search-tabs" role="tablist" aria-label="Tipo de resultado" id="searchTabs">
-                <button type="button" class="fx-tab" role="tab" data-type="all" aria-selected="true">Tudo</button>
-                <button type="button" class="fx-tab" role="tab" data-type="communities" aria-selected="false" tabindex="-1">Comunidades</button>
-                <button type="button" class="fx-tab" role="tab" data-type="users" aria-selected="false" tabindex="-1">Usuários</button>
-                <button type="button" class="fx-tab" role="tab" data-type="posts" aria-selected="false" tabindex="-1">Posts</button>
+            <!-- As abas e o escopo da busca no header são o mesmo controle (search.ts). -->
+            <div class="r-tabs r-tabs--rola">
+                <div class="fx-tabs" role="tablist" aria-label="Pesquisar em" id="searchTabs">
+                    <button type="button" class="fx-tab" role="tab" id="searchTab-all" aria-controls="searchResults" data-type="all" aria-selected="true">Tudo</button>
+                    <button type="button" class="fx-tab" role="tab" id="searchTab-communities" aria-controls="searchResults" data-type="communities" aria-selected="false" tabindex="-1">Comunidades</button>
+                    <button type="button" class="fx-tab" role="tab" id="searchTab-users" aria-controls="searchResults" data-type="users" aria-selected="false" tabindex="-1">Usuários</button>
+                    <button type="button" class="fx-tab" role="tab" id="searchTab-posts" aria-controls="searchResults" data-type="posts" aria-selected="false" tabindex="-1">Posts</button>
+                </div>
             </div>
 
-            <div class="search-results" id="searchResults" role="tabpanel" aria-live="polite"></div>
+            <div class="search-results" id="searchResults" role="tabpanel" aria-labelledby="searchTab-all" aria-live="polite"></div>
 
-            <nav class="search-pager" id="searchPager" aria-label="Páginas" hidden>
-                <button type="button" class="fx-btn fx-btn--outline fx-btn--pill" id="pagerPrev">← Anterior</button>
-                <span class="search-pager-info" id="pagerInfo"></span>
-                <button type="button" class="fx-btn fx-btn--outline fx-btn--pill" id="pagerNext">Próxima →</button>
-            </nav>
+            <!-- Paginação: números do tablet ao desktop, "Carregar mais" no celular (search.ts). -->
+            <nav class="search-pager" id="searchPager" aria-label="Páginas" hidden></nav>
         </div>
     </main>
 

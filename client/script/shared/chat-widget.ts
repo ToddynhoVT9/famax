@@ -25,6 +25,12 @@
  *
  * Outras páginas abrem o widget numa conversa com shared/chat-bus.ts
  * (evento famax:open-chat), sem importar este módulo.
+ *
+ * Moldura R: o ícone que abre o chat fica no header (#headerChatSlot, do
+ * layout.ts), não mais flutuando no canto, onde cobria a última ação da
+ * página. O painel abre de três jeitos, conforme a faixa (modoChat): ao lado
+ * do conteúdo no desktop, por cima com véu no compacto e em tela cheia, com
+ * Voltar, no tablet e no celular.
  */
 // Importado aqui, não via <link> em cada página: assim o estilo acompanha o
 // widget em qualquer HTML que carregue este módulo.
@@ -37,6 +43,7 @@ import { OPEN_CHAT_EVENT, type OpenChatDetail } from "./chat-bus.js";
 import { skeleton } from "./skeleton.js";
 import "./char-counter.js";
 import { trapFocus } from "./focus-trap.js";
+import { ICONS } from "./layout.js";
 import type { Conversation, Message as ApiMessage, Participant } from "../../../shared/api-types.js";
 import type { UserSummary as UserResult } from "../../../shared/api-types.js";
 
@@ -74,18 +81,20 @@ function initChatWidget(): void {
     widget.className = "chat-widget";
     widget.id = "chatWidget";
     widget.innerHTML = `
-        <button class="chat-toggle" id="chatToggle" aria-label="Abrir chat" aria-expanded="false" aria-controls="chatPanel">
-            💬<span class="fx-counter-badge" id="chatUnreadBadge" hidden></span>
-        </button>
+        <div class="chat-veil" id="chatVeil"></div>
         <div class="chat-panel" id="chatPanel" role="dialog" aria-label="Chat bate-papo">
             <div class="chat-header">
-                <div>
-                    <h3>Mensagens</h3>
-                    <p id="chatSubtitle">Converse com seus amigos</p>
+                <div class="chat-title">
+                    <!-- Tela cheia (tablet e celular): Voltar no lugar do ✕. -->
+                    <button type="button" class="fx-btn fx-btn--icon chat-back" id="chatBack" aria-label="Voltar">${ICONS.back}</button>
+                    <div>
+                        <h3>Mensagens</h3>
+                        <p id="chatSubtitle">Converse com seus amigos</p>
+                    </div>
                 </div>
                 <div class="chat-header-actions">
-                    <button type="button" class="fx-btn fx-btn--icon" id="chatNewBtn" aria-label="Nova conversa" title="Nova conversa ou grupo">＋</button>
-                    <button type="button" class="fx-btn fx-btn--icon" id="chatClose" aria-label="Fechar chat">✕</button>
+                    <button type="button" class="fx-btn fx-btn--icon" id="chatNewBtn" aria-label="Nova conversa" title="Nova conversa ou grupo">${ICONS.plus}</button>
+                    <button type="button" class="fx-btn fx-btn--icon chat-close" id="chatClose" aria-label="Fechar chat">${ICONS.close}</button>
                 </div>
             </div>
             <div class="chat-search" id="chatSearch">
@@ -119,7 +128,17 @@ function initChatWidget(): void {
     `;
     document.body.appendChild(widget);
 
-    const toggle = must<HTMLButtonElement>("chatToggle");
+    // O ícone do chat vai para o header (layout.ts reserva o lugar, entre o
+    // sino e o avatar). Sem header (página sem moldura), fica no widget.
+    const toggle = el("button", "fx-btn fx-btn--icon r-chat-btn");
+    toggle.type = "button";
+    toggle.id = "chatToggle";
+    toggle.setAttribute("aria-label", "Abrir chat");
+    toggle.setAttribute("aria-expanded", "false");
+    toggle.setAttribute("aria-controls", "chatPanel");
+    toggle.innerHTML = `${ICONS.chat}<span class="fx-counter-badge" id="chatUnreadBadge" aria-hidden="true" hidden></span>`;
+    (document.getElementById("headerChatSlot") ?? widget).append(toggle);
+
     const closeBtn = must<HTMLButtonElement>("chatClose");
     const newBtn = must<HTMLButtonElement>("chatNewBtn");
     const contactsEl = must<HTMLElement>("chatContacts");
@@ -441,7 +460,7 @@ function initChatWidget(): void {
         } catch (err) {
             messagesEl.innerHTML = '<div class="chat-status"></div>';
             const status = messagesEl.querySelector(".chat-status");
-            if (status) status.textContent = errorText(err, "Erro ao carregar mensagens.");
+            if (status) status.textContent = errorText(err, "Não foi possível carregar as mensagens.");
         }
     }
 
@@ -621,7 +640,7 @@ function initChatWidget(): void {
         } catch (err) {
             message._state = "failed";
             renderMessages();
-            console.error("Falha ao enviar mensagem:", err);
+            console.error("Não foi possível enviar.", err);
         }
     }
 
@@ -967,7 +986,7 @@ function initChatWidget(): void {
         await openWithUser(userId).catch((err) => {
             searchResults.innerHTML = '<div class="chat-search-empty"></div>';
             const empty = searchResults.querySelector(".chat-search-empty");
-            if (empty) empty.textContent = errorText(err, "Erro ao abrir conversa.");
+            if (empty) empty.textContent = errorText(err, "Não foi possível abrir a conversa.");
         });
     });
 
@@ -1034,7 +1053,7 @@ function initChatWidget(): void {
 
         if (isOpen()) {
             // Foco para dentro do painel (teclado e leitor de tela vão junto).
-            closeBtn.focus();
+            closeControl().focus();
             void loadConversations().then(() => {
                 // Abre direto na primeira conversa, como o protótipo fazia.
                 if (!active && conversations.length > 0) {
@@ -1062,16 +1081,24 @@ function initChatWidget(): void {
         closeBtn.click();
     });
 
-    // Em tela cheia (celular) o painel cobre a página: vira modal, com o foco
-    // preso dentro — senão o Tab andaria pela página escondida atrás dele.
-    const fullScreen = window.matchMedia("(max-width: 640px)");
+    // Ao lado (desktop), por cima com véu (compacto) ou em tela cheia (tablet
+    // e celular). Por cima e em tela cheia o painel cobre a página: vira
+    // modal, com o foco preso dentro. Ao lado ele divide a tela com a página.
+    type ModoChat = "ao-lado" | "por-cima" | "tela-cheia";
+    const desktop = window.matchMedia("(min-width: 1280px)");
+    const compacto = window.matchMedia("(min-width: 1024px)");
+    const modoChat = (): ModoChat => (desktop.matches ? "ao-lado" : compacto.matches ? "por-cima" : "tela-cheia");
     const panel = must<HTMLElement>("chatPanel");
+    // Em tela cheia quem fecha é o Voltar; nos outros modos, o ✕ (CSS esconde o outro).
+    const closeControl = (): HTMLButtonElement =>
+        modoChat() === "tela-cheia" ? must<HTMLButtonElement>("chatBack") : closeBtn;
     let releasePanel: (() => void) | null = null;
     const syncPanelTrap = (): void => {
-        const trap = isOpen() && fullScreen.matches;
+        widget.dataset.modo = modoChat();
+        const trap = isOpen() && modoChat() !== "ao-lado";
         if (trap && !releasePanel) {
             panel.setAttribute("aria-modal", "true");
-            const inside = panel.contains(document.activeElement) ? (document.activeElement as HTMLElement) : closeBtn;
+            const inside = panel.contains(document.activeElement) ? (document.activeElement as HTMLElement) : closeControl();
             releasePanel = trapFocus(panel, { onEscape: () => closeBtn.click(), initialFocus: inside });
         } else if (!trap && releasePanel) {
             panel.removeAttribute("aria-modal");
@@ -1080,7 +1107,13 @@ function initChatWidget(): void {
             release();
         }
     };
-    fullScreen.addEventListener("change", syncPanelTrap);
+    desktop.addEventListener("change", syncPanelTrap);
+    compacto.addEventListener("change", syncPanelTrap);
+    widget.dataset.modo = modoChat();
+
+    // Voltar (tela cheia) e o véu (por cima) fecham como o ✕.
+    must<HTMLButtonElement>("chatBack").addEventListener("click", () => closeBtn.click());
+    must<HTMLElement>("chatVeil").addEventListener("click", () => closeBtn.click());
 
     // aria-expanded do botão acompanha a classe "open", venha de onde vier.
     new MutationObserver(() => {
@@ -1091,15 +1124,8 @@ function initChatWidget(): void {
         syncPanelTrap();
     }).observe(widget, { attributes: true, attributeFilter: ["class"] });
 
-    document.addEventListener("click", (event: MouseEvent) => {
-        const target = event.target;
-        if (!isOpen() || !(target instanceof Element)) return;
-        // Diálogos (apagar, remover, sair) ficam fora do widget mas fazem parte dele.
-        if (widget.contains(target) || target.closest(".fx-overlay:not([hidden])")) return;
-        widget.classList.remove("open");
-        widget.classList.remove("searching");
-        scheduleNextTick();
-    });
+    // Clique fora não fecha: ao lado, o painel fica aberto enquanto a pessoa
+    // usa a página; por cima, quem fecha é o véu; em tela cheia não há "fora".
 
     // =====================================================================
     // Boot

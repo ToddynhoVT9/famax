@@ -8,9 +8,9 @@ body.community-new-page {
     min-height: 100vh;
 }
 
-/* O cartão fica centralizado no espaço abaixo do header compartilhado. */
+/* O cartão fica centralizado no espaço entre o header e a barra inferior (até o prompt 08). */
 .community-new-main {
-    min-height: calc(100vh - 80px);
+    min-height: calc(100dvh - var(--r-header) - var(--r-bar));
     display: flex;
     align-items: center;
     justify-content: center;

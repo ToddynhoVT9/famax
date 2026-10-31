@@ -6,8 +6,12 @@
  * comunidades mais recentes. Setas navegam, Enter abre a sugestão escolhida —
  * ou, sem escolha, a página de resultados completa —, Esc fecha.
  *
- * O dropdown "Filtros" define o tipo da busca (Tudo, Comunidades, Usuários,
- * Posts); a escolha fica guardada no localStorage deste navegador.
+ * O escopo colado à esquerda do campo ("Tudo ▾") define o tipo da busca
+ * (Tudo, Comunidades, Usuários, Posts); a escolha fica guardada no
+ * localStorage deste navegador. Na página de pesquisa ele começa com o type
+ * da URL, e ele e as abas da página são o mesmo controle: escolher no menu
+ * avisa a página (SCOPE_CHANGE), e a aba trocada chega aqui por
+ * setSearchScope.
  */
 import { api } from "./api.js";
 import { communityUrl, postUrl, profileUrl, searchUrl, type SearchType } from "./pages.js";
@@ -24,6 +28,23 @@ const PLACEHOLDERS: Record<SearchType, string> = {
     posts: "Pesquisar post",
 };
 
+/** Rótulo do escopo, no botão e no menu. */
+const SCOPE_LABELS: Record<SearchType, string> = {
+    all: "Tudo",
+    communities: "Comunidades",
+    users: "Usuários",
+    posts: "Posts",
+};
+
+/** O escopo mudou pelo menu do header; detail: o SearchType novo. */
+export const SCOPE_CHANGE = "famax:search-scope";
+const SCOPE_SET = "famax:search-scope-set";
+
+/** A página de pesquisa trocou a aba: o escopo do header acompanha, sem avisar de volta. */
+export function setSearchScope(type: SearchType): void {
+    document.dispatchEvent(new CustomEvent<SearchType>(SCOPE_SET, { detail: type }));
+}
+
 const GROUP_LABELS: Record<Exclude<SearchType, "all">, string> = {
     communities: "Comunidades",
     users: "Usuários",
@@ -39,6 +60,11 @@ interface Suggestion {
 
 /** localStorage pode não existir ou lançar (aba anônima, bloqueio): nunca é crítico. */
 function loadType(): SearchType {
+    // Na página de pesquisa, vale o type da URL.
+    if (window.location.pathname.endsWith("/search.html")) {
+        const fromUrl = new URLSearchParams(window.location.search).get("type");
+        if (fromUrl && fromUrl in PLACEHOLDERS) return fromUrl as SearchType;
+    }
     try {
         const value = localStorage.getItem(TYPE_KEY);
         if (value && value in PLACEHOLDERS) return value as SearchType;
@@ -111,15 +137,17 @@ export function initHeaderDropdowns(): void {
     const form = document.getElementById("searchForm");
     const input = document.getElementById("searchInput");
     const list = document.getElementById("searchSuggestions");
-    const btnFiltros = document.getElementById("btnFiltros");
-    const filtrosDropdown = document.getElementById("filtrosDropdown");
+    const scopeBtn = document.getElementById("searchScopeBtn");
+    const scopeLabel = document.getElementById("searchScopeLabel");
+    const scopeMenu = document.getElementById("searchScopeMenu");
 
     if (
         !(form instanceof HTMLFormElement) ||
         !(input instanceof HTMLInputElement) ||
         !(list instanceof HTMLElement) ||
-        !(btnFiltros instanceof HTMLButtonElement) ||
-        !(filtrosDropdown instanceof HTMLElement)
+        !(scopeBtn instanceof HTMLButtonElement) ||
+        !(scopeLabel instanceof HTMLElement) ||
+        !(scopeMenu instanceof HTMLElement)
     ) {
         return;
     }
@@ -130,37 +158,73 @@ export function initHeaderDropdowns(): void {
     let requestSeq = 0;
     let activeIndex = -1;
 
-    // ----- Filtro (tipo da busca) ---------------------------------------------
+    // ----- Escopo (tipo da busca) ---------------------------------------------
+
+    const scopeItems = (Object.keys(SCOPE_LABELS) as SearchType[]).map((value) => {
+        const item = document.createElement("button");
+        item.type = "button";
+        item.className = "fx-menu-item";
+        item.setAttribute("role", "menuitemradio");
+        item.dataset.scope = value;
+        item.textContent = SCOPE_LABELS[value];
+        return item;
+    });
+    scopeMenu.replaceChildren(...scopeItems);
 
     const applyType = (next: SearchType): void => {
         type = next;
         input.placeholder = PLACEHOLDERS[type];
         input.setAttribute("aria-label", PLACEHOLDERS[type]);
-        const radio = filtrosDropdown.querySelector<HTMLInputElement>(`input[value="${type}"]`);
-        if (radio) radio.checked = true;
+        scopeLabel.textContent = SCOPE_LABELS[type];
+        scopeBtn.setAttribute("aria-label", `Pesquisar em: ${SCOPE_LABELS[type]}`);
+        for (const item of scopeItems) item.setAttribute("aria-checked", String(item.dataset.scope === type));
     };
     applyType(type);
 
-    filtrosDropdown.addEventListener("change", (event) => {
-        const radio = event.target as HTMLInputElement;
-        if (radio.name !== "filtroOpcao") return;
-        applyType(radio.value as SearchType);
-        saveType(type);
-        setFiltersOpen(false);
-        // Com texto digitado, refaz as sugestões já no tipo novo.
-        if (input.value.trim().length >= MIN_CHARS) void suggest();
-        input.focus();
+    document.addEventListener(SCOPE_SET, (event) => {
+        const next = (event as CustomEvent<SearchType>).detail;
+        if (next in SCOPE_LABELS && next !== type) {
+            applyType(next);
+            saveType(next);
+        }
     });
 
-    const setFiltersOpen = (open: boolean): void => {
-        filtrosDropdown.classList.toggle("show", open);
-        btnFiltros.classList.toggle("active", open);
-        btnFiltros.setAttribute("aria-expanded", String(open));
+    const setScopeOpen = (open: boolean, focusItem = false): void => {
+        scopeMenu.hidden = !open;
+        scopeBtn.setAttribute("aria-expanded", String(open));
+        if (open) setOpen(false);
+        if (open && focusItem) scopeItems.find((i) => i.dataset.scope === type)?.focus();
     };
 
-    btnFiltros.addEventListener("click", (event) => {
+    scopeBtn.addEventListener("click", (event) => {
         event.stopPropagation();
-        setFiltersOpen(!filtrosDropdown.classList.contains("show"));
+        setScopeOpen(scopeMenu.hidden, true);
+    });
+
+    scopeMenu.addEventListener("click", (event) => {
+        const item = (event.target as Element).closest<HTMLButtonElement>("[data-scope]");
+        if (!item) return;
+        applyType(item.dataset.scope as SearchType);
+        saveType(type);
+        setScopeOpen(false);
+        document.dispatchEvent(new CustomEvent<SearchType>(SCOPE_CHANGE, { detail: type }));
+        input.focus();
+        // Com texto digitado, refaz as sugestões já no tipo novo.
+        if (input.value.trim().length >= MIN_CHARS) void suggest();
+    });
+
+    // Setas andam entre as opções; Esc fecha e volta ao botão.
+    scopeMenu.addEventListener("keydown", (event) => {
+        const index = scopeItems.indexOf(document.activeElement as HTMLButtonElement);
+        if (event.key === "ArrowDown" || event.key === "ArrowUp") {
+            event.preventDefault();
+            const step = event.key === "ArrowDown" ? 1 : -1;
+            scopeItems[(index + step + scopeItems.length) % scopeItems.length]?.focus();
+        } else if (event.key === "Escape") {
+            event.stopPropagation();
+            setScopeOpen(false);
+            scopeBtn.focus();
+        }
     });
 
     // ----- Sugestões ------------------------------------------------------------
@@ -339,6 +403,6 @@ export function initHeaderDropdowns(): void {
     document.addEventListener("click", (event) => {
         const target = event.target as Node;
         if (!form.contains(target)) setOpen(false);
-        if (!btnFiltros.contains(target) && !filtrosDropdown.contains(target)) setFiltersOpen(false);
+        if (!scopeBtn.contains(target) && !scopeMenu.contains(target)) setScopeOpen(false);
     });
 }

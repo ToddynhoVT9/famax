@@ -4,26 +4,29 @@
  * A grade de miniaturas (1 a 4 imagens) e a visualização ampliada, com
  * setas, Esc e foco preso enquanto aberta. As URLs vêm do Storage
  * (posts.routes.ts) e entram por atributo escapado / propriedade src, nunca
- * por innerHTML cru.
+ * por innerHTML cru. Classes fx-gallery e fx-lightbox, no post.css.
  */
 import { escapeHtml } from "./dom.js";
+import { ICONS } from "./layout.js";
 import type { PostImage } from "../../../shared/api-types.js";
 export type { PostImage };
 
 export const MAX_POST_IMAGES = 4;
 
-export function imagesGridHtml(images: PostImage[] | undefined): string {
+/** scroll: no celular, a galeria rola na largura do cartão (post aberto). */
+export function imagesGridHtml(images: PostImage[] | undefined, options: { scroll?: boolean } = {}): string {
     if (!images || images.length === 0) return "";
     const items = images
         .map(
             (image, index) =>
-                `<button type="button" class="tf-post-image" data-action="open-image" data-index="${index}"
+                `<button type="button" class="fx-gallery-img" data-action="open-image" data-index="${index}"
                          aria-label="Ampliar imagem ${index + 1} de ${images.length}">
                      <img src="${escapeHtml(image.url)}" alt="" loading="lazy" />
                  </button>`,
         )
         .join("");
-    return `<div class="tf-post-images tf-post-images--${Math.min(images.length, MAX_POST_IMAGES)}">${items}</div>`;
+    const count = Math.min(images.length, MAX_POST_IMAGES);
+    return `<div class="fx-gallery fx-gallery--${count}${options.scroll ? " fx-gallery--scroll" : ""}">${items}</div>`;
 }
 
 function el<K extends keyof HTMLElementTagNameMap>(tag: K, className = "", text?: string) {
@@ -33,30 +36,32 @@ function el<K extends keyof HTMLElementTagNameMap>(tag: K, className = "", text?
     return node;
 }
 
+function iconButton(className: string, icon: string, label: string): HTMLButtonElement {
+    const button = el("button", `fx-btn fx-btn--icon ${className}`);
+    button.type = "button";
+    button.innerHTML = icon; // ícone fixo, sem dado
+    button.setAttribute("aria-label", label);
+    return button;
+}
+
 /** Visualização ampliada, começando na imagem `start`. */
 export function openLightbox(images: PostImage[], start = 0): void {
     if (images.length === 0) return;
     const previousFocus = document.activeElement as HTMLElement | null;
     let index = Math.max(0, Math.min(start, images.length - 1));
 
-    const overlay = el("div", "lightbox");
+    const overlay = el("div", "fx-lightbox");
     overlay.setAttribute("role", "dialog");
     overlay.setAttribute("aria-modal", "true");
     overlay.setAttribute("aria-label", "Imagem ampliada");
 
-    const img = el("img", "lightbox-img");
+    const img = el("img", "fx-lightbox-img");
     img.alt = "";
-    const counter = el("p", "lightbox-counter");
+    const counter = el("p", "fx-lightbox-count");
     counter.setAttribute("aria-live", "polite");
-    const close = el("button", "fx-btn fx-btn--icon lightbox-close", "×");
-    close.type = "button";
-    close.setAttribute("aria-label", "Fechar");
-    const prev = el("button", "fx-btn fx-btn--icon lightbox-prev", "‹");
-    prev.type = "button";
-    prev.setAttribute("aria-label", "Imagem anterior");
-    const next = el("button", "fx-btn fx-btn--icon lightbox-next", "›");
-    next.type = "button";
-    next.setAttribute("aria-label", "Próxima imagem");
+    const close = iconButton("fx-lightbox-close", ICONS.close, "Fechar");
+    const prev = iconButton("fx-lightbox-prev", ICONS.prev, "Imagem anterior");
+    const next = iconButton("fx-lightbox-next", ICONS.next, "Próxima imagem");
 
     const single = images.length === 1;
     prev.hidden = single;

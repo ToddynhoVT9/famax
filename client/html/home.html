@@ -10,10 +10,10 @@
     <link rel="stylesheet" href="../css/global.css">
     <link rel="stylesheet" href="../css/layout.css">
     <!-- Posts da aba Seguindo: mesmo desenho do feed da comunidade. -->
-    <link rel="stylesheet" href="../css/community.css">
+    <link rel="stylesheet" href="../css/post.css">
     <link rel="stylesheet" href="../css/home.css">
 </head>
-<body>
+<body class="r">
 
     <!-- Header e sidebar: montados por script/shared/layout.ts -->
     <header id="app-header" class="header"></header>
@@ -40,7 +40,7 @@
 
         <!-- Posts recentes de quem você segue (GET /api/feed/following) -->
         <section class="home-following" id="homeFollowing" role="tabpanel" aria-labelledby="homeTabFollowing" hidden>
-            <div class="tf-posts-list" id="followingList"></div>
+            <div class="fx-posts" id="followingList"></div>
             <button type="button" class="fx-btn fx-btn--outline fx-btn--pill list-more" id="followingMore" hidden>Carregar mais</button>
         </section>
     </main>

@@ -1,0 +1,66 @@
+/* ===================================
+   FAMAX — Página do post (post.html)
+   Só o layout da página: a coluna (.r-col, no layout.css) e a barra do topo,
+   com a trilha e "Copiar link". O post em si usa os componentes do post.css.
+   =================================== */
+
+/* ----- Barra do topo ----- */
+/* O espaço até o post é o gap da coluna (.r-col). */
+.post-page-bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-3);
+}
+
+.post-page-bar .fx-btn {
+    flex-shrink: 0;
+}
+
+/* ----- Trilha numa linha, com reticências ----- */
+.post-breadcrumb {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    min-width: 0;
+    color: var(--color-text-faint);
+    font-size: var(--text-sm);
+    line-height: 1.25rem;
+    white-space: nowrap;
+}
+
+.post-breadcrumb a {
+    flex: 0 1 auto;
+    /* Alvo da faixa na altura, sem mudar a linha (a trilha é uma linha só). */
+    padding: calc((var(--r-touch) - 1.25rem) / 2) 0;
+    min-width: 0;
+    max-width: 60%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    color: var(--color-text);
+    font-weight: var(--weight-semibold);
+    text-decoration: none;
+}
+
+.post-breadcrumb a:hover {
+    text-decoration: underline;
+}
+
+.post-breadcrumb-sep {
+    flex-shrink: 0;
+}
+
+.post-breadcrumb [aria-current] {
+    flex: 1 1 0;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+/* ----- Celular ----- */
+/* "Copiar link" sai da barra e vai para o menu ⋯ do post (post-thread.ts). */
+@media (max-width: 599px) {
+    .post-copy-link {
+        display: none;
+    }
+}

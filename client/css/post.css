@@ -1,72 +1,768 @@
 /* ===================================
-   FAMAX — Página individual do post
-   (o post em si usa os estilos de community.css)
+   FAMAX — Post e companhia
+   PostCard, Comment, ReactionPicker, Lightbox (com a galeria) e Markdown,
+   desenhados por shared/post-thread.ts, reactions.ts, post-images.ts e
+   markdown.ts. Carregado por quem desenha post: post.html, community.html e
+   home.html. O layout só da página do post fica no post-page.css.
    =================================== */
 
-.post-page {
-    max-width: 860px;
-    margin: 0 auto;
-}
-
-.post-page-bar {
+/* ----- Lista de posts ----- */
+/* O menu ⋯ e o seletor de reação passam da borda do cartão: a lista não
+   corta (overflow visível), e o arredondamento vai no primeiro e no último
+   post. */
+.fx-posts {
     display: flex;
-    justify-content: space-between;
-    align-items: center;
-    gap: 12px;
-    margin-bottom: 16px;
-    flex-wrap: wrap;
+    flex-direction: column;
+    background: var(--color-paper);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-lg);
 }
 
-.post-breadcrumb {
+/* ----- PostCard (denso, R): padding de 16px e avatar md (40px) ----- */
+.fx-post {
     display: flex;
-    align-items: center;
-    gap: 8px;
-    min-width: 0;
-    color: var(--color-text-faint);
-    font-size: 0.95rem;
+    gap: var(--space-3);
+    padding: var(--space-4);
+    color: var(--color-ink);
+    border-bottom: 1px solid var(--color-paper-border);
+    transition: background-color 0.2s;
 }
 
-.post-breadcrumb a {
-    color: var(--color-text);
-    text-decoration: none;
-    font-weight: 600;
+.fx-post:hover {
+    background: var(--color-paper-2);
 }
 
-.post-breadcrumb a:hover {
-    text-decoration: underline;
+.fx-post:first-child {
+    border-top-left-radius: var(--radius-lg);
+    border-top-right-radius: var(--radius-lg);
 }
 
-.post-breadcrumb [aria-current] {
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
+.fx-post:last-child {
+    border-bottom: none;
+    border-bottom-left-radius: var(--radius-lg);
+    border-bottom-right-radius: var(--radius-lg);
 }
 
-.post-copy-link {
-    background: none;
-    border: 1px solid var(--color-text);
-    color: var(--color-text);
-    border-radius: 20px;
-    padding: 8px 18px;
-    font: inherit;
-    font-size: 0.9rem;
+.fx-post > .fx-avatar {
+    flex-shrink: 0;
     cursor: pointer;
 }
 
-.post-copy-link:hover {
-    background-color: rgba(255, 255, 255, 0.1);
+.fx-post > .fx-avatar:hover {
+    filter: brightness(0.9);
 }
 
-.post-copy-link:disabled {
-    opacity: 0.5;
+/* Item flex: sem min-width: 0, o texto longo empurrava a página para fora
+   da tela no celular. */
+.fx-post-body {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-2);
+    flex: 1;
+    min-width: 0;
+}
+
+/* Linha de cima: autor, comunidade e tempo; o ⋯ à direita. */
+.fx-post-head {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: var(--space-2);
+}
+
+.fx-post-meta {
+    margin: 0;
+    min-width: 0;
+    font-size: var(--text-sm);
+    line-height: 1.25rem;
+    color: var(--color-ink-faint);
+    overflow-wrap: anywhere;
+}
+
+.fx-post-meta strong {
+    color: var(--color-ink);
+    cursor: pointer;
+}
+
+.fx-post-meta strong:hover {
+    text-decoration: underline;
+}
+
+.fx-post-community {
+    color: inherit;
+    font-weight: var(--weight-semibold);
+    text-decoration: none;
+}
+
+.fx-post-community:hover {
+    text-decoration: underline;
+}
+
+.fx-post-edited {
+    font-style: italic;
+}
+
+/* O ⋯ (44px) sobe e encosta no canto, sem empurrar a linha do autor. */
+.fx-post-menu {
+    position: relative;
+    display: inline-flex;
+    flex-shrink: 0;
+    margin: -10px -10px -10px 0;
+}
+
+.fx-post-menu > .fx-menu {
+    position: absolute;
+    top: calc(100% + var(--space-1));
+    right: 0;
+    z-index: var(--z-popover);
+    min-width: 220px;
+}
+
+.fx-post-badges {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+}
+
+.fx-post-title {
+    margin: 0;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--space-2);
+    font-size: var(--text-xl);
+    line-height: 1.75rem;
+    font-weight: var(--weight-bold);
+    color: var(--color-ink);
+    overflow-wrap: anywhere;
+}
+
+.fx-post-title-link {
+    color: inherit;
+    text-decoration: none;
+}
+
+.fx-post-title-link:hover {
+    text-decoration: underline;
+}
+
+/* Trecho do feed: corta em 4 linhas. É Markdown (parágrafos e listas
+   dentro), e o line-clamp não corta entre blocos: o corte é pela altura. */
+.fx-post-snippet {
+    max-height: 6rem;
+    overflow: hidden;
+    line-height: 1.5rem;
+}
+
+.fx-post-snippet.is-expanded {
+    max-height: none;
+    overflow: visible;
+}
+
+/* "ler mais": só aparece onde o trecho foi cortado (markOverflow). */
+.fx-read-more {
+    align-self: flex-start;
+    display: inline-flex;
+    align-items: center;
+    min-height: var(--r-touch);
+    padding: 0;
+    border: none;
+    background: none;
+    color: var(--color-link);
+    font: inherit;
+    font-size: var(--text-sm);
+    cursor: pointer;
+}
+
+.fx-read-more:hover {
+    text-decoration: underline;
+}
+
+.fx-post-nsfw {
+    margin: var(--space-1) 0 var(--space-3);
+}
+
+/* ----- Post aberto (post.html) ----- */
+.fx-post--single {
+    padding: var(--space-5);
+}
+
+.fx-post--single:hover {
+    background: var(--color-paper);
+}
+
+.fx-post--single .fx-post-title {
+    font-size: var(--text-2xl);
+    line-height: 2rem;
+}
+
+/* ----- Números do post (curtir, comentários, salvar) ----- */
+.fx-post-stats {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--space-2);
+    margin-top: var(--space-1);
+    font-size: var(--text-sm);
+    line-height: 1.25rem;
+    color: var(--color-ink-faint);
+}
+
+/* <button>: curtir e abrir os comentários são ações, não rótulos. */
+.fx-stat {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-2);
+    min-height: max(36px, var(--r-touch));
+    padding: 0 var(--space-3);
+    border: 1px solid transparent;
+    border-radius: var(--radius-pill);
+    background: transparent;
+    color: inherit;
+    font: inherit;
+    cursor: pointer;
+    transition: background-color 0.2s, color 0.2s, border-color 0.2s;
+}
+
+.fx-stat:hover,
+.fx-stat.is-active {
+    color: var(--color-ink);
+    border-color: var(--color-paper-border);
+}
+
+.fx-stat:disabled,
+.fx-stat[aria-disabled="true"] {
+    opacity: var(--opacity-disabled);
     cursor: default;
 }
 
-/* Na página do post o título é o h1, e o conteúdo vai inteiro. */
-.tf-post--single .tf-post-title {
-    font-size: 1.6rem;
+.fx-stat .r-ico {
+    width: 18px;
+    height: 18px;
 }
 
-.tf-post--single:hover {
-    background-color: var(--color-paper);
+.fx-stat--save {
+    margin-left: auto;
+}
+
+.fx-stat--save.is-active {
+    color: var(--color-gold);
+    font-weight: var(--weight-semibold);
+}
+
+/* ----- ReactionPicker (shared/reactions.ts) ----- */
+.fx-react {
+    position: relative;
+    display: inline-flex;
+}
+
+.fx-react-emoji {
+    font-size: var(--text-md);
+}
+
+.fx-react-picker {
+    position: absolute;
+    bottom: calc(100% + var(--space-2));
+    left: 0;
+    z-index: var(--z-popover);
+    display: flex;
+    gap: 2px;
+    padding: var(--space-1) var(--space-2);
+    background: var(--color-paper);
+    border: 1px solid var(--color-paper-border);
+    border-radius: var(--radius-pill);
+    box-shadow: var(--shadow-md);
+}
+
+.fx-react-option {
+    width: 36px;
+    height: 36px;
+    padding: 0;
+    border: none;
+    border-radius: var(--radius-circle);
+    background: none;
+    font-size: var(--text-2xl);
+    line-height: 1;
+    cursor: pointer;
+    transition: transform 0.12s;
+}
+
+.fx-react-option:hover,
+.fx-react-option:focus-visible {
+    background: var(--color-paper-2);
+    transform: scale(1.25);
+}
+
+.fx-react-option.is-mine {
+    background: var(--color-info-surface);
+}
+
+.fx-react-summary {
+    align-self: center;
+    letter-spacing: -2px;
+    cursor: default;
+}
+
+/* ----- Comentários (logo abaixo das ações do post) ----- */
+.fx-post-discussion {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-2);
+    margin-top: var(--space-2);
+}
+
+/* Campo de comentar (fx-compose): o campo encolhe, o botão não. */
+.fx-compose > .fx-input {
+    flex: 1 1 auto;
+    min-width: 0;
+}
+
+.fx-compose > .fx-btn,
+.fx-compose > .fx-comment-action {
+    flex-shrink: 0;
+}
+
+.fx-post-error {
+    margin: 0;
+    font-size: var(--text-sm);
+    line-height: 1.25rem;
+    color: var(--color-danger);
+}
+
+.fx-post-comments {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-3);
+    margin-top: var(--space-2);
+    padding-top: var(--space-4);
+    border-top: 1px solid var(--color-paper-border);
+}
+
+/* "Carregar mais comentários" */
+.fx-post-comments > .fx-btn {
+    align-self: flex-start;
+}
+
+.fx-comment-status {
+    margin: 0;
+    font-size: var(--text-sm);
+    line-height: 1.25rem;
+    color: var(--color-ink-faint);
+}
+
+/* ----- Comment ----- */
+.fx-comments {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-3);
+}
+
+.fx-comment {
+    padding: var(--space-3);
+    border: 1px solid var(--color-paper-border);
+    border-radius: var(--radius-lg);
+    background: var(--color-paper-2);
+    color: var(--color-ink);
+    font-size: var(--text-sm);
+    line-height: 1.25rem;
+}
+
+/* Comentário aberto por link de notificação (#comment-<id>). */
+.fx-comment.is-highlighted {
+    background: var(--color-highlight-surface);
+    border-color: var(--color-highlight-border);
+}
+
+.fx-comment-head {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--space-2);
+    margin-bottom: var(--space-1);
+}
+
+.fx-comment-author {
+    font-weight: var(--weight-semibold);
+    color: var(--color-ink);
+    cursor: pointer;
+}
+
+.fx-comment-author:hover {
+    text-decoration: underline;
+}
+
+.fx-comment-text {
+    margin: 0;
+    max-width: var(--prose-measure);
+    overflow-wrap: anywhere;
+}
+
+/* O texto do comentário é Markdown: a cor é a do comentário. */
+.fx-comment-text.fx-md {
+    color: inherit;
+}
+
+.fx-comment-text.is-removed {
+    color: var(--color-ink-faint);
+    font-style: italic;
+}
+
+.fx-comment-foot {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--space-3);
+    margin-top: var(--space-2);
+    font-size: var(--text-xs);
+    line-height: 1rem;
+}
+
+.fx-comment-time {
+    color: var(--color-ink-faint);
+}
+
+/* Ações de texto (Responder, Denunciar, Excluir, Remover, Banir...): alvo da
+   faixa, 44px abaixo de 1280px, também na largura ("Banir" é curto). */
+.fx-comment-action {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: var(--r-touch);
+    min-height: var(--r-touch);
+    padding: 0 var(--space-2);
+    border: none;
+    background: none;
+    color: var(--color-ink-muted);
+    font: inherit;
+    cursor: pointer;
+}
+
+.fx-comment-action:hover {
+    color: var(--color-ink);
+    text-decoration: underline;
+}
+
+.fx-comment-action--danger {
+    color: var(--color-danger);
+}
+
+.fx-comment.is-accepted > .fx-comment-main {
+    padding-left: var(--space-3);
+    border-left: 3px solid var(--color-success);
+}
+
+/* Respostas recuadas um nível; as respostas das respostas ficam alinhadas,
+   para a conversa não ser espremida numa coluna estreita. */
+.fx-replies {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-3);
+    margin: var(--space-3) 0 0 var(--space-4);
+    padding-left: var(--space-3);
+    border-left: 2px solid var(--color-paper-border);
+}
+
+.fx-replies .fx-replies {
+    margin-left: 0;
+    padding-left: 0;
+    border-left: none;
+}
+
+.fx-replies:empty {
+    display: none;
+}
+
+/* Responder: o formulário abre junto do comentário respondido. */
+.fx-comment-reply {
+    margin-top: var(--space-3);
+}
+
+.fx-comment-edit {
+    margin-top: var(--space-1);
+}
+
+.fx-comment-edit-actions {
+    display: flex;
+    justify-content: flex-end;
+    align-items: center;
+    gap: var(--space-3);
+    margin-top: 6px;
+}
+
+/* ----- Conteúdo de usuário bloqueado ----- */
+/* O aviso (fx-notice com um fx-link "mostrar") fica; o resto recolhe. */
+.fx-post.is-blocked > .fx-avatar,
+.fx-post.is-blocked > .fx-post-body,
+.fx-comment.is-blocked > .fx-comment-main,
+.fx-comment.is-blocked > .fx-replies {
+    display: none;
+}
+
+/* ----- Imagens do post (shared/post-images.ts) ----- */
+.fx-gallery {
+    display: grid;
+    gap: var(--space-1);
+    width: 100%;
+    max-width: var(--prose-measure);
+    border-radius: var(--radius-lg);
+    overflow: hidden;
+}
+
+.fx-gallery--1 { grid-template-columns: 1fr; }
+.fx-gallery--2 { grid-template-columns: 1fr 1fr; }
+.fx-gallery--3 { grid-template-columns: 2fr 1fr; grid-template-rows: 1fr 1fr; }
+.fx-gallery--3 .fx-gallery-img:first-child { grid-row: span 2; aspect-ratio: auto; }
+.fx-gallery--4 { grid-template-columns: 1fr 1fr; }
+
+.fx-gallery-img {
+    padding: 0;
+    border: none;
+    background: var(--color-paper-2);
+    aspect-ratio: 4 / 3;
+    overflow: hidden;
+    cursor: zoom-in;
+}
+
+.fx-gallery--1 .fx-gallery-img {
+    aspect-ratio: auto;
+    max-height: 420px;
+}
+
+.fx-gallery-img img {
+    display: block;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+/* ----- Lightbox ----- */
+.fx-lightbox {
+    position: fixed;
+    inset: 0;
+    z-index: var(--z-lightbox);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--color-scrim-strong);
+}
+
+.fx-lightbox-img {
+    max-width: 92vw;
+    max-height: 86vh;
+    object-fit: contain;
+}
+
+/* Botões (fx-btn--icon) sobre a foto escura: um tom claro atrás do ícone. */
+.fx-lightbox > .fx-btn--icon {
+    position: absolute;
+    color: var(--color-on-chrome);
+    background: var(--color-tint-chrome);
+}
+
+.fx-lightbox-close { top: var(--space-4); right: var(--space-4); }
+.fx-lightbox-prev { left: var(--space-4); top: 50%; transform: translateY(-50%); }
+.fx-lightbox-next { right: var(--space-4); top: 50%; transform: translateY(-50%); }
+
+.fx-lightbox-count {
+    position: absolute;
+    bottom: var(--space-4);
+    left: 50%;
+    transform: translateX(-50%);
+    margin: 0;
+    color: var(--color-on-chrome);
+    font-size: var(--text-sm);
+}
+
+/* ----- Markdown (shared/markdown.ts) ----- */
+/* Trecho e corpo do post, e comentários: na medida de leitura. */
+.fx-md {
+    max-width: var(--prose-measure);
+    color: var(--color-ink-soft);
+    white-space: normal;
+    overflow-wrap: anywhere;
+}
+
+.fx-md > * {
+    margin: 0 0 var(--space-2);
+}
+
+.fx-md > :last-child {
+    margin-bottom: 0;
+}
+
+.fx-md ul,
+.fx-md ol {
+    padding-left: var(--space-6);
+}
+
+.fx-md blockquote {
+    padding: 2px 0 2px var(--space-3);
+    border-left: 3px solid var(--color-paper-border-strong);
+    color: var(--color-ink-muted);
+}
+
+.fx-md code {
+    font-family: var(--font-mono);
+    font-size: 0.9em;
+    padding: 1px var(--space-1);
+    border-radius: var(--radius-sm);
+    background: var(--color-paper-2);
+    color: var(--color-ink);
+}
+
+.fx-md pre {
+    padding: var(--space-3);
+    border-radius: var(--radius-md);
+    background: var(--color-paper-2);
+    overflow-x: auto;
+}
+
+.fx-md pre code {
+    padding: 0;
+    background: none;
+}
+
+.fx-md a {
+    color: var(--color-link);
+    text-decoration: underline;
+}
+
+.fx-md a.fx-mention {
+    font-weight: var(--weight-semibold);
+    text-decoration: none;
+}
+
+.fx-md a.fx-mention:hover {
+    text-decoration: underline;
+}
+
+.fx-md table {
+    border-collapse: collapse;
+}
+
+.fx-md th,
+.fx-md td {
+    padding: var(--space-1) var(--space-2);
+    border: 1px solid var(--color-paper-border);
+    text-align: left;
+}
+
+.fx-spoiler {
+    padding: 0 var(--space-1);
+    border-radius: var(--radius-sm);
+    background: var(--color-ink-soft);
+    color: transparent;
+    cursor: pointer;
+    user-select: none;
+}
+
+/* Link ou código dentro do spoiler também some até revelar. */
+.fx-spoiler * {
+    visibility: hidden;
+}
+
+.fx-spoiler.is-revealed {
+    background: var(--color-paper-3);
+    color: inherit;
+    cursor: auto;
+    user-select: auto;
+}
+
+.fx-spoiler.is-revealed * {
+    visibility: visible;
+}
+
+/* ----- Editor do post (shared/post-editor.ts) ----- */
+/* Abre na comunidade e na página do post. A janela é redesenhada no prompt 08. */
+.post-editor-content {
+    min-height: 150px;
+}
+
+.modal-images {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-2);
+    margin: 6px 0 var(--space-2);
+}
+
+.modal-image {
+    position: relative;
+    width: 84px;
+    height: 84px;
+    border-radius: var(--radius-md);
+    overflow: hidden;
+    background: var(--color-dark-2);
+}
+
+.modal-image img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.modal-image-remove {
+    position: absolute;
+    top: 3px;
+    right: 3px;
+    width: 22px;
+    height: 22px;
+    border: none;
+    border-radius: var(--radius-circle);
+    background: var(--color-scrim);
+    color: var(--color-on-accent);
+    font-size: var(--text-md);
+    line-height: 1;
+    cursor: pointer;
+}
+
+/* "Adicionar imagens" (fx-btn secondary num <label>): não estica no Field. */
+.modal-add-images {
+    align-self: flex-start;
+}
+
+/* ----- Tablet, compacto e desktop (600px ou mais) ----- */
+/* "Copiar link" fica na barra do topo do post aberto: o item do ⋯ é só do
+   celular. Sem outros itens (visitante), o ⋯ também some. */
+@media (min-width: 600px) {
+    .fx-post-menu [data-phone-only],
+    .fx-post-menu--phone {
+        display: none;
+    }
+}
+
+/* ----- Celular (até 599px) ----- */
+@media (max-width: 599px) {
+    .fx-post--single {
+        padding: var(--space-4);
+    }
+
+    /* Post aberto: a galeria vai de uma borda do cartão à outra e rola, com
+       82% da largura por imagem (a próxima aparece cortada). */
+    .fx-gallery--scroll {
+        display: flex;
+        gap: var(--space-1);
+        width: auto;
+        max-width: none;
+        margin: 0 calc(-1 * var(--space-4)) 0 calc(-1 * (var(--space-4) + var(--avatar-md) + var(--space-3)));
+        padding: 0 var(--space-4);
+        overflow-x: auto;
+        scrollbar-width: none;
+        border-radius: 0;
+    }
+
+    .fx-gallery--scroll::-webkit-scrollbar {
+        display: none;
+    }
+
+    /* :nth-child(n): vence a regra da primeira imagem da grade de 3. */
+    .fx-gallery--scroll .fx-gallery-img:nth-child(n) {
+        flex: 0 0 82%;
+        aspect-ratio: 4 / 3;
+        max-height: none;
+        border-radius: var(--radius-md);
+    }
+
+    .fx-gallery--scroll.fx-gallery--1 .fx-gallery-img:nth-child(n) {
+        flex-basis: 100%;
+    }
 }

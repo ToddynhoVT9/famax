@@ -123,7 +123,7 @@ a {
 }
 
 /* Em linha com o campo e o botão (comentário, chat). */
-.tf-comment-form .char-counter,
+.fx-compose .char-counter,
 .chat-input-row .char-counter {
     align-self: center;
     margin-top: 0;

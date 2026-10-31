@@ -2,15 +2,16 @@
  * FAMAX — Página individual do post (post.html?id=)
  *
  * O post inteiro, com os comentários abertos, o breadcrumb Comunidade › Post e
- * um link próprio para compartilhar. Desenho e ações vêm de
+ * um link próprio para compartilhar ("Copiar link" na barra do topo; no
+ * celular, no ⋯ do post). Desenho e ações vêm de
  * shared/post-thread.ts, os mesmos do feed da comunidade.
  */
 import { api } from "./shared/api.js";
-import { initLayout } from "./shared/layout.js";
-import { communityUrl, pages, postUrl } from "./shared/pages.js";
+import { ICONS, initLayout } from "./shared/layout.js";
+import { communityUrl, pages } from "./shared/pages.js";
 import { queryParam, truncate } from "./shared/dom.js";
 import { toast } from "./shared/dialog.js";
-import { createPostThread, type Post } from "./shared/post-thread.js";
+import { copyPostLink, createPostThread, type Post } from "./shared/post-thread.js";
 import { markdownToText } from "./shared/markdown.js";
 import { openPostEditor, type PostCategory } from "./shared/post-editor.js";
 
@@ -83,17 +84,9 @@ const thread = container
 
 let currentPost: Post | null = null;
 
-copyBtn?.addEventListener("click", async () => {
-    if (!postId) return;
-    const link = new URL(postUrl(postId), window.location.origin).toString();
-    try {
-        await navigator.clipboard.writeText(link);
-        toast("Link copiado.");
-    } catch {
-        // Sem permissão de área de transferência (ou contexto sem HTTPS):
-        // mostra o link para copiar à mão.
-        toast(`Copie o link: ${link}`);
-    }
+copyBtn?.insertAdjacentHTML("afterbegin", ICONS.link);
+copyBtn?.addEventListener("click", () => {
+    if (postId) void copyPostLink(postId);
 });
 
 async function init(): Promise<void> {
