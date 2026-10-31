@@ -13,17 +13,17 @@
     <link rel="stylesheet" href="../../css/auth/auth-common.css">
     <link rel="stylesheet" href="../../css/auth/recover-password.css">
 </head>
-<body>
-    <a class="header" href="../../index.html" aria-label="FAMAX — início">
-        <span class="header-name">FAMAX</span>
-    </a>
-
-    <main class="recovery-container" aria-live="polite">
-        <h1 class="recovery-title" id="verifyTitle">Confirmando seu e-mail...</h1>
-        <p class="recovery-text" id="verifyText">Só um instante.</p>
-        <a class="fx-btn fx-btn--chrome" id="verifyContinue" href="../home.html" hidden>Continuar</a>
+<body class="r r--nobar">
+    <main class="acc" id="main-content" aria-live="polite">
+        <div class="acc-col">
+            <a class="acc-logo" href="../../index.html" aria-label="FAMAX, início">FAMAX</a>
+            <h1 class="acc-title" id="verifyTitle">Confirmando seu e-mail...</h1>
+            <p class="acc-text" id="verifyText" role="status">Só um instante.</p>
+            <a class="fx-btn fx-btn--chrome acc-btn" id="verifyContinue" href="../home.html" hidden>Continuar</a>
+        </div>
     </main>
 
     <script type="module" src="../../script/user-script/verify-email.ts"></script>
+</body>
 </body>
 </html>

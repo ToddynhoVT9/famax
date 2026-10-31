@@ -1,7 +1,10 @@
 import { ApiError, api, setToken } from "../shared/api.js";
 import { afterLoginUrl, redirectIfLoggedIn } from "../shared/auth-guard.js";
+import { followKeyboard } from "../shared/keyboard.js";
 
 redirectIfLoggedIn();
+// Celular: com o teclado aberto, o campo focado volta para a vista.
+followKeyboard();
 
 // A recuperação de senha termina aqui com ?reset=ok.
 const notice = document.getElementById("login-notice");
@@ -28,6 +31,15 @@ const usernameInput = document.getElementById("username");
 const passwordInput = document.getElementById("password");
 const loginButton = document.getElementById("loginButton");
 const errorElement = document.getElementById("error-message");
+const title = document.getElementById("loginTitle");
+const showPassword = document.getElementById("showPassword");
+
+/** Passo do código (2FA): o título diz o que a tela pede, no mesmo lugar. */
+function showCodeStep(show: boolean): void {
+  if (passwordStep) passwordStep.hidden = show;
+  if (codeStep) codeStep.hidden = !show;
+  if (title) title.textContent = show ? "Verificação em duas etapas" : "Entrar";
+}
 
 if (
   usernameInput instanceof HTMLInputElement &&
@@ -35,15 +47,36 @@ if (
   loginButton instanceof HTMLButtonElement &&
   errorElement instanceof HTMLElement
 ) {
+  /** A faixa no topo; os campos do passo aberto ficam com aria-invalid. */
   const showError = (message: string): void => {
     errorElement.innerText = message;
     errorElement.hidden = false;
+    const fields = codeStep && !codeStep.hidden ? [codeInput] : [usernameInput, passwordInput];
+    for (const field of fields) {
+      field?.setAttribute("aria-invalid", "true");
+      field?.setAttribute("aria-errormessage", errorElement.id);
+    }
   };
+
+  const clearError = (): void => {
+    errorElement.hidden = true;
+    for (const field of [usernameInput, passwordInput, codeInput]) {
+      field?.removeAttribute("aria-invalid");
+      field?.removeAttribute("aria-errormessage");
+    }
+  };
+
+  // "Mostrar senha" (botão com aria-pressed, na linha do rótulo).
+  showPassword?.addEventListener("click", () => {
+    const show = passwordInput.type === "password";
+    passwordInput.type = show ? "text" : "password";
+    showPassword.setAttribute("aria-pressed", String(show));
+  });
 
   const realizarLogin = async (): Promise<void> => {
     const identifier = usernameInput.value.trim();
     const password = passwordInput.value;
-    errorElement.hidden = true;
+    clearError();
 
     if (!identifier || !password) {
       showError("Preencha email/usuário e senha.");
@@ -57,8 +90,7 @@ if (
       if (result.mfaRequired && result.mfaToken) {
         // Senha certa, falta o código do app (5 min para digitar).
         mfaToken = result.mfaToken;
-        if (passwordStep) passwordStep.hidden = true;
-        if (codeStep) codeStep.hidden = false;
+        showCodeStep(true);
         codeInput?.focus();
         return;
       }
@@ -86,11 +118,10 @@ if (
       try {
         const result = await api.auth.reactivate(identifier, password);
         button.remove();
-        errorElement.hidden = true;
+        clearError();
         if (result.mfaRequired && result.mfaToken) {
           mfaToken = result.mfaToken;
-          if (passwordStep) passwordStep.hidden = true;
-          if (codeStep) codeStep.hidden = false;
+          showCodeStep(true);
           codeInput?.focus();
           return;
         }
@@ -107,7 +138,7 @@ if (
 
   const verificarCodigo = async (): Promise<void> => {
     const code = codeInput?.value.trim() ?? "";
-    errorElement.hidden = true;
+    clearError();
     if (!mfaToken || !code) {
       showError("Digite o código.");
       return;
@@ -148,9 +179,8 @@ if (
   });
   codeBack?.addEventListener("click", () => {
     mfaToken = null;
-    if (codeStep) codeStep.hidden = true;
-    if (passwordStep) passwordStep.hidden = false;
-    errorElement.hidden = true;
+    showCodeStep(false);
+    clearError();
     passwordInput.value = "";
     passwordInput.focus();
   });

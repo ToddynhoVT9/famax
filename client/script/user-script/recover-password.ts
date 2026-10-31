@@ -11,6 +11,11 @@
  */
 import { api, clearToken } from "../shared/api.js";
 import { pages } from "../shared/pages.js";
+import { bindPasswordRules } from "../shared/password-rules.js";
+import { followKeyboard } from "../shared/keyboard.js";
+
+// Celular: com o teclado aberto, o campo focado volta para a vista.
+followKeyboard();
 
 const RESEND_SECONDS = 60;
 
@@ -42,10 +47,20 @@ let email = "";
 let resetToken = "";
 let resendTimer: number | undefined;
 
+/** A faixa no topo do passo; com erro, os campos do passo ficam com aria-invalid. */
 function showError(el: HTMLElement | null, message: string | null): void {
     if (!el) return;
     el.textContent = message ?? "";
     el.hidden = message === null;
+    el.closest("form")?.querySelectorAll<HTMLInputElement>('input:not([type="checkbox"])').forEach((input) => {
+        if (message === null) {
+            input.removeAttribute("aria-invalid");
+            input.removeAttribute("aria-errormessage");
+        } else {
+            input.setAttribute("aria-invalid", "true");
+            input.setAttribute("aria-errormessage", el.id);
+        }
+    });
 }
 
 function errorMessage(err: unknown, fallback: string): string {
@@ -187,28 +202,8 @@ codeStep?.addEventListener("submit", async (event) => {
 // Passo 3: nova senha
 // ---------------------------------------------------------------------------
 
-/** Mesmas regras do backend (server/lib/password.ts), conferidas ao digitar. */
-const RULES: Record<string, (password: string, confirm: string) => boolean> = {
-    length: (p) => p.length >= 8,
-    digits: (p) => (p.match(/\d/g) ?? []).length >= 3,
-    special: (p) => /[^A-Za-z0-9]/.test(p),
-    match: (p, c) => p.length > 0 && p === c,
-};
-
-function updateRules(): boolean {
-    const password = newPasswordInput?.value ?? "";
-    const confirm = confirmPasswordInput?.value ?? "";
-    let allOk = true;
-    for (const item of document.querySelectorAll<HTMLElement>("#password-rules [data-rule]")) {
-        const ok = RULES[item.dataset.rule ?? ""]?.(password, confirm) ?? false;
-        item.classList.toggle("ok", ok);
-        allOk &&= ok;
-    }
-    return allOk;
-}
-
-newPasswordInput?.addEventListener("input", updateRules);
-confirmPasswordInput?.addEventListener("input", updateRules);
+// Regras da senha marcadas ao digitar (shared/password-rules.ts).
+const updateRules = bindPasswordRules($("password-rules"), newPasswordInput, confirmPasswordInput);
 
 showPassword?.addEventListener("change", () => {
     const type = showPassword.checked ? "text" : "password";

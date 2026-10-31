@@ -1,75 +1,204 @@
 /* ===================================
-   FAMAX — Auth Pages Common Styles
-   (Login, Register, Recover Password)
+   FAMAX — Telas de acesso (AuthScreen): Entrar, Criar conta, Recuperar
+   senha e Confirmar e-mail
+   Sem moldura (sem o layout.ts): o logo centralizado acima do formulário de
+   380px. O bloco começa a 12% da altura, sem centralizar, para o título
+   ficar no mesmo lugar em todas as telas e em todos os passos; no celular,
+   no topo da tela.
    =================================== */
 
-body {
-    min-height: 100vh;
-    position: relative;
+.acc {
+    display: flex;
+    flex-direction: column;
+    flex: 1 0 auto;
+    min-height: 100dvh;
+    padding: var(--space-4) var(--r-gutter) var(--space-10);
 }
 
-/* Header simples das páginas de auth (logo no canto) */
-/* Marca no canto: leva de volta ao início. */
-.header {
-    position: absolute;
-    top: 30px;
-    left: 50px;
+/* O espaço de cima não encolhe: num formulário longo, a página rola. */
+.acc::before {
+    content: "";
+    flex: 0 0 12dvh;
+}
+
+.acc-col {
     display: flex;
+    flex-direction: column;
+    gap: var(--space-4);
+    width: 100%;
+    max-width: var(--form-width);
+    margin: 0 auto;
+}
+
+/* "FAMAX": leva ao início, com alvo de 44px. */
+.acc-logo {
+    display: inline-flex;
+    align-self: center;
     align-items: center;
-    gap: var(--space-3);
+    min-height: var(--r-touch);
     color: var(--color-text);
+    font-size: var(--text-logo);
+    font-weight: var(--weight-heavy);
+    line-height: 1;
+    letter-spacing: 1px;
     text-decoration: none;
 }
 
-.header-name {
-    font-size: 3rem;
-    font-weight: 700;
-    line-height: 1;
-    letter-spacing: 1px;
+.acc-title {
+    margin: 0;
+    font-size: var(--text-2xl);
+    line-height: 2rem;
+    font-weight: var(--weight-bold);
+    text-align: center;
 }
 
-/* Rótulo visível acima de cada campo (fx-label; o placeholder some ao digitar). */
-.form-group .fx-label {
-    align-self: stretch;
-    margin-bottom: var(--space-1);
+/* Texto de apoio de cada passo. */
+.acc-text {
+    margin: 0;
+    color: var(--color-text-soft);
+    text-align: center;
 }
 
-/* Form group e input field compartilhados */
-.form-group {
+.acc-text strong {
+    color: var(--color-text);
+    overflow-wrap: anywhere;
+}
+
+.acc-form {
     display: flex;
     flex-direction: column;
+    gap: var(--space-4);
+}
+
+.acc-form .fx-field {
+    flex: none;
+}
+
+/* Botões na largura do formulário. */
+.acc-form > .fx-btn,
+.acc-step > .fx-btn,
+.acc-btn {
+    width: 100%;
+}
+
+.acc-step {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-4);
+}
+
+.acc-hint {
+    margin: 0;
+    font-size: var(--text-sm);
+    line-height: 1.25rem;
+    color: var(--color-text-faint);
+}
+
+/* Links que fazem papel de botão ("Esqueci minha senha", "Voltar para o
+   login", "Criar conta"...): alvo de 44px. */
+.acc-link {
+    display: inline-flex;
     align-items: center;
+    justify-content: center;
+    min-width: var(--r-touch);
+    min-height: var(--r-touch);
+    color: var(--color-text-soft);
+    font-size: var(--text-sm);
+    text-decoration: underline;
+    text-underline-offset: 3px;
 }
 
-/* Campos (fx-input) das telas de acesso: centralizados, como hoje. */
-.form-group .fx-input {
+.acc-form .fx-btn--link {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: var(--r-touch);
+    font-size: var(--text-sm);
+}
+
+/* "Esqueci minha senha", "Voltar": centralizados, logo abaixo da ação. */
+.acc-center {
+    align-self: center;
+}
+
+.acc-forgot {
+    margin-top: calc(-1 * var(--space-2));
+}
+
+/* "Não tem conta? Criar conta", "Já tem conta? Entrar". */
+.acc-switch {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: center;
+    gap: 0 var(--space-1);
+    margin: 0;
+    color: var(--color-text-faint);
+    font-size: var(--text-sm);
+}
+
+.acc-switch .acc-link {
+    color: var(--color-text);
+    font-weight: var(--weight-semibold);
+}
+
+/* "Reenviar código" e "Usar outro e-mail", nas pontas. */
+.acc-links {
+    display: flex;
+    justify-content: space-between;
+    gap: var(--space-3);
+}
+
+/* Código de 6 dígitos: grande e espaçado, fácil de conferir. */
+.acc-code {
+    font-size: var(--text-2xl);
+    letter-spacing: 10px;
+    font-variant-numeric: tabular-nums;
     text-align: center;
-    margin-bottom: 15px;
 }
 
-/* Mensagem de erro genérica */
-.error-message {
-    color: var(--color-danger-text);
-    font-size: 0.85rem;
-    text-align: center;
-    margin-top: 10px;
+/* Dica embaixo de uma caixa de seleção, alinhada ao texto dela. */
+.acc-checkhint {
+    margin-top: calc(-1 * var(--space-3));
+    padding-left: calc(20px + var(--space-2));
 }
 
-/* ----- Telas pequenas: a marca sai do canto e vai para o topo, sem cobrir o
-   formulário; o conteúdo ganha respiro nas laterais. ----- */
-@media (max-width: 768px) {
-    body {
-        padding: 0 var(--space-4) var(--space-8);
-        box-sizing: border-box;
+/* Regras da senha, marcadas ao digitar (shared/password-rules.ts). */
+.fx-rules {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    margin: calc(-1 * var(--space-2)) 0 0;
+    padding: 0;
+    list-style: none;
+    font-size: var(--text-sm);
+    line-height: 1.25rem;
+    color: var(--color-text-muted);
+}
+
+.fx-rules li::before {
+    content: "○ ";
+}
+
+.fx-rules li.is-ok {
+    color: var(--color-success-text);
+}
+
+.fx-rules li.is-ok::before {
+    content: "✓ ";
+}
+
+/* ----- Celular: o bloco no topo da tela ----- */
+@media (max-width: 599px) {
+    .acc {
+        padding-top: var(--space-6);
     }
 
-    .header {
-        position: static;
-        justify-content: center;
-        margin: var(--space-8) auto var(--space-4);
+    .acc::before {
+        flex-basis: 0;
     }
 
-    .header-name {
-        font-size: 2rem;
+    .acc-logo {
+        font-size: var(--text-3xl);
     }
 }

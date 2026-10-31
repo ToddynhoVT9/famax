@@ -12,19 +12,23 @@
     <link rel="stylesheet" href="css/auth/index.css">
 </head>
 
-<body>
-    <h1>FAMAX</h1>
-
-    <div class="auth-container">
-        <a href="html/user-pages/login.html" class="fx-btn fx-btn--chrome">Entrar</a>
-
-        <div class="divider"></div>
-
-        <!-- Link para a página de cadastro -->
-        <a href="html/user-pages/register.html" class="fx-btn fx-btn--warm">Criar conta</a>
-    </div>
+<body class="r r--nobar">
+    <!-- Tela inicial (sem moldura): o bloco um pouco acima do centro (2 : 3). -->
+    <main class="ini" id="main-content">
+        <div class="ini-col">
+            <h1 class="ini-name">FAMAX</h1>
+            <p class="ini-sub">O fórum das suas comunidades.</p>
+            <div class="ini-acts">
+                <a href="html/user-pages/login.html" class="fx-btn fx-btn--chrome ini-btn">Entrar</a>
+                <div class="ini-div" role="separator"></div>
+                <!-- Link para a página de cadastro -->
+                <a href="html/user-pages/register.html" class="fx-btn fx-btn--warm ini-btn">Criar conta</a>
+            </div>
+        </div>
+    </main>
 
     <script type="module" src="script/index.ts"></script>
+</body>
 </body>
 
 </html>

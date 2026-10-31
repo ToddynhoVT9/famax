@@ -1,94 +1,70 @@
 /* ===================================
-   FAMAX — Register Page
+   FAMAX — Criar conta
+   A base é a do auth-common.css; aqui, o aceite dos termos, a barra com
+   "Cadastrar" e a janela dos termos (r-win, do components.css).
    =================================== */
 
-.register-container {
+/* A barra de ações tem o fundo de ponta a ponta (::before com 100vmax): o
+   corte evita a rolagem lateral. */
+.acc {
+    overflow-x: clip;
+}
+
+/* "Aceito os termos de uso": a caixa e o link, cada um com alvo de 44px. */
+.acc-terms {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0 var(--space-1);
+}
+
+/* "Cadastrar" na largura do formulário, presa embaixo quando passa da dobra. */
+.acc-form .r-actionbar .fx-btn {
+    flex: 1 1 auto;
+}
+
+/* ----- Termos na janela: na medida de leitura, sem justificar ----- */
+.acc-wterms h3 {
+    margin: var(--space-2) 0 0;
+    font-size: var(--text-lg);
+    line-height: 1.625rem;
+    font-weight: var(--weight-bold);
+}
+
+.acc-wterms p,
+.acc-wterms li {
+    margin: 0;
+    max-width: var(--prose-measure);
+    color: var(--color-text-soft);
+    line-height: 1.6;
+}
+
+.acc-wterms ul {
     display: flex;
     flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    flex: 1;
-    width: 100%;
+    gap: var(--space-2);
+    margin: 0;
+    padding-left: var(--space-5);
 }
 
-.register-title {
-    margin-top: 0;
-    font-size: 1.6rem;
-    font-weight: 400;
-    margin-bottom: 25px;
-    text-align: center;
+/* "Abrir em página inteira", à esquerda das ações. */
+.acc-wfull {
+    margin-right: auto;
 }
 
-.form-group {
-    width: min(380px, 100%);
+/* O link do fim do texto é só do celular (nas outras faixas, ele está no rodapé). */
+.acc-wfull-phone {
+    display: none;
 }
 
-.form-group > .fx-input {
-    margin-bottom: 12px;
-}
+/* ----- Celular: no topo da janela, só "Aceitar"; o link vai para o texto ----- */
+@media (max-width: 599px) {
+    .acc-wlong {
+        display: none;
+    }
 
-/* Perfil privado e aceite dos termos (fx-check), centralizados. */
-.register-check {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 0.3em;
-    width: 100%;
-    margin: 10px 0 20px 0;
-    font-size: 0.95rem;
+    .acc-wfull-phone {
+        display: inline-flex;
+        align-self: flex-start;
+    }
 }
-
-.checkbox-hint {
-    margin: -14px 0 10px;
-    font-size: 0.8rem;
-    color: var(--color-text-muted);
-    text-align: center;
-}
-
-.terms-text {
-    padding: 0;
-    border: none;
-    background: none;
-    font: inherit;
-    cursor: pointer;
-    text-decoration: underline;
-    color: var(--color-text);
-}
-
-#registerButton {
-    width: 80%;
-}
-
-/* Janela dos termos (fx-dialog de formulário): só o texto é desta página. */
-.terms-full-page {
-    display: block;
-    font-size: 0.9rem;
-    color: var(--color-text-muted);
-}
-
-.modal-body h3 {
-    font-size: 1.1rem;
-    font-weight: 600;
-    margin: 20px 0 10px;
-}
-
-.modal-body ul {
-    margin: 0 0 15px 20px;
-    padding: 0;
-}
-
-.modal-body li {
-    font-size: 0.95rem;
-    line-height: 1.6;
-    margin-bottom: 8px;
-    color: var(--color-text-soft);
-}
-
-.modal-body p {
-    font-size: 0.95rem;
-    line-height: 1.6;
-    margin-bottom: 15px;
-    text-align: justify;
-    color: var(--color-text-soft);
-}
-

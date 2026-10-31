@@ -8,54 +8,78 @@
     <script>try{var t=localStorage.getItem("famax_theme");if(t==="light"||t==="dark")document.documentElement.dataset.theme=t}catch(e){}</script>
     <title>FAMAX - Criar uma conta</title>
     <link rel="stylesheet" href="../../css/global.css">
+    <!-- A barra de ações (r-actionbar) e o ícone da janela (r-ico) vêm do layout.css. -->
+    <link rel="stylesheet" href="../../css/layout.css">
     <link rel="stylesheet" href="../../css/auth/auth-common.css">
     <link rel="stylesheet" href="../../css/auth/register.css">
 </head>
-<body>
-    <a class="header" href="../../index.html" aria-label="FAMAX — início">
-        <span class="header-name">FAMAX</span>
-    </a>
+<body class="r r--nobar">
+    <main class="acc" id="main-content">
+        <div class="acc-col">
+            <a class="acc-logo" href="../../index.html" aria-label="FAMAX, início">FAMAX</a>
+            <h1 class="acc-title">Criar conta</h1>
+            <p class="acc-switch">Já tem conta?<a class="acc-link" href="login.html">Entrar</a></p>
 
-    <main class="register-container">
-        <h1 class="register-title">Criar uma conta</h1>
-        
-        <div class="form-group">
-            <label class="fx-label" for="email">E-mail</label>
-            <input type="email" id="email" class="fx-input" placeholder="E-mail" autocomplete="email">
-            <label class="fx-label" for="password">Senha</label>
-            <input type="password" id="password" class="fx-input" placeholder="Senha" autocomplete="new-password">
-            <label class="fx-label" for="confirm-password">Confirmar senha</label>
-            <input type="password" id="confirm-password" class="fx-input" placeholder="Confirmar senha" autocomplete="new-password">
-            <label class="fx-label" for="username">Nome de usuário</label>
-            <input type="text" id="username" class="fx-input" placeholder="Nome de usuário" autocomplete="username">
-            <label class="fx-label" for="display-name">Nome de exibição</label>
-            <input type="text" id="display-name" class="fx-input" placeholder="Nome de exibição" autocomplete="nickname">
-            
-            <div class="register-check">
-                <label class="fx-check"><input type="checkbox" id="private-checkbox"> Perfil privado</label>
-            </div>
-            <p class="checkbox-hint">Perfis privados só aparecem na busca para quem já conversa com você. Dá para mudar depois.</p>
+            <div class="acc-form">
+                <!-- A faixa de erro fica no topo do formulário; nada muda de lugar. -->
+                <div class="fx-banner fx-banner--danger" id="register-error" role="alert" hidden></div>
 
-            <div class="register-check">
-                <label class="fx-check"><input type="checkbox" id="terms-checkbox"> Aceitar</label>
-                <button type="button" class="terms-text" id="termsTrigger" aria-haspopup="dialog">termos de usuário</button>
+                <div class="fx-field">
+                    <label class="fx-label" for="email">E-mail</label>
+                    <input type="email" id="email" class="fx-input" placeholder="ana@exemplo.com" autocomplete="email">
+                </div>
+                <div class="fx-field">
+                    <label class="fx-label" for="password">Senha</label>
+                    <input type="password" id="password" class="fx-input" autocomplete="new-password" aria-describedby="password-rules">
+                </div>
+                <!-- Marcadas ao digitar (shared/password-rules.ts); quem valida é o servidor. -->
+                <ul class="fx-rules" id="password-rules">
+                    <li data-rule="length">Mínimo de 8 caracteres</li>
+                    <li data-rule="digits">Pelo menos 3 números</li>
+                    <li data-rule="special">Pelo menos 1 caractere especial</li>
+                </ul>
+                <div class="fx-field">
+                    <label class="fx-label" for="confirm-password">Confirmar senha</label>
+                    <input type="password" id="confirm-password" class="fx-input" autocomplete="new-password">
+                </div>
+                <div class="fx-field">
+                    <label class="fx-label" for="username">Nome de usuário</label>
+                    <input type="text" id="username" class="fx-input" autocomplete="username">
+                </div>
+                <div class="fx-field">
+                    <label class="fx-label" for="display-name">Nome de exibição</label>
+                    <input type="text" id="display-name" class="fx-input" autocomplete="nickname">
+                </div>
+
+                <label class="fx-check"><input type="checkbox" id="private-checkbox" aria-describedby="privateHint"> Perfil privado</label>
+                <p class="acc-hint acc-checkhint" id="privateHint">Perfis privados só aparecem na busca para quem já conversa com você. Dá para mudar depois.</p>
+
+                <div class="acc-terms">
+                    <label class="fx-check"><input type="checkbox" id="terms-checkbox"> Aceito os</label>
+                    <button type="button" class="fx-btn fx-btn--link" id="termsTrigger" aria-haspopup="dialog">termos de uso</button>
+                </div>
+
+                <!-- Presa embaixo quando passa da dobra. -->
+                <div class="r-actionbar">
+                    <button class="fx-btn fx-btn--chrome" id="registerButton">Cadastrar</button>
+                </div>
             </div>
-            
-            <button class="fx-btn fx-btn--chrome" id="registerButton">Cadastrar</button>
-            <div id="register-error" class="error-message" role="alert" hidden></div>
         </div>
     </main>
 
-    <!--Termos de Uso -->
-    <div class="fx-overlay" id="terms-modal" hidden>
-        <div class="fx-dialog fx-dialog--form" role="dialog" aria-modal="true" aria-labelledby="terms-modal-title" tabindex="-1">
-            <div class="fx-dialog-head">
-                <h2 class="fx-dialog-title" id="terms-modal-title">Termos de Uso e Condições</h2>
-                <button type="button" class="fx-btn fx-btn--icon" id="closeModalButton" aria-label="Fechar termos">&times;</button>
+    <!-- Termos de uso: a janela de formulário da R (r-win). O texto continua
+         copiado aqui e em legal/terms.html (ponto em aberto). -->
+    <div class="r-win-veil" id="terms-modal" hidden>
+        <div class="r-win" role="dialog" aria-modal="true" aria-labelledby="terms-modal-title">
+            <div class="r-win-head">
+                <div class="r-win-titles">
+                    <h2 class="r-win-title" id="terms-modal-title">Termos de uso</h2>
+                    <p class="r-win-sub">Última atualização: Março de 2026</p>
+                </div>
+                <button type="button" class="fx-btn fx-btn--icon r-win-close" id="closeModalButton" aria-label="Fechar termos"><svg class="r-ico" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
             </div>
-            <a href="../legal/terms.html" class="terms-full-page">Abrir em página inteira</a>
-            <div class="modal-body">
-                <h3>1. Aceitação dos Termos</h3>
+            <div class="r-win-body acc-wterms">
+                <h3>1. Aceitação dos termos</h3>
                 <p>Ao acessar, registrar uma conta e utilizar o fórum <strong>FAMAX</strong>, você concorda automática e integralmente em cumprir e estar vinculado a estes Termos de Uso. Caso não concorde com qualquer regra imposta aqui, você não deve utilizar a plataforma.</p>
 
                 <h3>2. Regras de Conduta e Postagem</h3>
@@ -85,10 +109,19 @@
 
                 <h3>7. Contato e Denúncias</h3>
                 <p>Em caso de dúvidas a respeito do processo, ou se necessitar reportar postagens irregulares, utilize a ferramenta oficial de "Denunciar Post" ou entre em contato direto com a administração/moderação ativa.</p>
+
+                <!-- No celular o rodapé sai: o link fica no fim do texto. -->
+                <a href="../legal/terms.html" class="acc-link acc-wfull-phone">Abrir em página inteira</a>
+            </div>
+            <div class="r-win-foot">
+                <a href="../legal/terms.html" class="acc-link acc-wfull">Abrir em página inteira</a>
+                <button type="button" class="fx-btn fx-btn--secondary" id="termsClose">Fechar</button>
+                <button type="button" class="fx-btn fx-btn--primary" id="termsAccept" data-win-primary>Aceitar<span class="acc-wlong"> os termos</span></button>
             </div>
         </div>
     </div>
 
     <script type="module" src="../../script/user-script/register.ts"></script>
+</body>
 </body>
 </html>

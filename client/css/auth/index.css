@@ -1,43 +1,80 @@
 /* ===================================
-   FAMAX — Landing Page (index)
+   FAMAX — Tela inicial
+   "FAMAX" em display, a frase e os botões e a divisória em 380px (343 no
+   celular). O bloco fica um pouco acima do centro: o espaço de cima e o de
+   baixo na proporção 2 : 3.
    =================================== */
 
-body {
-    align-items: center;
-    justify-content: center;
-    height: 100vh;
+.ini {
+    display: flex;
+    flex-direction: column;
+    flex: 1 0 auto;
+    min-height: 100dvh;
+    padding: var(--space-6) var(--r-gutter);
 }
 
-h1 {
-    font-size: 6rem;
-    font-weight: 700;
-    letter-spacing: 1px;
-    margin: 0;
-    margin-bottom: 3rem;
+.ini::before {
+    content: "";
+    flex: 2 1 0;
 }
 
-.auth-container {
+.ini::after {
+    content: "";
+    flex: 3 1 0;
+}
+
+.ini-col {
     display: flex;
     flex-direction: column;
     align-items: center;
     width: 100%;
+    max-width: var(--form-width);
+    margin: 0 auto;
 }
 
-/* Entrar (fx-btn chrome) e Criar conta (fx-btn warm), na mesma largura. */
-.auth-container > .fx-btn {
-    width: min(300px, 100%);
-    min-height: 48px;
+.ini-name {
+    margin: 0;
+    font-size: var(--text-display);
+    line-height: 1.1;
+    font-weight: var(--weight-heavy);
+    letter-spacing: 1px;
 }
 
-.divider {
-    width: min(360px, 100%);
+.ini-sub {
+    margin: var(--space-3) 0 var(--space-10);
+    color: var(--color-text-soft);
+    font-size: var(--text-xl);
+    line-height: 1.75rem;
+    text-align: center;
+}
+
+.ini-acts {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    width: 100%;
+}
+
+/* Entrar (Button chrome) e Criar conta (Button warm), com 48px. */
+.ini-btn {
+    min-height: var(--space-12);
+}
+
+.ini-div {
     height: 2px;
-    background-color: var(--color-text);
-    margin: 25px 0;
+    margin: var(--space-6) 0;
+    background: var(--color-text);
 }
 
-@media (max-width: 480px) {
-    h1 {
-        font-size: 3.5rem;
+/* ----- Celular ----- */
+@media (max-width: 599px) {
+    .ini-name {
+        font-size: var(--text-display-phone);
+    }
+
+    .ini-sub {
+        margin-bottom: var(--space-8);
+        font-size: var(--text-lg);
+        line-height: 1.625rem;
     }
 }
