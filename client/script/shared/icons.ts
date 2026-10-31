@@ -38,4 +38,6 @@ export const ICONS = {
     next: svg('<path d="M9 6l6 6-6 6"/>'),
     // "Marcar todas como lidas" no celular (notificações).
     checks: svg('<path d="M2 13l4 4L16 7"/><path d="M11 16l1 1L22 7"/>'),
+    // Local do evento (comunidade).
+    place: svg('<path d="M12 21s-7-6.2-7-11a7 7 0 0 1 14 0c0 4.8-7 11-7 11z"/><circle cx="12" cy="10" r="2.5"/>'),
 };

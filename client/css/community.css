@@ -1,614 +1,823 @@
 /* ===================================
-   FAMAX — Community Page
+   FAMAX — Página da comunidade
+   CommunityHeader, Widget, Leaderboard e EventCard (classes fx- do design
+   system) e o layout da página (cm-): topo, abas das vistas, a grade com a
+   coluna da direita e as vistas. O post é do post.css; a lista de membros,
+   do components.css (MemberList). A coluna (.r-col--wide), as abas
+   (.r-tabs) e os filtros que rolam (.r-hscroll) vêm do layout.css.
    =================================== */
 
-/* ----- TABS SUPERIORES ----- */
-/* Abas do feed (fx-tabs): só o espaço até a lista. */
-.tf-tabs {
-    margin-bottom: 30px;
-}
-
-/* ----- LAYOUT GRID ----- */
-.tf-layout {
-    display: grid;
-    grid-template-columns: 1fr 320px;
-    gap: 30px;
-    align-items: start;
-}
-
-/* ----- WIDGETS (coluna direita) ----- */
-.tf-sidebar-col {
+/* ----- CommunityHeader: capa de 96px, nome, meta, descrição e ações ----- */
+.cm-hero {
     display: flex;
     flex-direction: column;
-    gap: 20px;
+    gap: var(--space-4);
 }
 
-.tf-widget {
-    background-color: var(--color-paper);
-    color: var(--color-ink);
-    border-radius: 8px;
-    padding: 30px 20px;
-    border: 1px solid var(--color-paper-border);
-}
-
-.tf-greeting-widget {
-    text-align: center;
-}
-
-.tf-widget-title-center {
-    font-size: 1.3rem;
-    font-weight: 700;
-    margin-bottom: 20px;
-    color: var(--color-ink);
-}
-
-.tf-widget-title {
-    font-size: 1.1rem;
-    font-weight: 700;
-    margin-bottom: 20px;
-    color: var(--color-ink);
-}
-
-/* ----- RESPONSIVIDADE ----- */
-@media (max-width: 1024px) {
-    .tf-layout {
-        grid-template-columns: 1fr;
-    }
-}
-
-/* ----- CABEÇALHO DA COMUNIDADE ----- */
-.tf-community-head {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    gap: 12px 18px;
-    margin-bottom: 22px;
-}
-
-.tf-community-name {
-    font-size: 1.9rem;
-    font-weight: 800;
-    color: var(--color-text);
-    margin: 0;
-}
-
-.tf-community-meta {
-    color: var(--color-text-faint);
-    font-size: 0.95rem;
-    margin: 0;
-}
-
-/* ===================================
-   Comunidade completa (prompt 06)
-   =================================== */
-
-/* ----- Topo: capa, descrição e ações ----- */
-.tf-community-hero {
-    margin-bottom: 22px;
-}
-
-.tf-community-banner {
-    height: 160px;
-    border-radius: 10px;
-    margin-bottom: 18px;
+.fx-cbanner {
+    flex-shrink: 0;
+    height: var(--cover-height-dense);
     display: flex;
     align-items: center;
     justify-content: center;
     overflow: hidden;
+    border-radius: var(--radius-lg);
 }
 
-.tf-community-banner.has-image {
+.fx-cbanner.has-image {
     background-size: cover;
     background-position: center;
 }
 
+/* Enquanto a comunidade carrega: um fundo neutro no lugar da cor. */
+.cm-hero[aria-busy="true"] .fx-cbanner {
+    background: var(--color-tint-page);
+}
+
 /* Sem capa: a inicial grande sobre a cor estável da comunidade. */
-.tf-community-initial {
+.fx-cbanner-initial {
     font-size: 4rem;
-    font-weight: 800;
-    color: rgba(255, 255, 255, 0.85);
+    line-height: 1;
+    font-weight: var(--weight-heavy);
+    color: var(--color-on-accent);
 }
 
-.tf-community-hero[aria-busy="true"] .tf-community-banner {
-    background-color: rgba(255, 255, 255, 0.08);
-}
-
-.tf-community-head {
-    margin-bottom: 0;
+.fx-chead {
+    display: flex;
+    flex-wrap: wrap;
     align-items: flex-start;
+    gap: var(--space-3) var(--space-5);
 }
 
-.tf-community-info {
-    flex: 1;
+.fx-cinfo {
+    flex: 1 1 320px;
     min-width: 0;
 }
 
-.tf-community-description {
-    margin: 10px 0 0;
-    color: var(--color-text-soft);
-    line-height: 1.5;
-    white-space: pre-line;
-    max-width: 760px;
+.fx-cname {
+    margin: 0;
+    font-size: var(--text-3xl);
+    line-height: 2.5rem;
+    font-weight: var(--weight-heavy);
+    overflow-wrap: anywhere;
 }
 
-.tf-community-actions {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-}
-
-.tf-owner-badge {
-    font-size: 0.85rem;
-    color: var(--color-text-muted);
-}
-
-/* ----- Menu da participação ----- */
-.tf-member-menu {
-    position: relative;
-}
-
-/* Os menus (fx-menu) abrem sob o botão, alinhados à direita. */
-.tf-member-menu > .fx-menu {
-    position: absolute;
-    right: 0;
-    top: calc(100% + 6px);
-    z-index: var(--z-popover);
-}
-
-.tf-tab-hint {
-    color: var(--color-text-muted);
-    margin: -12px 0 16px;
-    font-size: 0.95rem;
-}
-
-.tf-category-chips {
+/* Categoria · membros e, para o dono, o selo "Você é o dono". */
+.fx-cmeta {
     display: flex;
     flex-wrap: wrap;
-    gap: 8px;
-    margin-bottom: 16px;
+    align-items: center;
+    gap: var(--space-2);
+    margin: 0;
+    color: var(--color-text-faint);
 }
 
-/* ----- Widget "Em breve" ----- */
-.tf-widget-soon {
-    color: var(--color-ink-muted);
-    font-size: 0.95rem;
-    line-height: 1.5;
+.fx-cdesc {
+    margin: var(--space-3) 0 0;
+    max-width: var(--prose-measure);
+    color: var(--color-text-soft);
+    white-space: pre-line;
+    overflow-wrap: anywhere;
 }
 
-@media (max-width: 768px) {
-    .tf-community-banner {
-        height: 110px;
-    }
-
-    .tf-community-actions {
-        width: 100%;
-    }
+.fx-cactions {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--space-3);
 }
 
-/* ----- MODERAÇÃO: atalhos, ban e vistas Regras / Membros ----- */
-.tf-banned-badge {
-    margin-left: auto;
-    font-size: 0.9rem;
+.fx-cactions .fx-btn .r-ico {
+    width: 20px;
+    height: 20px;
+}
+
+/* Botão só com ícone (⋯) ao lado de botões de texto: a mesma altura deles. */
+.cm-iconbtn {
+    width: var(--touch-target);
+    padding: 0;
+    flex-shrink: 0;
+}
+
+/* Menu sob um botão ("Participando ✓", ⋯), alinhado à direita. */
+.cm-menu {
+    position: relative;
+    display: inline-flex;
+}
+
+.cm-menu > .fx-menu {
+    position: absolute;
+    top: calc(100% + var(--space-1));
+    right: 0;
+    z-index: var(--z-popover);
+    min-width: 200px;
+}
+
+.cm-banned {
+    padding: var(--space-2) var(--space-4);
+    border: 1px solid var(--color-danger-strong);
+    border-radius: var(--radius-lg);
     color: var(--color-danger-text);
-    border: 1px solid rgba(220, 53, 69, 0.5);
-    border-radius: 8px;
-    padding: 8px 14px;
+    font-size: var(--text-sm);
+    line-height: 1.25rem;
 }
 
-.tf-view {
-    width: 100%;
-    max-width: 860px;
+/* ----- Grade: a vista aberta e a coluna da direita (desktop: 728 + 320) ----- */
+.cm-grid {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) var(--aside-width);
+    gap: var(--space-8);
+    align-items: start;
 }
 
-.tf-view-header {
+.cm-main,
+.cm-view {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-4);
+    min-width: 0;
+}
+
+.cm-view > .list-more {
+    margin-top: 0;
+}
+
+.fx-aside {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-5);
+}
+
+/* ----- Barra do feed: o que ver (chips) e a ordenação ----- */
+.cm-toolbar {
+    display: flex;
+    align-items: center;
+    gap: var(--space-3);
+}
+
+.cm-toolbar .r-hscroll {
+    flex: 1 1 auto;
+    min-width: 0;
+}
+
+.fx-sort {
+    display: inline-flex;
+    flex-shrink: 0;
+    align-items: center;
+    gap: var(--space-2);
+    font-size: var(--text-sm);
+    color: var(--color-text-muted);
+}
+
+.fx-sort .fx-input--sm {
+    min-height: var(--r-touch);
+}
+
+.cm-hint {
+    margin: 0;
+    font-size: var(--text-sm);
+    line-height: 1.25rem;
+    color: var(--color-text-muted);
+}
+
+/* ----- Widget (coluna da direita) ----- */
+.fx-widget {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-5);
+    padding: var(--space-8) var(--space-5);
+    background: var(--color-paper);
+    color: var(--color-ink);
+    border: 1px solid var(--color-paper-border);
+    border-radius: var(--radius-lg);
+}
+
+.fx-widget-head {
     display: flex;
     align-items: baseline;
     justify-content: space-between;
-    gap: 12px;
-    margin-bottom: 14px;
+    gap: var(--space-2);
 }
 
-.tf-view-title {
-    font-size: 1.4rem;
-    font-weight: 800;
+.fx-widget-title {
+    margin: 0;
+    font-size: var(--text-lg);
+    line-height: 1.625rem;
+    font-weight: var(--weight-bold);
 }
 
-.tf-view-action {
-    color: var(--color-text-soft);
-    font-size: 0.95rem;
+.fx-widget-title--center {
+    font-size: var(--text-xl);
+    line-height: 1.75rem;
+    text-align: center;
 }
 
-.tf-rules-text {
-    background-color: var(--color-paper);
+.fx-widget-link,
+.cm-mini-link {
+    display: inline-flex;
+    align-items: center;
+    flex-shrink: 0;
+    min-height: var(--r-touch);
+    font-size: var(--text-sm);
+    line-height: 1.25rem;
+    color: var(--color-ink-muted);
+    text-decoration: underline;
+    text-underline-offset: 3px;
+    white-space: nowrap;
+    cursor: pointer;
+}
+
+.fx-widget .fx-btn--dark {
+    width: 100%;
+}
+
+/* Carregando, vazio, erro. */
+.cm-wstatus {
+    margin: 0;
+    font-size: var(--text-sm);
+    line-height: 1.25rem;
+    color: var(--color-ink-muted);
+}
+
+.cm-wstatus.error {
+    color: var(--color-danger);
+}
+
+/* ----- Próximos eventos (widget) ----- */
+.fx-upcoming {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-3);
+}
+
+.fx-upcoming-item {
+    display: flex;
+    align-items: center;
+    gap: var(--space-3);
+    min-height: var(--r-touch);
     color: var(--color-ink);
-    border-radius: 8px;
-    padding: 22px 24px;
+    text-decoration: none;
+}
+
+.fx-upcoming-item:hover strong {
+    text-decoration: underline;
+}
+
+.fx-upcoming-text {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+    font-size: var(--text-sm);
+    line-height: 1.25rem;
+}
+
+.fx-upcoming-text strong {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.fx-upcoming-when {
+    font-size: var(--text-xs);
+    line-height: 1rem;
+    color: var(--color-ink-faint);
+}
+
+.fx-upcoming-when::first-letter,
+.fx-event-when::first-letter {
+    text-transform: uppercase;
+}
+
+/* ----- Data (EventCard e widget) ----- */
+.fx-date {
+    flex-shrink: 0;
+    width: 56px;
+    height: 64px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    border-radius: var(--radius-lg);
+    background: var(--color-dark-2);
+    color: var(--color-on-accent);
+    line-height: 1.1;
+}
+
+.fx-date-day {
+    font-size: var(--text-2xl);
+    font-weight: var(--weight-heavy);
+}
+
+.fx-date-month {
+    font-size: var(--text-xs);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.fx-date--sm {
+    width: 44px;
+    height: 48px;
+}
+
+.fx-date--sm .fx-date-day {
+    font-size: var(--text-lg);
+}
+
+/* ----- Leaderboard ("Maiores criadores") ----- */
+/* Chips de período (fx-chip--paper): dividem a largura do widget. */
+.fx-lb-tabs {
+    display: flex;
+    gap: var(--space-2);
+}
+
+.fx-lb-tabs .fx-chip {
+    flex: 1;
+    justify-content: center;
+    padding: 0 var(--space-2);
+    white-space: nowrap;
+}
+
+.fx-lb-list {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-3);
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+
+.fx-lb-list:empty {
+    display: none;
+}
+
+.fx-lb-item {
+    display: flex;
+    align-items: center;
+    gap: var(--space-3);
+}
+
+.fx-lb-rank {
+    width: 24px;
+    flex-shrink: 0;
+    text-align: center;
+    font-weight: var(--weight-bold);
+    color: var(--color-ink-faint);
+}
+
+.fx-lb-rank--1 { color: var(--color-gold); }
+.fx-lb-rank--3 { color: var(--color-bronze); }
+
+.fx-lb-user {
+    display: flex;
+    align-items: center;
+    gap: var(--space-3);
+    flex: 1;
+    min-width: 0;
+    min-height: var(--r-touch);
+    color: var(--color-ink);
+    text-decoration: none;
+}
+
+.fx-lb-user:hover .fx-lb-name {
+    text-decoration: underline;
+}
+
+.fx-lb-name {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-weight: var(--weight-semibold);
+}
+
+.fx-lb-points {
+    flex-shrink: 0;
+    font-size: var(--text-sm);
+    line-height: 1.25rem;
+    color: var(--color-ink-muted);
+}
+
+.fx-lb-note {
+    margin: 0;
+    font-size: var(--text-xs);
+    line-height: 1rem;
+    color: var(--color-ink-faint);
+}
+
+/* ----- Tablet e celular: eventos e ranking em versão curta, antes do feed ----- */
+.cm-strip {
+    display: none;
+}
+
+.cm-mini {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-2);
+    min-width: 0;
+    padding: var(--space-2) var(--space-4) var(--space-4);
+    border: 1px solid var(--color-paper-border);
+    border-radius: var(--radius-lg);
+    background: var(--color-paper);
+    color: var(--color-ink);
+}
+
+.cm-mini-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-2);
+    min-height: var(--r-touch);
+}
+
+.cm-mini-title {
+    margin: 0;
+    font-size: var(--text-md);
+    line-height: 1.5rem;
+    font-weight: var(--weight-bold);
+}
+
+.cm-mini .fx-upcoming-text strong {
+    white-space: normal;
+}
+
+/* Pódio: os 3 primeiros lado a lado. */
+.cm-podium {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: var(--space-2);
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+
+.cm-podium:empty {
+    display: none;
+}
+
+.cm-podium a {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: var(--space-1);
+    min-width: 0;
+    min-height: var(--r-touch);
+    color: var(--color-ink);
+    font-size: var(--text-sm);
+    line-height: 1.25rem;
+    font-weight: var(--weight-semibold);
+    text-decoration: none;
+}
+
+.cm-podium-name {
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+/* ----- Vistas: Regras, Membros, Eventos ----- */
+.cm-vhead {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-3);
+}
+
+.cm-vtitle {
+    margin: 0;
+    font-size: var(--text-2xl);
+    line-height: 2rem;
+    font-weight: var(--weight-bold);
+}
+
+/* "Editar regras": link que faz papel de botão, com o alvo da faixa. */
+.cm-vaction {
+    display: inline-flex;
+    align-items: center;
+    min-height: var(--r-touch);
+    color: var(--color-text-soft);
+    font-size: var(--text-sm);
+    text-decoration: underline;
+    text-underline-offset: 3px;
+}
+
+/* Regras: texto puro com as quebras de linha de quem escreveu, na medida de leitura. */
+.cm-rules {
+    padding: var(--space-6);
+    border-radius: var(--radius-lg);
+    background: var(--color-paper);
+    color: var(--color-ink);
+}
+
+.cm-rules-text {
+    margin: 0;
+    max-width: var(--prose-measure);
     line-height: 1.6;
     white-space: pre-wrap;
     overflow-wrap: anywhere;
 }
 
-.tf-rules-text.is-empty {
+.cm-rules-text.is-empty {
     color: var(--color-ink-faint);
 }
 
-.tf-members-total {
+/* Membros: o total, os filtros e a lista (fx-members). */
+.cm-mtotal {
+    margin: 0;
+    font-size: var(--text-sm);
+    line-height: 1.25rem;
     color: var(--color-text-faint);
-    font-size: 0.9rem;
-    margin: 10px 0;
 }
 
-.tf-members-list {
-    list-style: none;
-    background-color: var(--color-paper);
-    border-radius: 8px;
-    overflow: hidden;
-}
-
-.tf-member {
-    display: flex;
-    align-items: center;
-    gap: 14px;
-    padding: 14px 18px;
-    color: var(--color-ink);
-    border-bottom: 1px solid var(--color-paper-border);
-}
-
-.tf-member:last-child {
-    border-bottom: none;
-}
-
-.tf-member-info {
-    flex: 1;
-    min-width: 0;
-}
-
-.tf-member-name {
-    font-weight: 700;
-    text-decoration: none;
-    overflow-wrap: anywhere;
-}
-
-.tf-member-name:hover {
-    text-decoration: underline;
-}
-
-.tf-member-meta {
-    display: block;
-    font-size: 0.85rem;
-    color: var(--color-ink-faint);
-    margin-top: 2px;
-}
-
-.tf-member-actions {
+.cm-mname {
     display: flex;
     flex-wrap: wrap;
-    justify-content: flex-end;
-    gap: 6px;
-}
-
-@media (max-width: 600px) {
-    .tf-member {
-        flex-wrap: wrap;
-    }
-
-    .tf-member-actions {
-        width: 100%;
-        justify-content: flex-start;
-        padding-left: 56px;
-    }
-}
-
-/* ----- Widget "Maiores criadores" (community-leaderboard.ts) ----- */
-.tf-lb-tabs {
-    display: flex;
-    gap: 6px;
-    margin-bottom: 14px;
-}
-
-/* Chips de período (fx-chip--paper): dividem a largura do widget. */
-.tf-lb-tabs > .fx-chip {
-    flex: 1;
-}
-
-.tf-lb-list {
-    list-style: none;
-    margin: 0;
-    padding: 0;
-    display: flex;
-    flex-direction: column;
-    gap: 10px;
-}
-
-.tf-lb-item {
-    display: flex;
     align-items: center;
-    gap: 10px;
+    gap: var(--space-1) var(--space-2);
 }
 
-.tf-lb-rank {
-    width: 22px;
+.cm-macts {
+    display: flex;
     flex-shrink: 0;
-    text-align: center;
-    font-weight: 700;
+    align-items: center;
+    gap: var(--space-2);
+}
+
+.cm-mmore {
     color: var(--color-ink-faint);
 }
 
-.tf-lb-rank--1 { color: var(--color-gold); }
-.tf-lb-rank--2 { color: var(--color-ink-faint); }
-.tf-lb-rank--3 { color: var(--color-bronze); }
-
-.tf-lb-user {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    min-width: 0;
-    flex: 1;
-    color: var(--color-ink);
-    text-decoration: none;
-}
-
-.tf-lb-user:hover .tf-lb-name {
-    text-decoration: underline;
-}
-
-.tf-lb-name {
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-    font-weight: 600;
-}
-
-.tf-lb-points {
-    flex-shrink: 0;
-    font-size: 0.85rem;
-    color: var(--color-ink-muted);
-}
-
-.tf-lb-status {
-    color: var(--color-ink-muted);
-    font-size: 0.9rem;
-    line-height: 1.5;
-}
-
-.tf-lb-status.error {
-    color: var(--color-danger);
-}
-
-.tf-lb-note {
-    margin-top: 16px;
-    font-size: 0.75rem;
-    color: var(--color-ink-faint);
-}
-
-/* ----- Ordenação do feed ----- */
-.tf-feed-toolbar {
+/* Eventos: Próximos e Anteriores (chips) e "Novo evento". */
+.cm-etool {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    flex-wrap: wrap;
-    gap: 10px;
-    margin-bottom: 12px;
+    gap: var(--space-3);
 }
 
-.tf-feed-toolbar .tf-tab-hint {
-    margin: 0;
-    flex: 1 1 260px;
-}
-
-.tf-sort {
-    display: inline-flex;
-    align-items: center;
-    gap: 8px;
-    margin-left: auto;
-    color: var(--color-text-muted);
-    font-size: 0.9rem;
-}
-
-/* ----- Eventos (community-events.ts) ----- */
-.tf-events-toolbar {
+.cm-etabs {
     display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 12px;
-    margin-bottom: 14px;
+    gap: var(--space-2);
 }
 
-.tf-events-tabs {
-    display: flex;
-    gap: 6px;
-    max-width: 320px;
-    flex: 1;
+.cm-newevent .r-ico {
+    width: 20px;
+    height: 20px;
 }
 
-.tf-events-tabs > .fx-chip {
-    flex: 1;
-}
-
-.tf-events-list {
+/* ----- EventCard ----- */
+.fx-events {
     display: flex;
     flex-direction: column;
-    gap: 12px;
+    gap: var(--space-3);
 }
 
-.tf-event {
+.fx-events:empty {
+    display: none;
+}
+
+.fx-event {
     display: flex;
-    gap: 16px;
-    padding: 18px;
-    background-color: var(--color-paper);
+    gap: var(--space-4);
+    padding: var(--space-5);
+    background: var(--color-paper);
     color: var(--color-ink);
-    border-radius: 8px;
     border: 1px solid var(--color-paper-border);
+    border-radius: var(--radius-lg);
 }
 
-.tf-event.is-past {
-    opacity: 0.75;
-}
-
-.tf-event-date {
-    flex-shrink: 0;
-    width: 58px;
-    height: 62px;
-    border-radius: 8px;
-    background-color: var(--color-dark-2);
-    color: var(--color-on-accent);
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    line-height: 1.1;
-}
-
-.tf-event-day {
-    font-size: 1.4rem;
-    font-weight: 800;
-}
-
-.tf-event-month {
-    font-size: 0.75rem;
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
-}
-
-.tf-event-body {
+.fx-event-body {
     flex: 1;
     min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-1);
 }
 
-.tf-event-title {
-    font-size: 1.1rem;
-    font-weight: 700;
-    margin: 0 0 4px;
+.fx-event-title {
+    margin: 0;
+    font-size: var(--text-lg);
+    line-height: 1.625rem;
+    font-weight: var(--weight-bold);
+    overflow-wrap: anywhere;
 }
 
-.tf-event-when {
-    margin: 0 0 4px;
-    color: var(--color-ink-soft);
-    font-size: 0.9rem;
-}
-
-.tf-event-when::first-letter {
-    text-transform: uppercase;
-}
-
-.tf-event-location {
-    margin: 0 0 6px;
-    font-size: 0.9rem;
+.fx-event-when,
+.fx-event-place {
+    margin: 0;
+    font-size: var(--text-sm);
+    line-height: 1.25rem;
     color: var(--color-ink-soft);
     overflow-wrap: anywhere;
 }
 
-.tf-event-location a {
+.fx-event-place a {
     color: var(--color-link);
 }
 
-.tf-event-description {
-    margin: 6px 0 0;
+/* Local com o ícone de marcador. */
+.cm-place {
+    display: flex;
+    align-items: flex-start;
+    gap: var(--space-1);
+}
+
+.cm-place .r-ico {
+    width: 16px;
+    height: 16px;
+    margin-top: 2px;
+}
+
+.fx-event-desc {
+    margin: var(--space-1) 0 0;
+    max-width: var(--prose-measure);
+    color: var(--color-ink-soft);
     white-space: pre-wrap;
     overflow-wrap: anywhere;
-    color: var(--color-ink-soft);
-    font-size: 0.95rem;
 }
 
-.tf-event-footer {
+.fx-event-foot {
     display: flex;
-    align-items: center;
     flex-wrap: wrap;
-    gap: 10px;
-    margin-top: 12px;
-}
-
-.tf-event-count {
-    color: var(--color-ink-faint);
-    font-size: 0.85rem;
-    margin-right: auto;
-}
-
-.tf-widget-head {
-    display: flex;
-    align-items: baseline;
-    justify-content: space-between;
-    gap: 8px;
-}
-
-.tf-upcoming-all {
-    font-size: 0.85rem;
-    color: var(--color-ink-muted);
-    cursor: pointer;
-}
-
-.tf-upcoming-list {
-    display: flex;
-    flex-direction: column;
-    gap: 10px;
-}
-
-.tf-upcoming-item {
-    display: flex;
     align-items: center;
-    gap: 10px;
-    color: var(--color-ink);
-    text-decoration: none;
+    gap: var(--space-3);
+    margin-top: var(--space-3);
 }
 
-.tf-upcoming-item .tf-event-date {
-    width: 44px;
-    height: 46px;
-}
-
-.tf-upcoming-item .tf-event-day {
-    font-size: 1.05rem;
-}
-
-.tf-upcoming-text {
-    display: flex;
-    flex-direction: column;
-    min-width: 0;
-}
-
-.tf-upcoming-text strong {
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-}
-
-.tf-upcoming-item:hover strong {
-    text-decoration: underline;
-}
-
-.tf-upcoming-when {
-    font-size: 0.8rem;
+.fx-event-count {
+    margin-right: auto;
+    font-size: var(--text-sm);
+    line-height: 1.25rem;
     color: var(--color-ink-faint);
 }
 
-.tf-upcoming-when::first-letter {
-    text-transform: uppercase;
-}
-
+/* ----- Janela de evento (community-events.ts): Início e Fim lado a lado ----- */
 .modal-row {
     display: grid;
     grid-template-columns: 1fr 1fr;
-    gap: 12px;
-}
-
-@media (max-width: 560px) {
-    .modal-row {
-        grid-template-columns: 1fr;
-    }
-
-    .tf-events-toolbar {
-        flex-direction: column;
-        align-items: stretch;
-    }
-
-    .tf-events-tabs {
-        max-width: none;
-    }
+    gap: var(--space-3);
 }
 
 /* ----- Conteúdo adulto (+18) ----- */
 /* Comunidade +18 para quem não pode ver (fx-banner de perigo). */
 #nsfwBanner {
-    margin: 0 0 18px;
+    margin: 0;
 }
 
+/* =====================================================================
+   Faixas: desktop (1280+), compacto (1024–1279), tablet (600–1023),
+   celular (até 599)
+   ===================================================================== */
+
+/* Ações do topo e dos membros que mudam de lugar com a faixa. */
+@media (min-width: 1024px) {
+    .cm-narrow {
+        display: none;
+    }
+}
+
+@media (max-width: 1279px) {
+    .cm-desktop-only {
+        display: none;
+    }
+}
+
+@media (min-width: 1280px) {
+    .cm-below-desktop {
+        display: none;
+    }
+}
+
+@media (min-width: 600px) {
+    .cm-show-phone {
+        display: none;
+    }
+}
+
+/* ----- Compacto: 656 + 280, gap de 24px ----- */
+@media (min-width: 1024px) and (max-width: 1279px) {
+    .cm-grid {
+        grid-template-columns: minmax(0, 1fr) var(--aside-width-compact);
+        gap: var(--space-6);
+    }
+}
+
+/* ----- Tablet e celular: uma coluna; eventos e ranking antes do feed ----- */
+@media (max-width: 1023px) {
+    .cm-wide {
+        display: none;
+    }
+
+    .cm-grid {
+        grid-template-columns: minmax(0, 1fr);
+    }
+
+    .cm-aside {
+        display: none;
+    }
+
+    .cm-strip {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: var(--space-3);
+    }
+}
+
+/* ----- Celular ----- */
+@media (max-width: 599px) {
+    .fx-cname {
+        font-size: var(--text-2xl);
+        line-height: 2rem;
+    }
+
+    /* As ações descem para uma linha própria e dividem a largura. */
+    .fx-cactions {
+        flex-wrap: nowrap;
+        width: 100%;
+    }
+
+    .fx-cactions > .fx-btn,
+    .fx-cactions > .cm-menu:not(:has(.cm-iconbtn)) {
+        flex: 1 1 auto;
+        min-width: 0;
+    }
+
+    .fx-cactions > .fx-btn,
+    .fx-cactions > .cm-menu > .fx-btn:not(.cm-iconbtn) {
+        padding: 0 var(--space-3);
+    }
+
+    .fx-cactions > .cm-menu > .fx-btn:not(.cm-iconbtn) {
+        width: 100%;
+    }
+
+    /* Eventos e ranking numa fileira que rola, com 82% por cartão. */
+    .cm-strip {
+        display: flex;
+        gap: var(--space-3);
+        margin: 0 calc(-1 * var(--r-gutter));
+        padding: 0 var(--r-gutter);
+        overflow-x: auto;
+        scrollbar-width: none;
+    }
+
+    .cm-strip::-webkit-scrollbar {
+        display: none;
+    }
+
+    .cm-strip > .cm-mini {
+        flex: 0 0 82%;
+    }
+
+    /* Na barra do feed, os chips ficam na coluna (não vão à borda), e "Ordenar
+       por" fica só para o leitor de tela. */
+    .cm-toolbar .r-hscroll {
+        margin: 0;
+        padding: 0;
+    }
+
+    .cm-sort-label {
+        position: absolute;
+        width: 1px;
+        height: 1px;
+        overflow: hidden;
+        clip: rect(0 0 0 0);
+        white-space: nowrap;
+    }
+
+    .cm-rules {
+        padding: var(--space-5) var(--r-gutter);
+    }
+
+    .cm-hide-phone {
+        display: none;
+    }
+
+    /* "Novo evento" vira ícone (+); o texto fica para o leitor de tela. */
+    .cm-newevent {
+        width: var(--touch-target);
+        padding: 0;
+    }
+
+    .cm-newevent-text {
+        position: absolute;
+        width: 1px;
+        height: 1px;
+        overflow: hidden;
+        clip: rect(0 0 0 0);
+        white-space: nowrap;
+    }
+
+    /* Eventos de ponta a ponta, com 4px entre eles. */
+    .fx-events {
+        gap: var(--space-1);
+    }
+
+    .fx-event {
+        gap: var(--space-3);
+        padding: var(--space-4) var(--r-gutter);
+    }
+
+    .modal-row {
+        grid-template-columns: 1fr;
+    }
+}

@@ -6,6 +6,9 @@
  * avatar (foto ou iniciais na cor estável), nome com link para o perfil e
  * pontos. As regras de pontos ficam no servidor (server/lib/points.ts); a
  * nota no rodapé só as resume.
+ *
+ * No tablet e no celular, a versão curta (loadPodium): os 3 primeiros da
+ * semana, num pódio, antes do feed.
  */
 import { api } from "./shared/api.js";
 import { profileUrl } from "./shared/pages.js";
@@ -20,21 +23,10 @@ const EMPTY: Record<Period, string> = {
     all: "Ninguém pontuou nesta comunidade ainda.",
 };
 
-function renderRow(row: LeaderboardRow): HTMLLIElement {
-    const name = row.displayName?.trim() || row.username;
-    const li = document.createElement("li");
-    li.className = "tf-lb-item";
-
-    const rank = document.createElement("span");
-    rank.className = `tf-lb-rank${row.rank <= 3 ? ` tf-lb-rank--${row.rank}` : ""}`;
-    rank.textContent = String(row.rank);
-
-    const link = document.createElement("a");
-    link.className = "tf-lb-user";
-    link.href = profileUrl(row.userId);
-
+function avatarOf(row: LeaderboardRow, name: string): HTMLElement {
     const avatar = document.createElement("span");
     avatar.className = "fx-avatar fx-avatar--sm";
+    avatar.setAttribute("aria-hidden", "true");
     if (row.avatarUrl) {
         const img = document.createElement("img");
         img.src = row.avatarUrl;
@@ -45,14 +37,31 @@ function renderRow(row: LeaderboardRow): HTMLLIElement {
         avatar.classList.add(avatarColor(row.userId));
         avatar.textContent = initials(name);
     }
+    return avatar;
+}
+
+function renderRow(row: LeaderboardRow): HTMLLIElement {
+    const name = row.displayName?.trim() || row.username;
+    const li = document.createElement("li");
+    li.className = "fx-lb-item";
+
+    const rank = document.createElement("span");
+    rank.className = `fx-lb-rank${row.rank <= 3 ? ` fx-lb-rank--${row.rank}` : ""}`;
+    rank.textContent = String(row.rank);
+
+    const link = document.createElement("a");
+    link.className = "fx-lb-user";
+    link.href = profileUrl(row.userId);
+
+    const avatar = avatarOf(row, name);
 
     const label = document.createElement("span");
-    label.className = "tf-lb-name";
+    label.className = "fx-lb-name";
     label.textContent = name;
     link.append(avatar, label);
 
     const points = document.createElement("span");
-    points.className = "tf-lb-points";
+    points.className = "fx-lb-points";
     points.textContent = `${row.points} pts`;
     points.title = `${row.points} ${row.points === 1 ? "ponto" : "pontos"}`;
 
@@ -61,8 +70,8 @@ function renderRow(row: LeaderboardRow): HTMLLIElement {
 }
 
 export function createLeaderboard(widget: HTMLElement, communityId: string): { reload(): Promise<void> } {
-    const list = widget.querySelector<HTMLOListElement>(".tf-lb-list");
-    const status = widget.querySelector<HTMLElement>(".tf-lb-status");
+    const list = widget.querySelector<HTMLOListElement>(".fx-lb-list");
+    const status = widget.querySelector<HTMLElement>(".cm-wstatus");
     const tabs = Array.from(widget.querySelectorAll<HTMLButtonElement>('[role="tab"]'));
     let period: Period = "week";
     let seq = 0;
@@ -108,4 +117,36 @@ export function createLeaderboard(widget: HTMLElement, communityId: string): { r
 
     void load();
     return { reload: load };
+}
+
+/** Versão curta (tablet e celular): os 3 primeiros da semana, num pódio. */
+export async function loadPodium(widget: HTMLElement, communityId: string): Promise<void> {
+    const list = widget.querySelector<HTMLOListElement>(".cm-podium");
+    const status = widget.querySelector<HTMLElement>(".cm-wstatus");
+    if (!list || !status) return;
+    try {
+        const { data } = await api.communities.leaderboard(communityId, { period: "week", limit: 3 });
+        list.replaceChildren(
+            ...data.map((row) => {
+                const name = row.displayName?.trim() || row.username;
+                const li = document.createElement("li");
+                const link = document.createElement("a");
+                link.href = profileUrl(row.userId);
+                link.setAttribute("aria-label", `${row.rank}º lugar: ${name}, ${row.points} ${row.points === 1 ? "ponto" : "pontos"}`);
+                const label = document.createElement("span");
+                label.className = "cm-podium-name";
+                label.setAttribute("aria-hidden", "true");
+                label.textContent = `${row.rank}º ${name}`;
+                link.append(avatarOf(row, name), label);
+                li.append(link);
+                return li;
+            }),
+        );
+        status.hidden = data.length > 0;
+        status.textContent = EMPTY.week;
+    } catch (err) {
+        list.replaceChildren();
+        status.hidden = false;
+        status.textContent = err instanceof Error ? err.message : "Não foi possível carregar o ranking.";
+    }
 }

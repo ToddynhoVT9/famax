@@ -20,119 +20,153 @@
 
     <!-- Conteúdo Principal da Comunidade (preenchido por community.ts) -->
     <main class="main-content" id="main-content">
+        <div class="r-col r-col--wide">
 
-        <!-- Topo: capa, nome, descrição e ações -->
-        <section class="tf-community-hero" id="communityHero" aria-busy="true">
-            <div class="tf-community-banner" id="communityBanner">
-                <span class="tf-community-initial" id="communityInitial" aria-hidden="true"></span>
-            </div>
-            <div class="tf-community-head">
-                <div class="tf-community-info">
-                    <h1 class="tf-community-name" id="communityName">Carregando...</h1>
-                    <p class="tf-community-meta" id="communityMeta"></p>
-                    <p class="tf-community-description" id="communityDescription" hidden></p>
+            <!-- Topo (CommunityHeader): capa de 96px, nome, meta, descrição e ações.
+                 O topo e as abas não mudam ao trocar de vista. -->
+            <section class="cm-hero" id="communityHero" aria-labelledby="communityName" aria-busy="true">
+                <div class="fx-cbanner" id="communityBanner">
+                    <span class="fx-cbanner-initial" id="communityInitial" aria-hidden="true"></span>
                 </div>
-                <div class="tf-community-actions" id="communityActions"></div>
-            </div>
-        </section>
-
-        <!-- Vista "Discussões" (padrão): abas, feed e widgets -->
-        <div id="viewDiscussions">
-
-        <!-- Abas -->
-        <div class="fx-tabs tf-tabs" id="tfTabsContainer" role="tablist" aria-label="Discussões da comunidade">
-            <button type="button" class="fx-tab" role="tab" id="tab-all" data-tab="all"
-                aria-selected="true" aria-controls="tfFeedPanel">Conversas</button>
-            <button type="button" class="fx-tab" role="tab" id="tab-unanswered" data-tab="unanswered"
-                aria-selected="false" aria-controls="tfFeedPanel" tabindex="-1">Ajudar os outros</button>
-            <button type="button" class="fx-tab" role="tab" id="tab-categories" data-tab="categories"
-                aria-selected="false" aria-controls="tfFeedPanel" tabindex="-1">Categorias</button>
-        </div>
-
-        <div class="tf-layout">
-            <!-- Esquerda: lista de posts -->
-            <div class="tf-main-col" id="tfFeedPanel" role="tabpanel" aria-labelledby="tab-all">
-                <div class="tf-feed-toolbar">
-                    <p class="tf-tab-hint" id="tfTabHint" hidden></p>
-                    <label class="tf-sort">
-                        <span>Ordenar por</span>
-                        <select class="fx-input fx-input--sm" id="tfSort">
-                            <option value="new">Recentes</option>
-                            <option value="hot">Em alta</option>
-                            <option value="top">Mais curtidos</option>
-                            <option value="comments">Mais comentados</option>
-                        </select>
-                    </label>
-                </div>
-                <div class="tf-category-chips" id="tfCategoryChips" role="group"
-                    aria-label="Filtrar por categoria" hidden></div>
-                <div class="fx-posts" id="tfPostsList">
-                    <div class="tf-feed-status" id="tfFeedStatus">Carregando discussões...</div>
-                </div>
-                <button type="button" class="fx-btn fx-btn--outline fx-btn--pill list-more" id="tfLoadMore" hidden>Carregar mais</button>
-            </div>
-
-            <!-- Direita: Widgets -->
-            <div class="tf-sidebar-col">
-                <div class="tf-widget tf-greeting-widget">
-                    <h3 class="tf-widget-title-center">Algo novo a discutir?</h3>
-                    <button type="button" class="fx-btn fx-btn--dark fx-btn--block" id="btnCreatePost">Compartilhe-os</button>
-                </div>
-
-                <!-- Próximos eventos (community-events.ts) -->
-                <div class="tf-widget tf-upcoming-widget" id="upcomingWidget">
-                    <div class="tf-widget-head">
-                        <h3 class="tf-widget-title">Próximos eventos</h3>
-                        <a class="tf-upcoming-all">Ver todos</a>
+                <div class="fx-chead">
+                    <div class="fx-cinfo">
+                        <h1 class="fx-cname" id="communityName">Carregando...</h1>
+                        <p class="fx-cmeta" id="communityMeta"></p>
+                        <p class="fx-cdesc" id="communityDescription" hidden></p>
                     </div>
-                    <div class="tf-upcoming-list" aria-live="polite">
-                        <p class="tf-lb-status">Carregando...</p>
-                    </div>
+                    <div class="fx-cactions" id="communityActions"></div>
                 </div>
+            </section>
 
-                <!-- Ranking real, montado por community-leaderboard.ts -->
-                <div class="tf-widget tf-leaderboard-widget" id="leaderboardWidget">
-                    <h3 class="tf-widget-title">Maiores criadores</h3>
-                    <div class="tf-lb-tabs" role="tablist" aria-label="Período do ranking">
-                        <button type="button" class="fx-chip fx-chip--paper" role="tab" aria-selected="true"
-                            data-period="week">Semanalmente</button>
-                        <button type="button" class="fx-chip fx-chip--paper" role="tab" aria-selected="false"
-                            data-period="all">Todos os tempos</button>
-                    </div>
-                    <ol class="tf-lb-list" aria-live="polite"></ol>
-                    <p class="tf-lb-status" hidden></p>
-                    <p class="tf-lb-note">Post publicado +5 · reação recebida +2 · comentário recebido +1</p>
+            <!-- Vistas em abas: a troca não recarrega (?view=rules|members|events). -->
+            <div class="r-tabs r-tabs--rola">
+                <div class="fx-tabs" role="tablist" aria-label="Seções da comunidade" id="communityViews">
+                    <button type="button" class="fx-tab" role="tab" id="viewTab-discussions" data-view="discussions"
+                        aria-controls="viewDiscussions" aria-selected="true">Discussões</button>
+                    <button type="button" class="fx-tab" role="tab" id="viewTab-rules" data-view="rules"
+                        aria-controls="viewRules" aria-selected="false" tabindex="-1">Regras</button>
+                    <button type="button" class="fx-tab" role="tab" id="viewTab-members" data-view="members"
+                        aria-controls="viewMembers" aria-selected="false" tabindex="-1">Membros</button>
+                    <button type="button" class="fx-tab" role="tab" id="viewTab-events" data-view="events"
+                        aria-controls="viewEvents" aria-selected="false" tabindex="-1">Eventos</button>
                 </div>
             </div>
+
+            <!-- A vista aberta à esquerda e, no desktop e no compacto, a coluna dos widgets. -->
+            <div class="cm-grid">
+                <div class="cm-main">
+
+                    <!-- Vista "Discussões" (padrão) -->
+                    <div class="cm-view" id="viewDiscussions" role="tabpanel" aria-labelledby="viewTab-discussions">
+                        <!-- Tablet e celular: eventos e ranking em versão curta, antes do feed -->
+                        <div class="cm-strip" id="communityStrip">
+                            <section class="cm-mini" id="miniEvents" aria-labelledby="miniEventsTitle">
+                                <div class="cm-mini-head">
+                                    <h2 class="cm-mini-title" id="miniEventsTitle">Próximos eventos</h2>
+                                    <a class="cm-mini-link" data-view-link="events">Ver todos</a>
+                                </div>
+                                <div class="fx-upcoming" aria-live="polite">
+                                    <p class="cm-wstatus">Carregando...</p>
+                                </div>
+                            </section>
+                            <section class="cm-mini" id="miniRanking" aria-labelledby="miniRankingTitle">
+                                <div class="cm-mini-head">
+                                    <h2 class="cm-mini-title" id="miniRankingTitle">Maiores criadores</h2>
+                                </div>
+                                <ol class="cm-podium" aria-live="polite"></ol>
+                                <p class="cm-wstatus" hidden></p>
+                            </section>
+                        </div>
+
+                        <h2 class="visually-hidden">Discussões</h2>
+                        <!-- Barra do feed: o que ver (chips) e a ordenação -->
+                        <div class="cm-toolbar">
+                            <div class="r-hscroll r-hscroll-row" id="feedFilters" role="group" aria-label="O que ver">
+                                <button type="button" class="fx-chip" data-tab="all" aria-pressed="true">Conversas</button>
+                                <button type="button" class="fx-chip" data-tab="unanswered" aria-pressed="false">Ajudar os outros</button>
+                                <button type="button" class="fx-chip" data-tab="categories" aria-pressed="false">Categorias</button>
+                            </div>
+                            <label class="fx-sort cm-sort">
+                                <span class="cm-sort-label">Ordenar por</span>
+                                <select class="fx-input fx-input--sm" id="tfSort">
+                                    <option value="new">Recentes</option>
+                                    <option value="hot">Em alta</option>
+                                    <option value="top">Mais curtidos</option>
+                                    <option value="comments">Mais comentados</option>
+                                </select>
+                            </label>
+                        </div>
+                        <p class="cm-hint" id="tfTabHint" hidden></p>
+                        <div class="r-hscroll r-hscroll-row" id="tfCategoryChips" role="group"
+                            aria-label="Filtrar por categoria" hidden></div>
+                        <div class="fx-posts r-edge" id="tfPostsList">
+                            <div class="tf-feed-status" id="tfFeedStatus">Carregando discussões...</div>
+                        </div>
+                        <button type="button" class="fx-btn fx-btn--outline fx-btn--pill list-more" id="tfLoadMore" hidden>Carregar mais</button>
+                    </div>
+
+                    <!-- Vista "Regras" (?view=rules): texto puro, com as quebras de linha de quem escreveu -->
+                    <section class="cm-view" id="viewRules" role="tabpanel" aria-labelledby="viewTab-rules" hidden>
+                        <div class="cm-vhead">
+                            <h2 class="cm-vtitle">Regras</h2>
+                            <a class="cm-vaction" id="rulesEdit" hidden>Editar regras</a>
+                        </div>
+                        <div class="cm-rules r-edge">
+                            <p class="cm-rules-text" id="rulesText"></p>
+                        </div>
+                    </section>
+
+                    <!-- Vista "Membros" (?view=members), montada por community-members.ts -->
+                    <section class="cm-view" id="viewMembers" role="tabpanel" aria-labelledby="viewTab-members" hidden>
+                        <div class="cm-vhead">
+                            <h2 class="cm-vtitle">Membros</h2>
+                        </div>
+                        <div class="cm-view" id="membersRoot"></div>
+                    </section>
+
+                    <!-- Vista "Eventos" (?view=events), montada por community-events.ts -->
+                    <section class="cm-view" id="viewEvents" role="tabpanel" aria-labelledby="viewTab-events" hidden>
+                        <div class="cm-vhead">
+                            <h2 class="cm-vtitle">Eventos</h2>
+                        </div>
+                        <div class="cm-view" id="eventsRoot"></div>
+                    </section>
+                </div>
+
+                <!-- Direita (desktop e compacto): os widgets, nas 4 vistas -->
+                <aside class="fx-aside cm-aside" aria-label="Sobre a comunidade">
+                    <div class="fx-widget" id="createWidget">
+                        <h2 class="fx-widget-title fx-widget-title--center">Algo novo a discutir?</h2>
+                        <button type="button" class="fx-btn fx-btn--dark" id="btnCreatePost">Criar post</button>
+                    </div>
+
+                    <!-- Próximos eventos (community-events.ts) -->
+                    <section class="fx-widget" id="upcomingWidget" aria-labelledby="upcomingTitle">
+                        <div class="fx-widget-head">
+                            <h2 class="fx-widget-title" id="upcomingTitle">Próximos eventos</h2>
+                            <a class="fx-widget-link" data-view-link="events">Ver todos</a>
+                        </div>
+                        <div class="fx-upcoming" aria-live="polite">
+                            <p class="cm-wstatus">Carregando...</p>
+                        </div>
+                    </section>
+
+                    <!-- Ranking real, montado por community-leaderboard.ts -->
+                    <section class="fx-widget" id="leaderboardWidget" aria-labelledby="leaderboardTitle">
+                        <h2 class="fx-widget-title" id="leaderboardTitle">Maiores criadores</h2>
+                        <div class="fx-lb-tabs" role="tablist" aria-label="Período do ranking">
+                            <button type="button" class="fx-chip fx-chip--paper" role="tab" aria-selected="true"
+                                data-period="week">Semanalmente</button>
+                            <button type="button" class="fx-chip fx-chip--paper" role="tab" aria-selected="false"
+                                data-period="all">Todos os tempos</button>
+                        </div>
+                        <ol class="fx-lb-list" aria-live="polite"></ol>
+                        <p class="cm-wstatus" hidden></p>
+                        <p class="fx-lb-note">Post publicado +5 · reação recebida +2 · comentário recebido +1</p>
+                    </section>
+                </aside>
+            </div>
         </div>
-
-        </div>
-
-        <!-- Vista "Regras" (?view=rules) -->
-        <section class="tf-view" id="viewRules" aria-labelledby="rulesTitle" hidden>
-            <div class="tf-view-header">
-                <h2 class="tf-view-title" id="rulesTitle">Regras</h2>
-                <a class="tf-view-action" id="rulesEdit" hidden>Editar regras</a>
-            </div>
-            <div class="tf-rules-text" id="rulesText"></div>
-        </section>
-
-        <!-- Vista "Eventos" (?view=events), montada por community-events.ts -->
-        <section class="tf-view" id="viewEvents" aria-labelledby="eventsTitle" hidden>
-            <div class="tf-view-header">
-                <h2 class="tf-view-title" id="eventsTitle">Eventos</h2>
-            </div>
-            <div id="eventsRoot"></div>
-        </section>
-
-        <!-- Vista "Membros" (?view=members), montada por community-members.ts -->
-        <section class="tf-view" id="viewMembers" aria-labelledby="membersTitle" hidden>
-            <div class="tf-view-header">
-                <h2 class="tf-view-title" id="membersTitle">Membros</h2>
-            </div>
-            <div id="membersRoot"></div>
-        </section>
-
     </main>
 
     <!-- O modal de criar/editar post é montado por script/shared/post-editor.ts -->

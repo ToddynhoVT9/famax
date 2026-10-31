@@ -5,10 +5,17 @@
  * por data de entrada), com filtro por papel. Para quem pode: o dono promove
  * e rebaixa moderadores e transfere a comunidade; dono e moderadores banem
  * quem está abaixo deles. O backend refaz todas essas checagens.
+ *
+ * Desenho: MemberList (fx-member, no components.css). As ações são as de
+ * antes; a faixa decide onde ficam (community.css):
+ *  - desktop: todas na linha;
+ *  - compacto e tablet: Tornar moderador e Banir na linha, Transferir no ⋯;
+ *  - celular: todas no ⋯.
  */
 import { api, getCurrentUserId } from "./shared/api.js";
 import { profileUrl } from "./shared/pages.js";
 import { avatarColor, initials } from "./shared/dom.js";
+import { ICONS } from "./shared/icons.js";
 import { confirmDialog, toast } from "./shared/dialog.js";
 import {
     canModerate,
@@ -46,7 +53,7 @@ export function createMembersView(root: HTMLElement, options: MembersViewOptions
 
     // ----- Estrutura fixa ---------------------------------------------------
 
-    const filters = el("div", "tf-category-chips");
+    const filters = el("div", "r-hscroll r-hscroll-row");
     filters.setAttribute("role", "group");
     filters.setAttribute("aria-label", "Filtrar membros");
     const chip = (label: string, value: "" | "moderator") => {
@@ -58,18 +65,27 @@ export function createMembersView(root: HTMLElement, options: MembersViewOptions
     };
     filters.append(chip("Todos", ""), chip("Moderadores", "moderator"));
 
-    const total = el("p", "tf-members-total");
-    const list = el("ul", "tf-members-list");
+    const total = el("p", "cm-mtotal");
+    const list = el("ul", "fx-members r-edge");
     const more = el("button", "fx-btn fx-btn--outline fx-btn--pill list-more", "Carregar mais");
     more.type = "button";
     more.hidden = true;
-    root.replaceChildren(filters, total, list, more);
+    root.replaceChildren(total, filters, list, more);
 
     // ----- Render -----------------------------------------------------------
 
-    function actionButton(label: string, action: string, danger = false): HTMLButtonElement {
-        const b = el("button", `fx-btn fx-btn--sm fx-btn--pill ${danger ? "fx-btn--outline-danger" : "fx-btn--outline-ink"}`, label);
+    /** where: as faixas em que o botão fica na linha (nas outras, está no ⋯). */
+    function actionButton(label: string, action: string, danger: boolean, where: string): HTMLButtonElement {
+        const b = el("button", `fx-btn fx-btn--sm ${danger ? "fx-btn--outline-danger" : "fx-btn--outline-ink"} ${where}`, label);
         b.type = "button";
+        b.dataset.action = action;
+        return b;
+    }
+
+    function menuItem(label: string, action: string, danger: boolean, where = ""): HTMLButtonElement {
+        const b = el("button", `fx-menu-item${danger ? " fx-menu-item--danger" : ""} ${where}`.trim(), label);
+        b.type = "button";
+        b.setAttribute("role", "menuitem");
         b.dataset.action = action;
         return b;
     }
@@ -79,7 +95,7 @@ export function createMembersView(root: HTMLElement, options: MembersViewOptions
         const viewer = options.viewerRole();
         const self = member.userId === getCurrentUserId();
 
-        const item = el("li", "tf-member");
+        const item = el("li", "fx-member");
         item.dataset.userId = member.userId;
         item.dataset.name = name;
 
@@ -97,35 +113,62 @@ export function createMembersView(root: HTMLElement, options: MembersViewOptions
             avatar.textContent = initials(name);
         }
 
-        const info = el("div", "tf-member-info");
-        const nameLink = el("a", "tf-member-name", name);
+        const info = el("div", "fx-member-info");
+        const nameRow = el("span", "cm-mname");
+        const nameLink = el("a", "fx-member-name", name);
         nameLink.href = profileUrl(member.userId);
-        info.append(nameLink);
+        nameRow.append(nameLink);
         if (member.role !== "member") {
-            info.append(roleBadge(member.role));
+            nameRow.append(roleBadge(member.role));
         }
         info.append(
+            nameRow,
             el(
                 "span",
-                "tf-member-meta",
+                "fx-member-meta",
                 `@${member.username} · entrou em ${new Date(member.joinedAt).toLocaleDateString("pt-BR")}`,
             ),
         );
+        item.append(avatar, info);
 
-        const actions = el("div", "tf-member-actions");
+        // As mesmas ações de antes: na linha (botões) e no ⋯ (itens), por faixa.
+        const inline: HTMLButtonElement[] = [];
+        const menu: HTMLButtonElement[] = [];
+        let transfer = false;
         if (!self && viewer === "owner" && member.role !== "owner") {
-            actions.append(
-                member.role === "moderator"
-                    ? actionButton("Remover moderador", "demote")
-                    : actionButton("Tornar moderador", "promote"),
-                actionButton("Transferir comunidade", "transfer"),
-            );
+            const [label, action] =
+                member.role === "moderator" ? ["Remover moderador", "demote"] : ["Tornar moderador", "promote"];
+            inline.push(actionButton(label, action, false, "cm-hide-phone"));
+            menu.push(menuItem(label, action, false, "cm-show-phone"));
+            inline.push(actionButton("Transferir comunidade", "transfer", false, "cm-desktop-only"));
+            menu.push(menuItem("Transferir comunidade", "transfer", false));
+            transfer = true;
         }
         if (!self && canModerate(viewer, member.role)) {
-            actions.append(actionButton("Banir", "ban", true));
+            inline.push(actionButton("Banir", "ban", true, "cm-hide-phone"));
+            menu.push(menuItem("Banir", "ban", true, "cm-show-phone"));
         }
+        if (inline.length === 0) return item;
 
-        item.append(avatar, info, actions);
+        const actions = el("div", "cm-macts");
+        actions.append(...inline);
+        // O ⋯ aparece onde algum item não está na linha: abaixo de 1280px com
+        // Transferir; só no celular sem ele.
+        const more = el("div", `cm-menu ${transfer ? "cm-below-desktop" : "cm-show-phone"}`);
+        const toggle = el("button", "fx-btn fx-btn--icon fx-btn--icon-paper cm-mmore");
+        toggle.type = "button";
+        toggle.innerHTML = ICONS.dots; // ícone fixo, sem dado
+        toggle.setAttribute("aria-label", `Ações para ${name}`);
+        toggle.setAttribute("aria-haspopup", "menu");
+        toggle.setAttribute("aria-expanded", "false");
+        toggle.dataset.memberMenu = "";
+        const menuEl = el("div", "fx-menu");
+        menuEl.setAttribute("role", "menu");
+        menuEl.hidden = true;
+        menuEl.append(...menu);
+        more.append(toggle, menuEl);
+        actions.append(more);
+        item.append(actions);
         return item;
     }
 
@@ -207,9 +250,42 @@ export function createMembersView(root: HTMLElement, options: MembersViewOptions
         void load(true);
     });
 
+    function closeMenus(except?: Element): void {
+        list.querySelectorAll<HTMLElement>("[data-member-menu]").forEach((toggle) => {
+            if (toggle === except) return;
+            toggle.setAttribute("aria-expanded", "false");
+            const menu = toggle.nextElementSibling as HTMLElement | null;
+            if (menu) menu.hidden = true;
+        });
+    }
+    document.addEventListener("click", (event) => {
+        if (!(event.target as Element).closest?.("[data-member-menu]")) closeMenus();
+    });
+    list.addEventListener("keydown", (event) => {
+        const toggle = (event.target as Element).closest(".cm-menu")?.querySelector<HTMLElement>("[data-member-menu]");
+        if (event.key === "Escape" && toggle?.getAttribute("aria-expanded") === "true") {
+            closeMenus();
+            toggle.focus();
+        }
+    });
+
     list.addEventListener("click", async (event) => {
+        // O ⋯ abre e fecha o menu de ações da pessoa.
+        const toggle = (event.target as Element).closest<HTMLButtonElement>("[data-member-menu]");
+        if (toggle) {
+            const menu = toggle.nextElementSibling as HTMLElement | null;
+            const open = toggle.getAttribute("aria-expanded") !== "true";
+            closeMenus(toggle);
+            toggle.setAttribute("aria-expanded", String(open));
+            if (menu) {
+                menu.hidden = !open;
+                if (open) menu.querySelector<HTMLElement>('[role="menuitem"]:not([hidden])')?.focus();
+            }
+            return;
+        }
         const button = (event.target as Element).closest<HTMLButtonElement>("[data-action]");
-        const item = button?.closest<HTMLElement>(".tf-member");
+        if (button?.getAttribute("role") === "menuitem") closeMenus();
+        const item = button?.closest<HTMLElement>("[data-user-id]");
         const userId = item?.dataset.userId;
         const name = item?.dataset.name ?? "";
         if (!button || !userId) return;

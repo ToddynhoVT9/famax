@@ -37,21 +37,15 @@ export interface SidebarLink {
     label: string;
     /** Sem href o link aparece desativado, com o selo "Em breve". */
     href?: string;
-    /**
-     * Ação no lugar da navegação (ex.: "Discussões" volta para a aba sem
-     * recarregar). O href continua lá para abrir em nova aba.
-     */
-    onClick?: (event: MouseEvent) => void;
     /** Mantém o destaque de página atual mesmo com query diferente. */
     current?: boolean;
-    /** Identifica o link para setCurrentPageLink (troca de vista sem recarregar). */
-    key?: string;
 }
 
 export interface LayoutOptions {
     /**
-     * Links próprios da página, logo abaixo de "Página inicial". A comunidade
-     * usa para Discussões/Regras/Membros/Eventos/Suporte.
+     * Links próprios da página, logo abaixo de "Página inicial". A moderação
+     * usa para voltar a Discussões, Regras e Membros da comunidade (a própria
+     * comunidade tem essas vistas em abas, no topo da página).
      */
     pageLinks?: SidebarLink[];
     /**
@@ -598,12 +592,10 @@ function renderSidebar(sidebar: HTMLElement, options: LayoutOptions): void {
             return disabled;
         }
         const anchor = sidebarLink(link.label, link.href);
-        if (link.key) anchor.dataset.pageLink = link.key;
         if (link.current) {
             anchor.classList.add("active");
             anchor.setAttribute("aria-current", "page");
         }
-        if (link.onClick) anchor.addEventListener("click", link.onClick);
         return anchor;
     });
 
@@ -622,19 +614,6 @@ function renderSidebar(sidebar: HTMLElement, options: LayoutOptions): void {
     sidebar.replaceChildren(home, ...pageLinks, create, title, myCommunitiesEl);
 
     void refreshMyCommunities();
-}
-
-/**
- * Muda o destaque entre os links da página (os que têm `key`). A comunidade
- * usa ao trocar entre Discussões, Regras e Membros sem recarregar.
- */
-export function setCurrentPageLink(key: string): void {
-    document.querySelectorAll<HTMLAnchorElement>("#app-sidebar [data-page-link]").forEach((link) => {
-        const current = link.dataset.pageLink === key;
-        link.classList.toggle("active", current);
-        if (current) link.setAttribute("aria-current", "page");
-        else link.removeAttribute("aria-current");
-    });
 }
 
 // ===========================================================================

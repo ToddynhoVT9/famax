@@ -1,17 +1,25 @@
 /**
  * FAMAX — Página da comunidade
  *
- * Topo (capa, descrição, participar/sair/editar), abas Conversas / Ajudar os
- * outros / Categorias com o estado na URL e posts paginados com "carregar
- * mais". Os links Regras, Membros e Eventos da sidebar trocam de vista sem
- * recarregar (?view=rules|members|events); as vistas de membros e de eventos
- * ficam em community-members.ts e community-events.ts. O desenho dos posts, os comentários em árvore e as ações sobre eles
+ * Topo (capa, descrição, participar/sair/editar) e as vistas em abas:
+ * Discussões, Regras, Membros e Eventos. A troca de vista não recarrega:
+ * vai para a URL (?view=rules|members|events) com pushState, e o Voltar do
+ * navegador volta para a vista anterior (popstate). As vistas de membros e
+ * de eventos ficam em community-members.ts e community-events.ts.
+ *
+ * Discussões: os filtros Conversas / Ajudar os outros / Categorias (chips)
+ * e a ordenação, com o estado na URL, e os posts paginados com "carregar
+ * mais". O desenho dos posts, os comentários em árvore e as ações sobre eles
  * ficam em shared/post-thread.ts (a página do post usa o mesmo módulo); o
  * modal de criar/editar, em shared/post-editor.ts.
+ *
+ * As ações do topo mudam de lugar com a faixa (community.css): no tablet e
+ * no celular entra "Criar post", e a Moderação vai para o ⋯. Quais ações
+ * cada papel tem não muda.
  */
 import { api, getToken } from "./shared/api.js";
 import { goToLogin } from "./shared/auth-guard.js";
-import { initLayout, refreshMyCommunities, setCurrentPageLink } from "./shared/layout.js";
+import { initLayout, refreshMyCommunities } from "./shared/layout.js";
 import {
     communityEditUrl,
     communityUrl,
@@ -25,8 +33,10 @@ import { createPostThread, type Post } from "./shared/post-thread.js";
 import { openPostEditor, type PostCategory } from "./shared/post-editor.js";
 import { emptyState, skeleton } from "./shared/skeleton.js";
 import { banUntil, isStaff } from "./shared/moderation.js";
+import { bindTabKeys } from "./shared/tabs.js";
+import { ICONS } from "./shared/icons.js";
 import { createMembersView } from "./community-members.js";
-import { createLeaderboard } from "./community-leaderboard.js";
+import { createLeaderboard, loadPodium } from "./community-leaderboard.js";
 import { createEventsView, loadUpcomingWidget } from "./community-events.js";
 import type { Community } from "../../shared/api-types.js";
 
@@ -34,6 +44,7 @@ type Tab = "all" | "unanswered" | "categories";
 type Sort = "new" | "hot" | "top" | "comments";
 const SORTS: Sort[] = ["new", "hot", "top", "comments"];
 type View = "discussions" | CommunityView;
+const VIEWS: View[] = ["discussions", "rules", "members", "events"];
 
 const POSTS_PER_PAGE = 10;
 
@@ -61,35 +72,13 @@ const $ = <T extends HTMLElement = HTMLElement>(id: string) =>
 const postsList = $("tfPostsList");
 const loadMoreBtn = $<HTMLButtonElement>("tfLoadMore");
 const chipsEl = $("tfCategoryChips");
+const feedFilters = $("feedFilters");
 const tabHint = $("tfTabHint");
 const sortSelect = $<HTMLSelectElement>("tfSort");
+const viewTabs = $("communityViews");
 
-/** Link da sidebar que troca de vista sem recarregar (o href abre em nova aba). */
-const viewLink = (label: string, target: View) => ({
-    label,
-    key: target,
-    href: communityUrl(communityId!, target === "discussions" ? undefined : target),
-    onClick: (event: MouseEvent) => {
-        event.preventDefault();
-        // "Discussões" também volta para a aba Conversas.
-        if (target === "discussions" && view === "discussions") selectTab("all");
-        showView(target);
-        $("main-content")?.scrollIntoView({ behavior: "smooth" });
-    },
-});
-
-initLayout({
-    pageLinks: communityId
-        ? [
-              viewLink("Discussões", "discussions"),
-              viewLink("Regras", "rules"),
-              viewLink("Membros", "members"),
-              viewLink("Eventos", "events"),
-              // Ainda sem página própria: desativado com "Em breve".
-              { label: "Suporte" },
-          ]
-        : [],
-});
+// A gaveta fica igual à das outras páginas: as vistas estão nas abas.
+initLayout();
 
 const thread = postsList
     ? createPostThread(postsList, {
@@ -115,6 +104,51 @@ function ensureLoggedIn(): boolean {
     return false;
 }
 
+function el<K extends keyof HTMLElementTagNameMap>(tag: K, className = "", text?: string) {
+    const node = document.createElement(tag);
+    if (className) node.className = className;
+    if (text !== undefined) node.textContent = text;
+    return node;
+}
+
+/**
+ * Botão que abre um fx-menu logo abaixo, alinhado à direita ("Participando ✓",
+ * o ⋯ do topo). Fecha com clique fora, Esc e ao escolher um item.
+ */
+function dropdown(toggle: HTMLButtonElement, items: HTMLElement[], className = ""): HTMLDivElement {
+    const wrapper = el("div", `cm-menu ${className}`.trim());
+    toggle.setAttribute("aria-haspopup", "menu");
+    toggle.setAttribute("aria-expanded", "false");
+    const menu = el("div", "fx-menu");
+    menu.setAttribute("role", "menu");
+    menu.hidden = true;
+    for (const item of items) item.setAttribute("role", "menuitem");
+    menu.append(...items);
+    wrapper.append(toggle, menu);
+
+    const setOpen = (open: boolean): void => {
+        menu.hidden = !open;
+        toggle.setAttribute("aria-expanded", String(open));
+    };
+    toggle.addEventListener("click", (event) => {
+        event.stopPropagation();
+        setOpen(menu.hidden);
+        if (!menu.hidden) items[0]?.focus();
+    });
+    menu.addEventListener("click", () => setOpen(false));
+    document.addEventListener("click", (event) => {
+        if (!wrapper.contains(event.target as Node)) setOpen(false);
+    });
+    wrapper.addEventListener("keydown", (event) => {
+        if (event.key === "Escape" && !menu.hidden) {
+            event.stopPropagation();
+            setOpen(false);
+            toggle.focus();
+        }
+    });
+    return wrapper;
+}
+
 // ===========================================================================
 // Topo da comunidade
 // ===========================================================================
@@ -127,15 +161,22 @@ function renderHero(): void {
     const name = $("communityName");
     if (name) name.textContent = c.name;
 
+    // Meta (categoria · membros) e, para o dono, o selo na mesma linha.
     const meta = $("communityMeta");
     if (meta) {
-        meta.textContent = [
-            c.isNsfw ? "+18" : null,
-            c.categoryName,
-            `${c.membersCount} ${c.membersCount === 1 ? "membro" : "membros"}`,
-        ]
-            .filter(Boolean)
-            .join(" • ");
+        const text = el(
+            "span",
+            "",
+            [
+                c.isNsfw ? "+18" : null,
+                c.categoryName,
+                `${c.membersCount} ${c.membersCount === 1 ? "membro" : "membros"}`,
+            ]
+                .filter(Boolean)
+                .join(" · "),
+        );
+        meta.replaceChildren(text);
+        if (c.myRole === "owner") meta.append(el("span", "fx-badge fx-badge--owner", "Você é o dono"));
     }
 
     const description = $("communityDescription");
@@ -148,7 +189,7 @@ function renderHero(): void {
     const banner = $("communityBanner");
     const initial = $("communityInitial");
     if (banner) {
-        banner.className = "tf-community-banner";
+        banner.className = "fx-cbanner";
         if (c.coverImageUrl) {
             banner.style.backgroundImage = `url(${JSON.stringify(c.coverImageUrl)})`;
             banner.classList.add("has-image");
@@ -169,105 +210,95 @@ function renderHero(): void {
 /** Comunidade +18 vista por quem não pode ver: aviso no topo das discussões. */
 function renderNsfwBanner(c: Community): void {
     document.getElementById("nsfwBanner")?.remove();
-    // Sem acesso não há como publicar: o "Compartilhe-os" levaria a um 403.
-    const greeting = $("btnCreatePost")?.closest<HTMLElement>(".tf-widget");
-    if (greeting) greeting.hidden = c.nsfwBlocked;
+    // Sem acesso não há como publicar: o "Criar post" levaria a um 403.
+    const createWidget = $("createWidget");
+    if (createWidget) createWidget.hidden = c.nsfwBlocked;
     if (!c.nsfwBlocked) return;
-    const banner = document.createElement("p");
+    const banner = el("p", "fx-banner fx-banner--danger");
     banner.id = "nsfwBanner";
-    banner.className = "fx-banner fx-banner--danger";
     banner.append("Esta comunidade é para maiores de 18. Para ver as discussões e participar, ative “Conteúdo adulto” nas ");
-    const link = document.createElement("a");
+    const link = el("a", "", "configurações");
     link.href = pages.settings;
-    link.textContent = "configurações";
     banner.append(link, " (exige 18 anos pela data de nascimento).");
     $("viewDiscussions")?.prepend(banner);
 }
 
+/**
+ * As ações do topo. Cada papel tem as mesmas ações de antes; a faixa decide
+ * onde ficam (.cm-wide: desktop e compacto; .cm-narrow: tablet e celular):
+ *  - dono: Moderação e Editar comunidade · Criar post, Editar e ⋯ (Moderação);
+ *  - moderador: Moderação e Participando ✓ · Criar post, Participando ✓ e ⋯;
+ *  - membro: Participando ✓ · Criar post e Participando ✓;
+ *  - visitante ou quem não participa: Participar.
+ */
 function renderActions(): void {
     const actions = $("communityActions");
     if (!actions || !community) return;
     actions.replaceChildren();
+    const c = community;
 
-    const button = (label: string, className = "fx-btn fx-btn--primary fx-btn--pill"): HTMLButtonElement => {
-        const b = document.createElement("button");
+    const button = (label: string, className: string): HTMLButtonElement => {
+        const b = el("button", className, label);
         b.type = "button";
-        b.className = className;
-        b.textContent = label;
         return b;
     };
-
-    // Dono e moderadores: atalho para a fila de denúncias.
-    if (isStaff(community.myRole)) {
-        const moderation = document.createElement("a");
-        moderation.className = "fx-btn fx-btn--outline fx-btn--pill";
-        moderation.href = moderationUrl(community.communityId);
-        moderation.textContent = "Moderação";
-        actions.append(moderation);
-    }
-
-    // Dono: editar (sair não existe para ele — ver leave no backend).
-    if (community.myRole === "owner") {
-        const badge = document.createElement("span");
-        badge.className = "tf-owner-badge";
-        badge.textContent = "Você é o dono";
-        const edit = document.createElement("a");
-        edit.className = "fx-btn fx-btn--primary fx-btn--pill";
-        edit.href = communityEditUrl(community.communityId);
-        edit.textContent = "Editar comunidade";
-        actions.prepend(badge);
-        actions.append(edit);
-        return;
-    }
+    const link = (label: string, href: string, className: string): HTMLAnchorElement => {
+        const a = el("a", className, label);
+        a.href = href;
+        return a;
+    };
 
     // Banido: no lugar do "Participar", o aviso com o prazo.
-    if (community.isBanned) {
-        const banned = document.createElement("span");
-        banned.className = "tf-banned-badge";
-        banned.textContent = `Você está banido desta comunidade (${banUntil(community.myBanExpiresAt)})`;
-        actions.append(banned);
+    if (c.isBanned && !c.myRole) {
+        actions.append(el("span", "cm-banned", `Você está banido desta comunidade (${banUntil(c.myBanExpiresAt)})`));
         return;
     }
 
-    // Membro: "Participando ✓" abre um menu com "Sair".
-    if (community.myRole) {
-        const wrapper = document.createElement("div");
-        wrapper.className = "tf-member-menu";
-        const toggle = button("Participando ✓", "fx-btn fx-btn--outline fx-btn--pill");
-        toggle.setAttribute("aria-haspopup", "menu");
-        toggle.setAttribute("aria-expanded", "false");
-        const menu = document.createElement("div");
-        menu.className = "fx-menu";
-        menu.setAttribute("role", "menu");
-        menu.hidden = true;
-        const leave = button("Sair da comunidade", "fx-menu-item fx-menu-item--danger");
-        leave.setAttribute("role", "menuitem");
-        menu.append(leave);
-        wrapper.append(toggle, menu);
-        actions.append(wrapper);
-
-        toggle.addEventListener("click", (event) => {
-            event.stopPropagation();
-            menu.hidden = !menu.hidden;
-            toggle.setAttribute("aria-expanded", String(!menu.hidden));
-        });
-        document.addEventListener("click", (event) => {
-            if (!wrapper.contains(event.target as Node)) {
-                menu.hidden = true;
-                toggle.setAttribute("aria-expanded", "false");
-            }
-        });
-        leave.addEventListener("click", () => void leaveCommunity());
+    if (!c.myRole) {
+        // +18 sem conteúdo adulto liberado: não há como entrar (a API recusa).
+        if (c.nsfwBlocked && getToken()) return;
+        // Visitante ou não-membro: participar (visitante vai ao login).
+        const join = button("Participar", "fx-btn fx-btn--primary");
+        join.addEventListener("click", () => void joinCommunity(join));
+        actions.append(join);
         return;
     }
 
-    // +18 sem conteúdo adulto liberado: não há como entrar (a API recusa).
-    if (community.nsfwBlocked && getToken()) return;
+    // Tablet e celular: "Criar post" no topo (o widget da direita não aparece).
+    const create = button("Criar post", "fx-btn fx-btn--primary cm-narrow");
+    create.insertAdjacentHTML("afterbegin", ICONS.plus);
+    create.addEventListener("click", () => void createPost());
 
-    // Visitante ou não-membro: participar (visitante vai ao login).
-    const join = button("Participar");
-    join.addEventListener("click", () => void joinCommunity(join));
-    actions.append(join);
+    // O ⋯ com a Moderação (tablet e celular), para dono e moderadores.
+    const moreMenu = (): HTMLDivElement => {
+        const more = button("", "fx-btn fx-btn--outline cm-iconbtn");
+        more.innerHTML = ICONS.dots;
+        more.setAttribute("aria-label", "Mais opções da comunidade");
+        return dropdown(more, [link("Moderação", moderationUrl(c.communityId), "fx-menu-item")], "cm-narrow");
+    };
+
+    if (c.myRole === "owner") {
+        // Sair não existe para o dono (ver leave no backend).
+        actions.append(
+            link("Moderação", moderationUrl(c.communityId), "fx-btn fx-btn--outline cm-wide"),
+            link("Editar comunidade", communityEditUrl(c.communityId), "fx-btn fx-btn--primary cm-wide"),
+            create,
+            link("Editar", communityEditUrl(c.communityId), "fx-btn fx-btn--outline cm-narrow"),
+            moreMenu(),
+        );
+        return;
+    }
+
+    // Membro (e moderador): "Participando ✓" abre um menu com "Sair".
+    const leave = button("Sair da comunidade", "fx-menu-item fx-menu-item--danger");
+    leave.addEventListener("click", () => void leaveCommunity());
+    const participating = dropdown(button("Participando ✓", "fx-btn fx-btn--outline"), [leave]);
+
+    if (isStaff(c.myRole)) {
+        actions.append(link("Moderação", moderationUrl(c.communityId), "fx-btn fx-btn--outline cm-wide"), create, participating, moreMenu());
+    } else {
+        actions.append(create, participating);
+    }
 }
 
 async function loadCommunity(): Promise<void> {
@@ -323,7 +354,7 @@ async function leaveCommunity(): Promise<void> {
 }
 
 // ===========================================================================
-// Abas, categorias e URL
+// Filtros do feed, categorias e URL
 // ===========================================================================
 
 const TAB_HINTS: Record<Tab, string | null> = {
@@ -332,8 +363,11 @@ const TAB_HINTS: Record<Tab, string | null> = {
     categories: "Escolha uma categoria para ver só as discussões dela.",
 };
 
-/** Reflete aba, categoria e ordenação na URL, para recarregar ou compartilhar. */
-function syncUrl(): void {
+/**
+ * Reflete vista, filtro, categoria e ordenação na URL, para recarregar ou
+ * compartilhar. push: troca de vista (o Voltar volta para a anterior).
+ */
+function syncUrl(push = false): void {
     const url = new URL(window.location.href);
     url.searchParams.delete("tab");
     url.searchParams.delete("categoryId");
@@ -346,7 +380,8 @@ function syncUrl(): void {
         if (tab === "categories" && categoryFilter) url.searchParams.set("categoryId", categoryFilter);
         if (sort !== "new") url.searchParams.set("sort", sort);
     }
-    history.replaceState(null, "", url);
+    if (push && url.href !== window.location.href) history.pushState({ view }, "", url);
+    else history.replaceState({ view }, "", url);
 }
 
 sortSelect?.addEventListener("change", () => {
@@ -355,17 +390,9 @@ sortSelect?.addEventListener("change", () => {
     void loadPosts(true);
 });
 
-/** As abas do feed (Conversas, Ajudar os outros, Categorias). */
-function feedTabs(): HTMLButtonElement[] {
-    return Array.from(document.querySelectorAll<HTMLButtonElement>('#tfTabsContainer [role="tab"]'));
-}
-
-function renderTabs(): void {
-    feedTabs().forEach((button) => {
-        const active = button.dataset.tab === tab;
-        button.setAttribute("aria-selected", String(active));
-        button.tabIndex = active ? 0 : -1;
-        if (active) $("tfFeedPanel")?.setAttribute("aria-labelledby", button.id);
+function renderFilters(): void {
+    feedFilters?.querySelectorAll<HTMLButtonElement>("[data-tab]").forEach((chip) => {
+        chip.setAttribute("aria-pressed", String(chip.dataset.tab === tab));
     });
     if (tabHint) {
         tabHint.textContent = TAB_HINTS[tab] ?? "";
@@ -377,10 +404,8 @@ function renderTabs(): void {
 function renderChips(): void {
     if (!chipsEl) return;
     const chip = (label: string, value: string | null): HTMLButtonElement => {
-        const b = document.createElement("button");
+        const b = el("button", "fx-chip", label);
         b.type = "button";
-        b.className = "fx-chip";
-        b.textContent = label;
         b.dataset.categoryId = value ?? "";
         b.setAttribute("aria-pressed", String(categoryFilter === value));
         return b;
@@ -394,32 +419,17 @@ function renderChips(): void {
 function selectTab(next: Tab, nextCategory: string | null = null): void {
     tab = next;
     categoryFilter = next === "categories" ? nextCategory : null;
-    renderTabs();
+    renderFilters();
     renderChips();
     syncUrl();
     void loadPosts(true);
 }
 
-feedTabs().forEach((button) => {
-    button.addEventListener("click", () => {
-        const next = button.dataset.tab as Tab;
-        if (next !== tab) selectTab(next);
-    });
-});
-
-// Teclado no padrão de tablist: setas, Home e End mudam de aba.
-$("tfTabsContainer")?.addEventListener("keydown", (event) => {
-    const tabs = feedTabs();
-    const index = tabs.findIndex((t) => t.dataset.tab === tab);
-    let target = -1;
-    if (event.key === "ArrowRight") target = (index + 1) % tabs.length;
-    else if (event.key === "ArrowLeft") target = (index - 1 + tabs.length) % tabs.length;
-    else if (event.key === "Home") target = 0;
-    else if (event.key === "End") target = tabs.length - 1;
-    if (target < 0) return;
-    event.preventDefault();
-    tabs[target].focus();
-    selectTab(tabs[target].dataset.tab as Tab);
+// O que cada filtro mostra não mudou: só deixaram de ser abas e viraram chips.
+feedFilters?.addEventListener("click", (event) => {
+    const chip = (event.target as Element).closest<HTMLButtonElement>("[data-tab]");
+    const next = chip?.dataset.tab as Tab | undefined;
+    if (next && next !== tab) selectTab(next);
 });
 
 chipsEl?.addEventListener("click", (event) => {
@@ -428,9 +438,8 @@ chipsEl?.addEventListener("click", (event) => {
     selectTab("categories", chip.dataset.categoryId || null);
 });
 
-
 // ===========================================================================
-// Vistas: Discussões, Regras, Membros
+// Vistas: Discussões, Regras, Membros, Eventos
 // ===========================================================================
 
 const VIEW_IDS: Record<View, string> = {
@@ -452,8 +461,11 @@ const membersView =
         : null;
 
 const upcomingWidget = $("upcomingWidget");
+const miniEvents = $("miniEvents");
 const refreshUpcoming = (): void => {
-    if (communityId && upcomingWidget) void loadUpcomingWidget(upcomingWidget, communityId);
+    if (!communityId) return;
+    if (upcomingWidget) void loadUpcomingWidget(upcomingWidget, communityId, 3);
+    if (miniEvents) void loadUpcomingWidget(miniEvents, communityId, 1);
 };
 
 const eventsRoot = $("eventsRoot");
@@ -467,13 +479,16 @@ const eventsView =
         : null;
 let eventsLoaded = false;
 
-// Os links do widget levam à vista de eventos sem recarregar a página.
-upcomingWidget?.addEventListener("click", (event) => {
-    const link = (event.target as Element).closest("a");
-    if (!link || event.ctrlKey || event.metaKey || event.shiftKey) return;
-    event.preventDefault();
-    showView("events");
-    $("main-content")?.scrollIntoView({ behavior: "smooth" });
+// "Ver todos" e os eventos dos widgets levam à vista de eventos sem recarregar
+// (com Ctrl/⌘/Shift, o href abre em outra aba).
+document.querySelectorAll<HTMLElement>("#upcomingWidget, #miniEvents").forEach((widget) => {
+    widget.addEventListener("click", (event) => {
+        const link = (event.target as Element).closest("a");
+        if (!link || event.ctrlKey || event.metaKey || event.shiftKey) return;
+        event.preventDefault();
+        showView("events", true);
+        viewTabs?.querySelector<HTMLElement>('[data-view="events"]')?.focus();
+    });
 });
 
 function renderRules(): void {
@@ -489,15 +504,22 @@ function renderRules(): void {
     }
 }
 
-function showView(next: View): void {
+/** push: a troca veio de um clique (entra no histórico do navegador). */
+function showView(next: View, push = false): void {
     const changed = next !== view;
     view = next;
     for (const [key, id] of Object.entries(VIEW_IDS)) {
         const section = $(id);
         if (section) section.hidden = key !== view;
     }
-    setCurrentPageLink(view);
-    syncUrl();
+    viewTabs?.querySelectorAll<HTMLButtonElement>('[role="tab"]').forEach((button) => {
+        const active = button.dataset.view === view;
+        button.setAttribute("aria-selected", String(active));
+        button.tabIndex = active ? 0 : -1;
+        // No celular a linha rola: a aba aberta fica à vista.
+        if (active) button.scrollIntoView({ block: "nearest", inline: "nearest" });
+    });
+    syncUrl(push && changed);
     if (view === "members" && (changed || membersRoot?.childElementCount === 0)) {
         void membersView?.reload();
     }
@@ -509,6 +531,25 @@ function showView(next: View): void {
     }
 }
 
+viewTabs?.addEventListener("click", (event) => {
+    const button = (event.target as Element).closest<HTMLButtonElement>('[role="tab"]');
+    const next = button?.dataset.view as View | undefined;
+    if (!next) return;
+    // "Discussões" de novo volta para o filtro Conversas.
+    if (next === "discussions" && view === "discussions" && tab !== "all") selectTab("all");
+    showView(next, true);
+});
+bindTabKeys(viewTabs);
+
+/** A vista que a URL pede (?view=). */
+function viewFromUrl(): View {
+    const urlView = new URLSearchParams(window.location.search).get("view") as View | null;
+    return urlView && VIEWS.includes(urlView) ? urlView : "discussions";
+}
+
+// Voltar e Avançar do navegador: a vista da URL, sem empilhar de novo.
+window.addEventListener("popstate", () => showView(viewFromUrl()));
+
 // ===========================================================================
 // Posts
 // ===========================================================================
@@ -516,8 +557,8 @@ function showView(next: View): void {
 function showFeedStatus(message: string, isError = false): void {
     if (!postsList) return;
     postsList.innerHTML = `<div class="tf-feed-status${isError ? " error" : ""}"></div>`;
-    const el = postsList.querySelector(".tf-feed-status");
-    if (el) el.textContent = message;
+    const status = postsList.querySelector(".tf-feed-status");
+    if (status) status.textContent = message;
 }
 
 function emptyMessage(): string {
@@ -526,13 +567,10 @@ function emptyMessage(): string {
     return "Nenhuma discussão ainda. Seja o primeiro a publicar!";
 }
 
-/** Lista vazia com o atalho para publicar (menos na aba "Ajudar os outros"). */
+/** Lista vazia com o atalho para publicar (menos em "Ajudar os outros"). */
 function showEmptyFeed(): void {
     if (!postsList) return;
-    const action =
-        tab === "unanswered"
-            ? undefined
-            : { label: "Criar discussão", onClick: () => $("btnCreatePost")?.click() };
+    const action = tab === "unanswered" ? undefined : { label: "Criar discussão", onClick: () => void createPost() };
     postsList.replaceChildren(emptyState(emptyMessage(), undefined, action));
 }
 
@@ -602,7 +640,8 @@ async function editPost(post: Post): Promise<void> {
     }
 }
 
-$("btnCreatePost")?.addEventListener("click", async () => {
+/** "Criar post" do widget (desktop), do topo (tablet e celular) e da lista vazia. */
+async function createPost(): Promise<void> {
     if (!communityId || !thread || !postsList || !ensureLoggedIn()) return;
     if (!community?.myRole) {
         // Só membros publicam: oferece entrar em vez de deixar o erro 403.
@@ -615,11 +654,16 @@ $("btnCreatePost")?.addEventListener("click", async () => {
     }
 
     const post = await openPostEditor({ communityId, categories });
-    if (post && matchesCurrentFilter(post)) {
+    if (!post) return;
+    // O post novo aparece em Discussões, mesmo que o editor tenha sido aberto de outra vista.
+    if (view !== "discussions") showView("discussions", true);
+    if (matchesCurrentFilter(post)) {
         if (thread.posts.size === 0) postsList.innerHTML = "";
         thread.add([post], "prepend");
     }
-});
+}
+
+$("btnCreatePost")?.addEventListener("click", () => void createPost());
 
 // ===========================================================================
 // Início
@@ -627,8 +671,7 @@ $("btnCreatePost")?.addEventListener("click", async () => {
 
 function readUrlState(): void {
     const params = new URLSearchParams(window.location.search);
-    const urlView = params.get("view");
-    if (urlView === "rules" || urlView === "members" || urlView === "events") view = urlView;
+    view = viewFromUrl();
     const urlSort = params.get("sort") as Sort | null;
     if (urlSort && SORTS.includes(urlSort)) sort = urlSort;
     if (sortSelect) sortSelect.value = sort;
@@ -647,13 +690,22 @@ if (!communityId) {
     const name = $("communityName");
     if (name) name.textContent = "Comunidade";
 } else {
+    // Os "Ver todos" também abrem em nova aba (Ctrl/⌘ + clique).
+    document.querySelectorAll<HTMLAnchorElement>('[data-view-link="events"]').forEach((a) => {
+        a.href = communityUrl(communityId, "events");
+    });
     readUrlState();
-    renderTabs();
-    showView(view);
+    renderFilters();
+    // A vista inicial (vazia ou ?view=) é o estado de entrada: eventsLoaded faz a primeira carga.
+    const initial = view;
+    view = "discussions";
+    showView(initial);
     void loadCommunity();
     void loadPosts(true);
     const leaderboardWidget = $("leaderboardWidget");
     if (leaderboardWidget) createLeaderboard(leaderboardWidget, communityId);
+    const miniRanking = $("miniRanking");
+    if (miniRanking) void loadPodium(miniRanking, communityId);
     refreshUpcoming();
 }
 

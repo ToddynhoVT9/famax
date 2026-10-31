@@ -8,6 +8,8 @@
  * Tudo por createElement/textContent: título, descrição e local são texto
  * de usuário. O local só vira link quando é https (isSafeLink, a mesma
  * regra das redes sociais do perfil).
+ *
+ * Desenho: EventCard (fx-event) e o widget (fx-upcoming), no community.css.
  */
 import { api, getToken } from "./shared/api.js";
 import { goToLogin } from "./shared/auth-guard.js";
@@ -17,6 +19,7 @@ import { isSafeLink } from "./shared/social.js";
 import type { CommunityRole } from "./shared/moderation.js";
 import { trapFocus } from "./shared/focus-trap.js";
 import { bindTabKeys } from "./shared/tabs.js";
+import { ICONS } from "./shared/icons.js";
 import type { CommunityEvent } from "../../shared/api-types.js";
 export type { CommunityEvent };
 
@@ -68,20 +71,21 @@ function toLocalInput(iso: string | null): string {
     return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
 }
 
-function dateBadge(iso: string): HTMLElement {
+/** small: a data menor do widget "Próximos eventos". */
+function dateBadge(iso: string, small = false): HTMLElement {
     const date = new Date(iso);
-    const badge = el("div", "tf-event-date");
+    const badge = el("span", `fx-date${small ? " fx-date--sm" : ""}`);
     badge.setAttribute("aria-hidden", "true");
     badge.append(
-        el("span", "tf-event-day", dayFormat.format(date)),
-        el("span", "tf-event-month", monthFormat.format(date).replace(".", "")),
+        el("span", "fx-date-day", dayFormat.format(date)),
+        el("span", "fx-date-month", monthFormat.format(date).replace(".", "")),
     );
     return badge;
 }
 
 function locationNode(location: string): HTMLElement {
-    const wrapper = el("p", "tf-event-location");
-    wrapper.append("📍 ");
+    const wrapper = el("p", "fx-event-place cm-place");
+    wrapper.innerHTML = ICONS.place; // ícone fixo; o local entra por textContent abaixo
     if (isSafeLink(location)) {
         const link = el("a", "", location);
         link.href = location;
@@ -89,7 +93,7 @@ function locationNode(location: string): HTMLElement {
         link.rel = "noopener nofollow ugc";
         wrapper.append(link);
     } else {
-        wrapper.append(location);
+        wrapper.append(el("span", "", location));
     }
     return wrapper;
 }
@@ -234,8 +238,8 @@ export function createEventsView(root: HTMLElement, options: EventsViewOptions):
     let page = 0;
     let seq = 0;
 
-    const toolbar = el("div", "tf-events-toolbar");
-    const tabs = el("div", "tf-events-tabs");
+    const toolbar = el("div", "cm-etool");
+    const tabs = el("div", "cm-etabs");
     tabs.setAttribute("role", "tablist");
     tabs.setAttribute("aria-label", "Quais eventos");
     const tabButton = (label: string, value: Scope) => {
@@ -247,12 +251,15 @@ export function createEventsView(root: HTMLElement, options: EventsViewOptions):
         return b;
     };
     tabs.append(tabButton("Próximos", "upcoming"), tabButton("Anteriores", "past"));
-    const create = el("button", "fx-btn fx-btn--primary fx-btn--pill", "Novo evento");
+    // No celular, só o ícone (+); o texto continua como nome do botão.
+    const create = el("button", "fx-btn fx-btn--primary cm-newevent");
     create.type = "button";
+    create.innerHTML = ICONS.plus; // ícone fixo, sem dado
+    create.append(el("span", "cm-newevent-text", "Novo evento"));
     create.hidden = true;
     toolbar.append(tabs, create);
 
-    const list = el("div", "tf-events-list");
+    const list = el("div", "fx-events");
     list.setAttribute("aria-live", "polite");
     const status = el("p", "tf-feed-status");
     const more = el("button", "fx-btn fx-btn--outline fx-btn--pill list-more", "Carregar mais");
@@ -267,18 +274,19 @@ export function createEventsView(root: HTMLElement, options: EventsViewOptions):
     const isMember = () => options.viewerRole() !== null;
 
     function renderEvent(event: CommunityEvent): HTMLElement {
-        const card = el("article", `tf-event${event.isPast ? " is-past" : ""}`);
+        // O evento passado não fica mais apagado (opacidade): só perde o "Vou".
+        const card = el("article", `fx-event r-edge${event.isPast ? " is-past" : ""}`);
         card.dataset.eventId = event.eventId;
 
-        const body = el("div", "tf-event-body");
-        body.append(el("h3", "tf-event-title", event.title), el("p", "tf-event-when", eventWhen(event)));
+        const body = el("div", "fx-event-body");
+        body.append(el("h3", "fx-event-title", event.title), el("p", "fx-event-when", eventWhen(event)));
         if (event.location) body.append(locationNode(event.location));
-        if (event.description) body.append(el("p", "tf-event-description", event.description));
+        if (event.description) body.append(el("p", "fx-event-desc", event.description));
 
-        const footer = el("div", "tf-event-footer");
+        const footer = el("div", "fx-event-foot");
         const count = el(
             "span",
-            "tf-event-count",
+            "fx-event-count",
             `${event.attendeesCount} ${event.attendeesCount === 1 ? "pessoa vai" : "pessoas vão"}`,
         );
         footer.append(count);
@@ -415,31 +423,30 @@ export function createEventsView(root: HTMLElement, options: EventsViewOptions):
 // Widget "Próximos eventos" (lateral das discussões)
 // ===========================================================================
 
-export async function loadUpcomingWidget(widget: HTMLElement, communityId: string): Promise<void> {
-    const list = widget.querySelector<HTMLElement>(".tf-upcoming-list");
-    const link = widget.querySelector<HTMLAnchorElement>(".tf-upcoming-all");
+/** O widget da direita (3 eventos) e a versão curta do tablet e do celular (1). */
+export async function loadUpcomingWidget(widget: HTMLElement, communityId: string, limit = 3): Promise<void> {
+    const list = widget.querySelector<HTMLElement>(".fx-upcoming");
     if (!list) return;
-    if (link) link.href = communityUrl(communityId, "events");
     try {
-        const { data } = await api.communities.events(communityId, { scope: "upcoming", limit: 3 });
+        const { data } = await api.communities.events(communityId, { scope: "upcoming", limit });
         if (data.length === 0) {
-            list.replaceChildren(el("p", "tf-lb-status", "Nenhum evento marcado."));
+            list.replaceChildren(el("p", "cm-wstatus", "Nenhum evento marcado."));
             return;
         }
         list.replaceChildren(
             ...data.map((event) => {
-                const item = el("a", "tf-upcoming-item");
+                const item = el("a", "fx-upcoming-item");
                 item.href = communityUrl(communityId, "events");
-                const text = el("span", "tf-upcoming-text");
+                const text = el("span", "fx-upcoming-text");
                 text.append(
                     el("strong", "", event.title),
-                    el("span", "tf-upcoming-when", eventWhen({ startsAt: event.startsAt, endsAt: null })),
+                    el("span", "fx-upcoming-when", eventWhen({ startsAt: event.startsAt, endsAt: null })),
                 );
-                item.append(dateBadge(event.startsAt), text);
+                item.append(dateBadge(event.startsAt, true), text);
                 return item;
             }),
         );
     } catch {
-        list.replaceChildren(el("p", "tf-lb-status error", "Não foi possível carregar os eventos."));
+        list.replaceChildren(el("p", "cm-wstatus error", "Não foi possível carregar os eventos."));
     }
 }
