@@ -135,7 +135,16 @@ function dropdown(toggle: HTMLButtonElement, items: HTMLElement[], className = "
         setOpen(menu.hidden);
         if (!menu.hidden) items[0]?.focus();
     });
-    menu.addEventListener("click", () => setOpen(false));
+    // Captura: antes da ação do item. O foco volta ao botão, e a confirmação
+    // que a ação abrir devolve o foco a ele (o item some com o menu).
+    menu.addEventListener(
+        "click",
+        () => {
+            setOpen(false);
+            toggle.focus();
+        },
+        true,
+    );
     document.addEventListener("click", (event) => {
         if (!wrapper.contains(event.target as Node)) setOpen(false);
     });
@@ -633,7 +642,7 @@ function matchesCurrentFilter(post: Post): boolean {
 
 async function editPost(post: Post): Promise<void> {
     if (!communityId || !thread) return;
-    const saved = await openPostEditor({ communityId, categories, post });
+    const saved = await openPostEditor({ communityId, categories, post, communityName: community?.name });
     if (saved) {
         thread.replace(saved);
         toast("Discussão atualizada.");
@@ -653,7 +662,7 @@ async function createPost(): Promise<void> {
         if (!ok || !(await joinCommunity())) return;
     }
 
-    const post = await openPostEditor({ communityId, categories });
+    const post = await openPostEditor({ communityId, categories, communityName: community?.name });
     if (!post) return;
     // O post novo aparece em Discussões, mesmo que o editor tenha sido aberto de outra vista.
     if (view !== "discussions") showView("discussions", true);

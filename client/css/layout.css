@@ -629,6 +629,34 @@
     pointer-events: none;
 }
 
+/* ----- Barra de ações de formulário longo (comunidade nova, configurações) -----
+   Gruda embaixo (acima da barra inferior) só quando as ações passam da dobra;
+   quando cabem, fica no fim do formulário. O fundo e a linha de cima vão de
+   ponta a ponta; quem a usa põe overflow-x: clip no contêiner. */
+.r-actionbar {
+    position: sticky;
+    bottom: var(--r-bar);
+    z-index: 2;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: flex-end;
+    gap: var(--space-3);
+    padding: var(--space-3) 0;
+}
+
+.r-actionbar::before {
+    content: "";
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    left: -100vmax;
+    right: -100vmax;
+    z-index: -1;
+    border-top: 1px solid var(--color-border);
+    background: var(--color-bg);
+}
+
 /* ----- "Carregar mais" no fim das listas (Button outline, centralizado) ----- */
 .list-more {
     display: flex;
@@ -1059,6 +1087,17 @@
     }
 
     /* .r na frente: vence a borda e o raio do próprio cartão (.fx-posts, .fx-results). */
+    /* Barra de ações: os botões dividem a largura. */
+    .r-actionbar {
+        flex-wrap: nowrap;
+    }
+
+    .r-actionbar .fx-btn {
+        flex: 1 1 0;
+        min-width: 0;
+        padding: 0 var(--space-3);
+    }
+
     .r .r-edge {
         margin-left: calc(-1 * var(--r-gutter));
         margin-right: calc(-1 * var(--r-gutter));

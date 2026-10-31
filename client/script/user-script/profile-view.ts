@@ -446,6 +446,8 @@ function setupReportMenu(profile: PublicProfile): void {
     wrapper.dataset.ready = "true";
 
     const setOpen = (open: boolean): void => {
+        // O foco num item que vai sumir volta ao ⋯ (Bloquear abre uma confirmação).
+        if (!open && menu.contains(document.activeElement)) button.focus();
         menu.hidden = !open;
         button.setAttribute("aria-expanded", String(open));
     };

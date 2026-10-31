@@ -11,43 +11,44 @@
     <link rel="stylesheet" href="../../css/layout.css">
     <link rel="stylesheet" href="../../css/community-new.css">
 </head>
-<body class="community-new-page r">
+<!-- Tela de tarefa: sem a barra inferior (r--nobar); no desktop a barra já não aparece. -->
+<body class="community-new-page r r--nobar">
     <!-- Header e sidebar: montados por script/shared/layout.ts -->
     <header id="app-header" class="header"></header>
     <aside id="app-sidebar" class="sidebar"></aside>
 
-    <main class="main-content community-new-main">
-    <div class="page-card">
-        <div class="page-header">
-            <h1 id="pageTitle">Criar comunidade</h1>
-            <p id="pageSubtitle">Preencha os dados para criar sua comunidade e escolha uma capa personalizada.</p>
-        </div>
-        <div class="page-body">
-            <form id="communityForm" novalidate>
+    <main class="main-content cn-main" id="main-content">
+        <div class="r-col">
+            <div class="cn-head">
+                <h1 class="r-ptitle" id="pageTitle">Criar comunidade</h1>
+                <p class="cn-intro r-prose" id="pageSubtitle">Preencha os dados para criar sua comunidade e escolha uma capa personalizada.</p>
+            </div>
+
+            <form class="cn-form" id="communityForm" aria-labelledby="pageTitle" novalidate>
                 <div class="fx-banner fx-banner--danger" id="formError" role="alert" hidden></div>
 
-                <div class="form-field">
+                <div class="fx-field">
                     <label class="fx-label" for="communityName">Nome da comunidade</label>
                     <input class="fx-input" id="communityName" name="communityName" type="text"
                            placeholder="Ex: Gamers do bairro" maxlength="80" required>
                 </div>
 
-                <div class="form-field">
+                <div class="fx-field">
                     <label class="fx-label" for="communityCategory">Categoria</label>
                     <select class="fx-input" id="communityCategory" name="communityCategory" required disabled>
                         <option value="">Carregando categorias...</option>
                     </select>
                 </div>
 
-                <div class="form-field">
-                    <label class="fx-label" for="communityDescription">Descrição <span class="field-hint">(opcional)</span></label>
+                <div class="fx-field">
+                    <label class="fx-label" for="communityDescription">Descrição <span class="cn-opt">(opcional)</span></label>
                     <textarea class="fx-input" id="communityDescription" name="communityDescription"
                               maxlength="500" placeholder="Sobre o que é a sua comunidade?"></textarea>
                 </div>
 
                 <!-- Só no modo edição: as regras aparecem na vista "Regras" da comunidade. -->
-                <div class="form-field" id="rulesField" hidden>
-                    <label class="fx-label" for="communityRules">Regras <span class="field-hint">(opcional)</span></label>
+                <div class="fx-field" id="rulesField" hidden>
+                    <label class="fx-label" for="communityRules">Regras <span class="cn-opt">(opcional)</span></label>
                     <textarea class="fx-input" id="communityRules" name="communityRules" maxlength="5000" rows="6"
                               placeholder="Uma regra por linha. Ex.: 1. Respeite os outros membros."></textarea>
                 </div>
@@ -58,11 +59,11 @@
                     Comunidade para maiores de 18 (+18) — fica fora da home e só quem tem conteúdo adulto liberado entra
                 </label>
 
-                <div class="form-field">
-                    <label class="fx-label" for="communityCover">Capa da comunidade <span class="field-hint">(opcional)</span></label>
-                    <input class="fx-input" id="communityCover" name="communityCover" type="file"
-                           accept="image/png,image/jpeg,image/webp">
-                    <span class="field-hint">PNG, JPEG ou WebP. Máximo 2MB.</span>
+                <div class="fx-field">
+                    <label class="fx-label" for="communityCover">Capa da comunidade <span class="cn-opt">(opcional)</span></label>
+                    <input class="fx-input cn-file" id="communityCover" name="communityCover" type="file"
+                           accept="image/png,image/jpeg,image/webp" aria-describedby="coverHint">
+                    <span class="fx-hint" id="coverHint">PNG, JPEG ou WebP, até 2 MB. A prévia tem a altura da capa na página da comunidade.</span>
                 </div>
 
                 <!-- Só no modo edição, quando a comunidade já tem capa. -->
@@ -70,22 +71,23 @@
                     <input type="checkbox" id="removeCover"> Remover a capa atual
                 </label>
 
-                <div class="image-preview" id="imagePreview">Nenhuma imagem selecionada</div>
+                <!-- Prévia na proporção da capa real (o mesmo recorte). -->
+                <div class="cn-cover" id="imagePreview">Nenhuma imagem selecionada</div>
 
-                <div class="actions">
+                <!-- Gruda embaixo só quando as ações passam da dobra. -->
+                <div class="r-actionbar">
                     <button type="button" class="fx-btn fx-btn--secondary" id="cancelBtn">Voltar</button>
-                    <button type="submit" class="fx-btn fx-btn--primary" id="submitBtn">Criar comunidade</button>
+                    <button type="submit" class="fx-btn fx-btn--primary" id="submitBtn" data-conferir-acao="Criar comunidade">Criar comunidade</button>
                 </div>
             </form>
 
             <!-- Só no modo edição: exclusão pelo dono, com o nome digitado. -->
-            <section class="fx-danger-zone" id="dangerZone" hidden>
-                <h2>Excluir comunidade</h2>
+            <section class="fx-danger-zone cn-danger" id="dangerZone" aria-labelledby="dangerTitle" hidden>
+                <h2 id="dangerTitle">Excluir comunidade</h2>
                 <p>A comunidade some para todos os membros, junto com as discussões. Esta ação não pode ser desfeita pela interface.</p>
                 <button type="button" class="fx-btn fx-btn--danger" id="deleteCommunityBtn">Excluir comunidade</button>
             </section>
         </div>
-    </div>
     </main>
 
     <script type="module" src="../../script/community-new.ts"></script>

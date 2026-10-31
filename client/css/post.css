@@ -678,51 +678,60 @@
     visibility: visible;
 }
 
-/* ----- Editor do post (shared/post-editor.ts) ----- */
-/* Abre na comunidade e na página do post. A janela é redesenhada no prompt 08. */
-.post-editor-content {
-    min-height: 150px;
+/* ----- Janela do criar post (shared/post-editor.ts) ----- */
+/* A janela é a r-win (components.css); aqui, só o que é dela. */
+.pe-content {
+    min-height: 160px;
 }
 
-.modal-images {
-    display: flex;
-    flex-wrap: wrap;
+/* Imagens: grade de 4 colunas, até 96px cada (no celular, a largura toda). */
+.pe-images {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 96px));
     gap: var(--space-2);
-    margin: 6px 0 var(--space-2);
 }
 
-.modal-image {
+.pe-image {
     position: relative;
-    width: 84px;
-    height: 84px;
-    border-radius: var(--radius-md);
+    aspect-ratio: 1;
     overflow: hidden;
+    border-radius: var(--radius-md);
     background: var(--color-dark-2);
 }
 
-.modal-image img {
+.pe-image img {
     width: 100%;
     height: 100%;
     object-fit: cover;
 }
 
-.modal-image-remove {
+/* Remover: o ✕ no canto, com o alvo da faixa e o círculo escuro de 22px dentro. */
+.pe-image-rm {
     position: absolute;
-    top: 3px;
-    right: 3px;
-    width: 22px;
-    height: 22px;
-    border: none;
-    border-radius: var(--radius-circle);
-    background: var(--color-scrim);
+    top: 0;
+    right: 0;
+    display: flex;
+    align-items: flex-start;
+    justify-content: flex-end;
+    width: var(--r-touch);
+    height: var(--r-touch);
+    padding: var(--space-1);
+    border: 0;
+    background: none;
     color: var(--color-on-accent);
-    font-size: var(--text-md);
-    line-height: 1;
     cursor: pointer;
 }
 
+.pe-image-rm .r-ico {
+    width: 22px;
+    height: 22px;
+    padding: 3px;
+    border-radius: var(--radius-circle);
+    background: var(--color-scrim-strong);
+}
+
 /* "Adicionar imagens" (fx-btn secondary num <label>): não estica no Field. */
-.modal-add-images {
+.pe-add {
     align-self: flex-start;
 }
 
@@ -770,5 +779,13 @@
 
     .fx-gallery--scroll.fx-gallery--1 .fx-gallery-img:nth-child(n) {
         flex-basis: 100%;
+    }
+
+    .pe-images {
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+    }
+
+    .pe-add {
+        align-self: stretch;
     }
 }

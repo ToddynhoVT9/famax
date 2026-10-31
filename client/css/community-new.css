@@ -1,110 +1,114 @@
 /* ===========================================================================
-   FAMAX — Criação de Comunidade
+   FAMAX — Comunidade nova e edição da comunidade (CommunityForm)
+   Formulário de 760px (.r-col) a partir do topo da página, sem cartão, com a
+   barra de ações (.r-actionbar, no layout.css) que gruda embaixo quando as
+   ações passam da dobra. No tablet e no celular é tela de tarefa, sem a barra
+   inferior (r--nobar no <body>).
    =========================================================================== */
 
-body.community-new-page {
-    background-color: var(--color-bg);
-    color: var(--color-text);
-    min-height: 100vh;
+/* A barra de ações tem o fundo de ponta a ponta (::before com 100vmax): o
+   corte evita a rolagem lateral. */
+.cn-main {
+    overflow-x: clip;
 }
 
-/* O cartão fica centralizado no espaço entre o header e a barra inferior (até o prompt 08). */
-.community-new-main {
-    min-height: calc(100dvh - var(--r-header) - var(--r-bar));
+.cn-head {
     display: flex;
-    align-items: center;
-    justify-content: center;
+    flex-direction: column;
+    gap: var(--space-2);
 }
 
-.page-card {
-    width: min(720px, 100%);
-    background-color: var(--color-surface);
-    border-radius: 24px;
-    box-shadow: 0 24px 64px rgba(0, 0, 0, 0.45);
-    overflow: hidden;
-}
-
-.page-header {
-    background-color: var(--color-chrome);
-    padding: 26px 28px;
-}
-
-.page-header h1 {
-    font-size: 2rem;
-    font-weight: 800;
-    color: var(--color-on-chrome);
-    margin-bottom: 8px;
-}
-
-.page-header p {
-    color: var(--color-on-chrome);
-    font-size: 1rem;
-}
-
-.page-body {
-    padding: 28px;
-}
-
-#communityForm {
-    display: grid;
-    gap: 20px;
-}
-
-.form-field {
-    display: grid;
-    gap: 10px;
-}
-
-/* Campos (fx-input): só o que é deste formulário. */
-.form-field textarea {
-    min-height: 90px;
-}
-
-.field-hint {
-    font-size: 0.82rem;
+.cn-intro {
+    margin: 0;
     color: var(--color-text-faint);
 }
 
-.image-preview {
-    min-height: 150px;
-    border: 2px dashed var(--color-border-strong);
-    border-radius: 16px;
+.cn-form {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-5);
+}
+
+.cn-form .fx-field {
+    flex: none;
+}
+
+.cn-opt {
+    font-weight: var(--weight-regular);
+    color: var(--color-text-faint);
+}
+
+.cn-file {
+    color: var(--color-text-soft);
+}
+
+/* ----- Prévia da capa: na proporção da capa real ----- */
+/* No tablet e no celular, capa e formulário têm a mesma largura: 96px de
+   altura. No desktop e no compacto o formulário (760) é mais estreito que a
+   capa (1080 e 960): a prévia fica mais baixa e mostra o mesmo recorte. */
+.cn-cover {
     display: flex;
     align-items: center;
     justify-content: center;
-    padding: 18px;
-    color: var(--color-text-muted);
+    height: var(--cover-height-dense);
+    padding: var(--space-4);
+    overflow: hidden;
+    border: 2px dashed var(--color-border-strong);
+    border-radius: var(--radius-lg);
     background: var(--color-bg-deep);
+    color: var(--color-text-muted);
+    font-size: var(--text-sm);
     text-align: center;
 }
 
-.image-preview img {
-    max-width: 100%;
-    max-height: 260px;
-    border-radius: 16px;
+/* Com imagem: o recorte da capa (object-fit: cover), sem a moldura tracejada. */
+.cn-cover.has-image {
+    padding: 0;
+    border: 0;
+}
+
+.cn-cover img {
+    width: 100%;
+    height: 100%;
     object-fit: cover;
 }
 
-.actions {
-    display: flex;
-    justify-content: flex-end;
-    gap: 12px;
-    flex-wrap: wrap;
+/* ----- Edição: a zona de perigo, depois do formulário ----- */
+.cn-danger {
+    margin-top: var(--space-6);
 }
 
-@media (max-width: 640px) {
-    .actions {
-        justify-content: stretch;
+.cn-danger h2 {
+    margin: 0;
+    font-size: var(--text-lg);
+    line-height: 1.625rem;
+    font-weight: var(--weight-bold);
+    color: var(--color-danger-text);
+}
+
+.cn-danger p {
+    max-width: var(--prose-measure);
+}
+
+/* ----- Desktop: prévia de 760 × 68 (a proporção da capa de 1080 × 96) ----- */
+@media (min-width: 1280px) {
+    .cn-cover {
+        height: auto;
+        aspect-ratio: var(--cover-ratio-desktop);
     }
+}
 
-    .actions .fx-btn {
-        flex: 1;
+/* ----- Compacto: 760 × 76 (a proporção da capa de 960 × 96) ----- */
+@media (min-width: 1024px) and (max-width: 1279px) {
+    .cn-cover {
+        height: auto;
+        aspect-ratio: var(--cover-ratio-desktop-sm);
     }
 }
 
-/* ----- Modo edição (?edit=<id>) ----- */
-/* Excluir comunidade (fx-danger-zone): afastada do formulário. */
-#dangerZone {
-    margin-top: 32px;
+/* ----- Celular: "Excluir comunidade" na largura toda ----- */
+@media (max-width: 599px) {
+    .cn-danger .fx-btn {
+        align-self: stretch;
+    }
 }
-

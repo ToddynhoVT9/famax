@@ -11,6 +11,10 @@
  *  - erros aparecem inline no formulário, não em alert();
  *  - o botão é travado durante o request — dois cliques criariam duas
  *    comunidades.
+ *
+ * Desenho: formulário de 760px a partir do topo, com a barra de ações que
+ * gruda embaixo quando as ações passam da dobra (community-new.css). O erro
+ * aparece no topo do formulário, e o campo com erro fica com aria-invalid.
  */
 import { api, getMe } from "./shared/api.js";
 import { requireLogin } from "./shared/auth-guard.js";
@@ -18,9 +22,12 @@ import { initLayout } from "./shared/layout.js";
 import { communityUrl, pages } from "./shared/pages.js";
 import { confirmDialog } from "./shared/dialog.js";
 import { queryParam } from "./shared/dom.js";
+import { followKeyboard } from "./shared/keyboard.js";
 
 requireLogin();
 initLayout();
+// Celular: com o teclado aberto, o campo focado volta para a vista.
+followKeyboard(document.getElementById("communityForm") ?? document);
 
 const MAX_COVER_BYTES = 2 * 1024 * 1024;
 const ALLOWED_TYPES = ["image/png", "image/jpeg", "image/webp"];
@@ -64,16 +71,31 @@ if (
     submitBtn instanceof HTMLButtonElement &&
     formError instanceof HTMLElement
 ) {
-    const showError = (message: string): void => {
+    /** field: o campo com erro, que fica com aria-invalid até ser alterado. */
+    const showError = (message: string, field?: HTMLElement): void => {
         formError.textContent = message;
         formError.hidden = false;
         formError.scrollIntoView({ behavior: "smooth", block: "nearest" });
+        if (field) {
+            field.setAttribute("aria-invalid", "true");
+            field.setAttribute("aria-describedby", formError.id);
+        }
     };
 
     const clearError = (): void => {
         formError.textContent = "";
         formError.hidden = true;
+        for (const field of form.querySelectorAll('[aria-invalid="true"]')) {
+            field.removeAttribute("aria-invalid");
+            if (field.getAttribute("aria-describedby") === formError.id) field.removeAttribute("aria-describedby");
+        }
     };
+
+    // Ao corrigir o campo, ele deixa de ser marcado com erro.
+    form.addEventListener("input", (event) => {
+        const field = event.target as HTMLElement;
+        if (field.getAttribute("aria-invalid") === "true") field.removeAttribute("aria-invalid");
+    });
 
     // --- Categorias -------------------------------------------------------
 
@@ -118,7 +140,18 @@ if (
     // FormData, não como base64.
 
     const resetPreview = (message: string): void => {
+        imagePreview.classList.remove("has-image");
         imagePreview.textContent = message;
+    };
+
+    /** A prévia com a imagem, no recorte da capa. */
+    const showPreview = (src: string, alt: string): void => {
+        imagePreview.textContent = "";
+        imagePreview.classList.add("has-image");
+        const img = document.createElement("img");
+        img.src = src;
+        img.alt = alt;
+        imagePreview.appendChild(img);
     };
 
     coverInput.addEventListener("change", () => {
@@ -133,25 +166,19 @@ if (
         if (!ALLOWED_TYPES.includes(file.type)) {
             coverInput.value = "";
             resetPreview("Nenhuma imagem selecionada");
-            showError("A capa deve ser um arquivo PNG, JPEG ou WebP.");
+            showError("A capa deve ser um arquivo PNG, JPEG ou WebP.", coverInput);
             return;
         }
 
         if (file.size > MAX_COVER_BYTES) {
             coverInput.value = "";
             resetPreview("Nenhuma imagem selecionada");
-            showError("A capa deve ter no máximo 2MB.");
+            showError("A capa deve ter no máximo 2MB.", coverInput);
             return;
         }
 
         const reader = new FileReader();
-        reader.onload = () => {
-            imagePreview.textContent = "";
-            const img = document.createElement("img");
-            img.src = String(reader.result);
-            img.alt = "Prévia da capa da comunidade";
-            imagePreview.appendChild(img);
-        };
+        reader.onload = () => showPreview(String(reader.result), "Prévia da capa da comunidade");
         reader.onerror = () => {
             resetPreview("Não foi possível ler a imagem");
         };
@@ -166,13 +193,7 @@ if (
     const submitLabel = editId ? "Salvar alterações" : "Criar comunidade";
     let editingName = "";
 
-    const showCurrentCover = (url: string): void => {
-        imagePreview.textContent = "";
-        const img = document.createElement("img");
-        img.src = url;
-        img.alt = "Capa atual da comunidade";
-        imagePreview.appendChild(img);
-    };
+    const showCurrentCover = (url: string): void => showPreview(url, "Capa atual da comunidade");
 
     const loadForEdit = async (): Promise<void> => {
         if (!editId) return;
@@ -256,12 +277,12 @@ if (
         const file = coverInput.files?.[0];
 
         if (name.length < 3) {
-            showError("O nome da comunidade deve ter no mínimo 3 caracteres.");
+            showError("O nome da comunidade deve ter no mínimo 3 caracteres.", nameInput);
             nameInput.focus();
             return;
         }
         if (!categoryId) {
-            showError("Selecione uma categoria.");
+            showError("Selecione uma categoria.", categorySelect);
             categorySelect.focus();
             return;
         }

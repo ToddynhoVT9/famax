@@ -875,8 +875,12 @@ export function createPostThread(container: HTMLElement, options: PostThreadOpti
     function closeMenus(except?: Element): void {
         container.querySelectorAll<HTMLElement>('[data-post-menu] > [role="menu"]:not([hidden])').forEach((menu) => {
             if (except && menu.parentElement?.contains(except)) return;
+            // O foco num item que vai sumir volta ao ⋯ (e a confirmação que o
+            // item abrir devolve o foco a ele).
+            const toggle = menu.previousElementSibling as HTMLElement | null;
+            if (menu.contains(document.activeElement)) toggle?.focus();
             menu.hidden = true;
-            menu.previousElementSibling?.setAttribute("aria-expanded", "false");
+            toggle?.setAttribute("aria-expanded", "false");
         });
     }
 

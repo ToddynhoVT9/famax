@@ -68,6 +68,7 @@ const thread = container
                   communityId: post.communityId,
                   categories,
                   post,
+                  communityName: post.communityName,
               });
               if (saved) {
                   thread?.replace(saved);

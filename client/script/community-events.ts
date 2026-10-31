@@ -17,7 +17,7 @@ import { communityUrl } from "./shared/pages.js";
 import { confirmDialog, toast } from "./shared/dialog.js";
 import { isSafeLink } from "./shared/social.js";
 import type { CommunityRole } from "./shared/moderation.js";
-import { trapFocus } from "./shared/focus-trap.js";
+import { createFormWindow } from "./shared/window.js";
 import { bindTabKeys } from "./shared/tabs.js";
 import { ICONS } from "./shared/icons.js";
 import type { CommunityEvent } from "../../shared/api-types.js";
@@ -99,25 +99,16 @@ function locationNode(location: string): HTMLElement {
 }
 
 // ===========================================================================
-// Modal de criar / editar
+// Janela de criar / editar (a janela de formulário da R, shared/window.ts)
 // ===========================================================================
 
 function openEventEditor(communityId: string, event?: CommunityEvent): Promise<CommunityEvent | null> {
     return new Promise((resolve) => {
-        const overlay = el("div", "fx-overlay");
-        const form = el("form", "fx-dialog fx-dialog--form");
-        form.noValidate = true;
-        form.setAttribute("role", "dialog");
-        form.setAttribute("aria-modal", "true");
-        form.setAttribute("aria-labelledby", "eventEditorTitle");
-
-        const header = el("div", "fx-dialog-head");
-        const title = el("h2", "fx-dialog-title", event ? "Editar evento" : "Novo evento");
-        title.id = "eventEditorTitle";
-        const close = el("button", "fx-btn fx-btn--icon", "×");
-        close.type = "button";
-        close.setAttribute("aria-label", "Fechar");
-        header.append(title, close);
+        const win = createFormWindow({
+            title: event ? "Editar evento" : "Novo evento",
+            onRequestClose: () => finish(null),
+        });
+        const form = win.form;
 
         const error = el("div", "fx-banner fx-banner--danger");
         error.setAttribute("role", "alert");
@@ -155,41 +146,29 @@ function openEventEditor(communityId: string, event?: CommunityEvent): Promise<C
         const row = el("div", "modal-row");
         row.append(field("Início", startInput, "eventEditorStart"), field("Fim (opcional)", endInput, "eventEditorEnd"));
 
-        const actions = el("div", "fx-dialog-actions");
         const cancel = el("button", "fx-btn fx-btn--secondary", "Cancelar");
         cancel.type = "button";
         const submit = el("button", "fx-btn fx-btn--primary", event ? "Salvar alterações" : "Criar evento");
         submit.type = "submit";
-        actions.append(cancel, submit);
 
-        form.append(
-            header,
+        win.body.append(
             error,
             field("Título", titleInput, "eventEditorTitleInput"),
             row,
             field("Local ou link", locationInput, "eventEditorLocation"),
             field("Descrição", descriptionInput, "eventEditorDescription"),
-            actions,
         );
-        overlay.append(form);
-        document.body.append(overlay);
 
         const showError = (message: string | null): void => {
             error.textContent = message ?? "";
             error.hidden = message === null;
         };
-        let releaseFocus = (): void => {};
-        const finish = (result: CommunityEvent | null): void => {
-            overlay.remove();
-            releaseFocus();
+        function finish(result: CommunityEvent | null): void {
+            win.close();
             resolve(result);
-        };
-        close.addEventListener("click", () => finish(null));
+        }
         cancel.addEventListener("click", () => finish(null));
-        overlay.addEventListener("click", (e) => {
-            if (e.target === overlay) finish(null);
-        });
-        releaseFocus = trapFocus(form, { onEscape: () => finish(null), initialFocus: titleInput });
+        win.open({ primary: submit, secondary: [cancel], initialFocus: titleInput });
 
         form.addEventListener("submit", async (e) => {
             e.preventDefault();

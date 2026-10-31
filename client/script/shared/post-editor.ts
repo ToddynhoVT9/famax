@@ -2,9 +2,10 @@
  * FAMAX — Modal de criar/editar post (Shared)
  *
  * Usado pela página da comunidade (criar e editar) e pela página do post
- * (editar). O modal é montado aqui, não copiado em cada HTML, com o Dialog,
- * o Field e o Button do components.css; o que é só desta janela (.modal-*)
- * está em community.css, que as duas páginas carregam.
+ * (editar). A janela é a de formulário da R (shared/window.ts): o corpo rola
+ * por dentro, e título e ações ficam à vista; no celular, tela cheia com
+ * "Publicar" no topo. Os campos são Field e Button do components.css; o que
+ * é só desta janela (.pe-*) está no post.css, que as duas páginas carregam.
  *
  * Imagens (até 4): escolhidas aqui, mas só enviadas DEPOIS que o post foi
  * salvo — POST /posts/:id/images precisa do post existindo, e assim um
@@ -19,7 +20,8 @@
 import { api, getMe } from "./api.js";
 import { confirmDialog, toast } from "./dialog.js";
 import { attachCharCounter } from "./char-counter.js";
-import { trapFocus } from "./focus-trap.js";
+import { createFormWindow } from "./window.js";
+import { ICONS } from "./icons.js";
 import type { Post } from "./post-thread.js";
 import { MAX_POST_IMAGES, type PostImage } from "./post-images.js";
 import type { PostCategory } from "../../../shared/api-types.js";
@@ -33,6 +35,8 @@ export interface PostEditorOptions {
     categories: PostCategory[];
     /** Post a editar; sem ele, cria um novo. */
     post?: Post;
+    /** Nome da comunidade, no subtítulo da janela ("Em Hardware e montagem"). */
+    communityName?: string;
 }
 
 interface PostDraft {
@@ -87,26 +91,18 @@ export function openPostEditor(options: PostEditorOptions): Promise<Post | null>
     const { post } = options;
 
     return new Promise((resolve) => {
-        const overlay = el("div", "fx-overlay");
-        const form = el("form", "fx-dialog fx-dialog--form");
-        form.noValidate = true;
-        form.setAttribute("role", "dialog");
-        form.setAttribute("aria-modal", "true");
-        form.setAttribute("aria-labelledby", "postEditorTitle");
-
-        const header = el("div", "fx-dialog-head");
-        const title = el("h2", "fx-dialog-title", post ? "Editar discussão" : "Criar nova discussão");
-        title.id = "postEditorTitle";
-        const close = el("button", "fx-btn fx-btn--icon", "×");
-        close.type = "button";
-        close.setAttribute("aria-label", "Fechar");
-        header.append(title, close);
+        const win = createFormWindow({
+            title: post ? "Editar discussão" : "Criar nova discussão",
+            subtitle: options.communityName ? `Em ${options.communityName}` : undefined,
+            onRequestClose: () => void requestClose(),
+        });
+        const form = win.form;
 
         const error = el("div", "fx-banner fx-banner--danger");
         error.setAttribute("role", "alert");
         error.hidden = true;
 
-        const titleLabel = el("label", "fx-label", "Título do Post");
+        const titleLabel = el("label", "fx-label", "Título");
         const titleInput = el("input", "fx-input");
         titleInput.maxLength = 200;
         titleInput.placeholder = "Sobre o que você quer falar?";
@@ -125,7 +121,7 @@ export function openPostEditor(options: PostEditorOptions): Promise<Post | null>
         categorySelect.value = post?.communityCategoryId ?? "";
 
         const contentLabel = el("label", "fx-label", "Conteúdo");
-        const contentInput = el("textarea", "fx-input post-editor-content");
+        const contentInput = el("textarea", "fx-input pe-content");
         contentInput.id = "postEditorContent";
         contentLabel.htmlFor = contentInput.id;
         contentInput.maxLength = 10_000;
@@ -152,13 +148,14 @@ export function openPostEditor(options: PostEditorOptions): Promise<Post | null>
 
         // ----- Imagens -----
         const imagesLabel = el("span", "fx-label", `Imagens (até ${MAX_POST_IMAGES})`);
-        const imagesList = el("div", "modal-images");
+        const imagesList = el("div", "pe-images");
+        imagesList.hidden = true;
         const fileInput = el("input", "visually-hidden");
         fileInput.type = "file";
         fileInput.accept = IMAGE_TYPES.join(",");
         fileInput.multiple = true;
         fileInput.id = "postEditorImages";
-        const addImages = el("label", "fx-btn fx-btn--secondary modal-add-images", "Adicionar imagens");
+        const addImages = el("label", "fx-btn fx-btn--secondary pe-add", "Adicionar imagens");
         addImages.htmlFor = fileInput.id;
         addImages.tabIndex = 0;
         addImages.setAttribute("role", "button");
@@ -169,12 +166,14 @@ export function openPostEditor(options: PostEditorOptions): Promise<Post | null>
         const total = (): number => existing.length - removed.size + added.length;
 
         const thumb = (src: string, onRemove: () => void): HTMLElement => {
-            const item = el("div", "modal-image");
+            const item = el("div", "pe-image");
             const img = el("img");
             img.src = src;
             img.alt = "";
-            const remove = el("button", "modal-image-remove", "×");
+            // O ✕ no canto: alvo da faixa, com o círculo escuro de 22px dentro.
+            const remove = el("button", "pe-image-rm");
             remove.type = "button";
+            remove.innerHTML = ICONS.close; // ícone fixo, sem dado
             remove.setAttribute("aria-label", "Remover imagem");
             remove.addEventListener("click", () => {
                 onRemove();
@@ -197,6 +196,7 @@ export function openPostEditor(options: PostEditorOptions): Promise<Post | null>
                 ),
             );
             addImages.hidden = total() >= MAX_POST_IMAGES;
+            imagesList.hidden = imagesList.childElementCount === 0;
         }
 
         fileInput.addEventListener("change", () => {
@@ -227,12 +227,11 @@ export function openPostEditor(options: PostEditorOptions): Promise<Post | null>
         });
         renderImages();
 
-        const actions = el("div", "fx-dialog-actions");
         const cancel = el("button", "fx-btn fx-btn--secondary", "Cancelar");
         cancel.type = "button";
-        const submit = el("button", "fx-btn fx-btn--primary", post ? "Salvar alterações" : "Publicar Post");
+        const submit = el("button", "fx-btn fx-btn--primary", post ? "Salvar alterações" : "Publicar");
         submit.type = "submit";
-        actions.append(cancel, submit);
+        submit.dataset.conferirAcao = submit.textContent ?? "";
 
         // ----- Rascunho (só post novo) -----
         const draftBar = el("div", "fx-banner fx-banner--warning");
@@ -275,8 +274,8 @@ export function openPostEditor(options: PostEditorOptions): Promise<Post | null>
             return wrap;
         };
 
-        form.append(
-            header,
+        // Rascunho e erro no topo do corpo; as ações vão para o rodapé (ou o topo, no celular).
+        win.body.append(
             draftBar,
             error,
             field(titleLabel, titleInput),
@@ -284,10 +283,7 @@ export function openPostEditor(options: PostEditorOptions): Promise<Post | null>
             field(contentLabel, contentInput, contentHint),
             nsfwLabel,
             field(imagesLabel, imagesList, fileInput, addImages),
-            actions,
         );
-        overlay.append(form);
-        document.body.append(overlay);
 
         const updateTitleCounter = attachCharCounter(titleInput);
         const updateContentCounter = attachCharCounter(contentInput);
@@ -310,12 +306,9 @@ export function openPostEditor(options: PostEditorOptions): Promise<Post | null>
             error.hidden = message === null;
         };
 
-        let releaseFocus: () => void = () => {};
-
         const finish = (result: Post | null): void => {
             for (const entry of added) URL.revokeObjectURL(entry.preview);
-            overlay.remove();
-            releaseFocus();
+            win.close();
             resolve(result);
         };
 
@@ -342,13 +335,8 @@ export function openPostEditor(options: PostEditorOptions): Promise<Post | null>
             finish(null);
         };
 
-        releaseFocus = trapFocus(form, { onEscape: () => void requestClose(), initialFocus: titleInput });
-
-        close.addEventListener("click", () => void requestClose());
+        win.open({ primary: submit, secondary: [cancel], initialFocus: titleInput });
         cancel.addEventListener("click", () => void requestClose());
-        overlay.addEventListener("click", (event) => {
-            if (event.target === overlay) void requestClose();
-        });
 
         /**
          * Depois do post salvo: tira as imagens marcadas e envia as novas.

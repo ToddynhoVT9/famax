@@ -255,6 +255,8 @@ export function createMembersView(root: HTMLElement, options: MembersViewOptions
             if (toggle === except) return;
             toggle.setAttribute("aria-expanded", "false");
             const menu = toggle.nextElementSibling as HTMLElement | null;
+            // O foco num item que vai sumir volta ao ⋯.
+            if (menu?.contains(document.activeElement)) toggle.focus();
             if (menu) menu.hidden = true;
         });
     }

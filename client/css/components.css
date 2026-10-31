@@ -374,6 +374,67 @@ textarea.fx-input { min-height: 96px; resize: vertical; }
 .fx-dialog-text { margin: 0; color: var(--color-text-soft); }
 .fx-dialog-actions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: var(--space-3); margin-top: var(--space-3); }
 
+/* ----- Janela de formulário (shared/window.ts) -----
+   Até 700px e 90% da altura; só o corpo rola, título e ações ficam à vista.
+   No celular, tela cheia (ver o fim do arquivo). */
+.r-win-veil {
+    position: fixed;
+    inset: 0;
+    z-index: var(--z-modal);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0 var(--r-gutter);
+    background: var(--color-overlay);
+}
+
+.r-win {
+    display: flex;
+    flex-direction: column;
+    width: min(var(--window-width), 100%);
+    max-height: var(--window-max-height);
+    overflow: hidden;
+    border-radius: var(--radius-lg);
+    background: var(--color-surface-2);
+    color: var(--color-text);
+    box-shadow: var(--shadow-lg);
+}
+
+.r-win-head {
+    display: flex;
+    flex-shrink: 0;
+    align-items: center;
+    gap: var(--space-3);
+    padding: var(--space-3) var(--space-3) var(--space-3) var(--space-6);
+    border-bottom: 1px solid var(--color-border);
+}
+
+.r-win-titles { flex: 1 1 auto; min-width: 0; }
+.r-win-title { margin: 0; font-size: var(--text-2xl); line-height: 2rem; font-weight: var(--weight-bold); }
+.r-win-sub { margin: 0; font-size: var(--text-sm); line-height: 1.25rem; color: var(--color-text-faint); }
+.r-win-close { flex-shrink: 0; }
+
+.r-win-body {
+    display: flex;
+    flex: 1 1 auto;
+    flex-direction: column;
+    gap: var(--space-5);
+    min-height: 0;
+    padding: var(--space-6);
+    overflow-y: auto;
+}
+
+.r-win-body .fx-field { flex: none; }
+
+.r-win-foot {
+    display: flex;
+    flex-shrink: 0;
+    justify-content: flex-end;
+    gap: var(--space-3);
+    padding: var(--space-4) var(--space-6);
+    border-top: 1px solid var(--color-border);
+}
+
 /* ----- Toast ----- */
 .fx-toast-host {
     position: fixed;
@@ -486,3 +547,78 @@ textarea.fx-input { min-height: 96px; resize: vertical; }
    É um piso (min-height): nada encolhe. O .fx-btn normal e o .fx-btn--icon já
    têm 44px e ficam assim em todas as faixas, como nas pranchas. */
 .fx-btn--sm, .fx-chip, .fx-tab, .fx-menu-item, .fx-check { min-height: var(--r-touch); }
+
+/* ----- Celular (até 599px): janela em tela cheia e confirmação em folha ----- */
+@media (max-width: 599px) {
+    /* Tela cheia, com o fundo da página: ✕ à esquerda, o título e a ação
+       principal à direita, no topo; o rodapé sai (window.ts sobe a ação). */
+    .r-win-veil {
+        align-items: stretch;
+        padding: 0;
+        background: var(--color-bg);
+    }
+
+    .r-win {
+        width: 100%;
+        max-height: none;
+        border-radius: 0;
+        box-shadow: none;
+        background: var(--color-bg);
+    }
+
+    .r-win-head {
+        min-height: var(--header-height-phone);
+        gap: var(--space-1);
+        padding: 0 var(--space-2);
+    }
+
+    .r-win-close { order: -1; }
+
+    .r-win-title {
+        overflow: hidden;
+        font-size: var(--text-lg);
+        line-height: 1.5rem;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+
+    .r-win-sub {
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+
+    .r-win-head .fx-btn--primary {
+        flex-shrink: 0;
+        padding: 0 var(--space-4);
+    }
+
+    .r-win-body {
+        gap: var(--space-4);
+        padding: var(--space-4) var(--r-gutter) var(--space-8);
+    }
+
+    .r-win-foot { display: none; }
+
+    /* Confirmação: folha inferior, com os botões de 44px empilhados na
+       largura toda e a ação principal em cima. */
+    .fx-overlay--confirm {
+        align-items: flex-end;
+        padding: 0;
+    }
+
+    .fx-overlay--confirm > .fx-dialog {
+        width: 100%;
+        max-height: 90dvh;
+        padding: var(--space-6) var(--r-gutter);
+        border-radius: var(--radius-xl) var(--radius-xl) 0 0;
+    }
+
+    .fx-overlay--confirm .fx-dialog-actions {
+        flex-direction: column-reverse;
+    }
+
+    .fx-overlay--confirm .fx-dialog-actions .fx-btn {
+        width: 100%;
+    }
+}
