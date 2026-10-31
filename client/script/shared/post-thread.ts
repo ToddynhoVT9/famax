@@ -46,7 +46,8 @@ import { renderMarkdown } from "./markdown.js";
 import { skeleton } from "./skeleton.js";
 import "./char-counter.js";
 import { imagesGridHtml, openLightbox, type PostImage } from "./post-images.js";
-import { ICONS, openSheet } from "./layout.js";
+import { ICONS } from "./icons.js";
+import { openSheet } from "./layout.js";
 import type { Comment, Post } from "../../../shared/api-types.js";
 export type { Comment, Post };
 

@@ -1,41 +1,60 @@
 /* ===================================
    FAMAX — Página de notificações
-   (o desenho de cada aviso está em layout.css, junto do sininho)
+   A coluna (.r-col) e o título (.r-ptitle) vêm do layout.css, e o desenho de
+   cada aviso (fx-notif-item) também, junto do sino.
    =================================== */
 
-.notif-page {
-    max-width: 760px;
-    margin: 0 auto;
-}
-
+/* Título e "Marcar todas como lidas" na mesma linha. */
 .notif-page-head {
     display: flex;
-    justify-content: space-between;
     align-items: center;
-    gap: 12px;
-    flex-wrap: wrap;
-    margin-bottom: 6px;
+    justify-content: space-between;
+    gap: var(--space-3);
 }
 
-.notif-page-title {
-    font-size: 1.8rem;
-    font-weight: 800;
+.notif-page-head .fx-btn {
+    flex-shrink: 0;
+}
+
+.notif-page-head .fx-btn--icon {
+    color: var(--color-text);
+}
+
+/* No celular, o botão vira ícone; nas outras faixas, texto. */
+.notif-mark-icon {
+    display: none;
 }
 
 .notif-page-hint {
+    margin: 0;
+    font-size: var(--text-sm);
+    line-height: 1.25rem;
     color: var(--color-text-faint);
-    font-size: 0.9rem;
-    margin-bottom: 18px;
 }
 
 .notif-page-hint a {
     color: var(--color-text-soft);
 }
 
-.notif-page-list {
-    background-color: var(--color-paper);
-    border-radius: 8px;
-    overflow: hidden;
+/* O texto do aviso, na medida de leitura. */
+.notif-page-list .fx-notif-text,
+.notif-page-list .fx-notif-excerpt {
+    max-width: var(--prose-measure);
 }
 
+/* ----- Celular (até 599px) ----- */
+@media (max-width: 599px) {
+    .notif-mark-text {
+        display: none;
+    }
 
+    .notif-mark-icon {
+        display: inline-flex;
+    }
+
+    /* "Carregar mais" na largura toda. */
+    .notif-page-list + .list-more {
+        width: 100%;
+        justify-content: center;
+    }
+}

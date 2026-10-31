@@ -531,6 +531,46 @@
     font-weight: var(--weight-heavy);
 }
 
+/* Trilha numa linha, com reticências (post, moderação). */
+.r-crumb {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    min-width: 0;
+    color: var(--color-text-faint);
+    font-size: var(--text-sm);
+    line-height: 1.25rem;
+    white-space: nowrap;
+}
+
+.r-crumb a {
+    flex: 0 1 auto;
+    /* Alvo da faixa na altura, sem mudar a linha (a trilha é uma linha só). */
+    padding: calc((var(--r-touch) - 1.25rem) / 2) 0;
+    min-width: 0;
+    max-width: 60%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    color: var(--color-text);
+    font-weight: var(--weight-semibold);
+    text-decoration: none;
+}
+
+.r-crumb a:hover {
+    text-decoration: underline;
+}
+
+.r-crumb-sep {
+    flex-shrink: 0;
+}
+
+.r-crumb [aria-current] {
+    flex: 1 1 0;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
 /* Medida de leitura de todo texto corrido. */
 .r-prose {
     max-width: var(--prose-measure);
@@ -683,7 +723,9 @@
     flex-direction: column;
 }
 
-/* ----- NOTIFICAÇÕES: sininho e avisos (shared/notifications.ts) ----- */
+/* ----- NOTIFICAÇÕES: sino e NotificationPanel (shared/notifications.ts) -----
+   Os itens (fx-notif-item) são os mesmos no painel do sino e na página de
+   notificações (notifications.css só põe a página em volta). */
 .notif-bell {
     position: relative;
 }
@@ -699,137 +741,148 @@
     right: 0;
 }
 
+.fx-notif {
+    overflow: hidden;
+    background: var(--color-paper);
+    color: var(--color-ink);
+    border-radius: var(--radius-lg);
+}
+
 /* Sob o sino, ancorado à direita, sem sair da tela (desktop e compacto). */
 .notif-panel {
     position: absolute;
-    top: calc(100% + 8px);
+    top: calc(100% + var(--space-2));
     right: 0;
     width: var(--menu-width);
     max-width: calc(100vw - 2 * var(--r-gutter));
-    background-color: var(--color-paper);
-    color: var(--color-ink);
-    border-radius: 8px;
     box-shadow: var(--shadow-md);
     z-index: var(--z-header-dropdown);
-    overflow: hidden;
 }
 
-.notif-panel-head {
+.fx-notif-head {
     display: flex;
-    justify-content: space-between;
     align-items: center;
-    gap: 10px;
-    padding: 12px 14px;
+    justify-content: space-between;
+    gap: var(--space-3);
+    padding: var(--space-3) var(--space-4);
     border-bottom: 1px solid var(--color-paper-border);
 }
 
-.notif-mark-all {
-    background: none;
-    border: none;
-    color: var(--color-link);
-    font: inherit;
-    font-size: 0.85rem;
-    cursor: pointer;
+.fx-notif-title {
+    margin: 0;
+    font-size: var(--text-md);
+    line-height: 1.5rem;
+    font-weight: var(--weight-bold);
 }
 
-.notif-mark-all:disabled {
-    color: var(--color-text-faint);
+/* "Marcar todas como lidas" (fx-link): desativado como os outros controles,
+   pela opacidade, e não com a cor do texto do tema (que some no papel). */
+.fx-notif-head .fx-link {
+    min-height: var(--r-touch);
+}
+
+.fx-notif-head .fx-link:disabled {
+    opacity: var(--opacity-disabled);
     cursor: default;
 }
 
-.notif-list {
+.fx-notif-list {
     max-height: 420px;
     overflow-y: auto;
 }
 
-.notif-panel-footer {
-    display: block;
-    text-align: center;
-    padding: 10px;
+.fx-notif-foot {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: var(--r-touch);
+    padding: var(--space-2) var(--space-3);
     border-top: 1px solid var(--color-paper-border);
     color: var(--color-link);
-    font-size: 0.9rem;
+    font-size: var(--text-sm);
+    line-height: 1.25rem;
     text-decoration: none;
 }
 
-.notif-panel-footer:hover {
-    background-color: var(--color-paper-2);
+.fx-notif-foot:hover {
+    background: var(--color-paper-2);
 }
 
-.notif-status {
-    padding: 24px 16px;
+.fx-notif-status {
+    margin: 0;
+    padding: var(--space-6) var(--space-4);
     text-align: center;
     color: var(--color-ink-faint);
-    font-size: 0.92rem;
+    font-size: var(--text-sm);
 }
 
-.notif-status.error {
+.fx-notif-status.error {
     color: var(--color-danger);
 }
 
-.notif-item {
+.fx-notif-item {
     display: flex;
     align-items: flex-start;
-    gap: 10px;
-    padding: 12px 14px;
+    gap: var(--space-3);
+    padding: var(--space-3) var(--space-4);
     color: var(--color-ink);
     text-decoration: none;
     border-bottom: 1px solid var(--color-paper-border);
 }
 
-.notif-item:last-child {
+.fx-notif-item:last-child {
     border-bottom: none;
 }
 
-.notif-item:hover,
-.notif-item:focus-visible {
-    background-color: var(--color-paper-2);
+.fx-notif-item:hover,
+.fx-notif-item:focus-visible {
+    background: var(--color-paper-2);
 }
 
-.notif-item.is-unread {
-    background-color: var(--color-info-surface);
+.fx-notif-item.is-unread {
+    background: var(--color-info-surface);
 }
 
-.notif-item.is-unread:hover {
-    background-color: var(--color-info-surface-strong);
+.fx-notif-item.is-unread:hover {
+    background: var(--color-info-surface-strong);
 }
 
-.notif-avatar--system {
-    background-color: var(--color-danger);
+.fx-avatar--system {
+    background: var(--color-danger);
 }
 
-.notif-body {
-    flex: 1;
-    min-width: 0;
+.fx-notif-body {
     display: flex;
     flex-direction: column;
-    gap: 3px;
-}
-
-.notif-text {
-    font-size: 0.92rem;
-    line-height: 1.4;
+    flex: 1;
+    gap: 2px;
+    min-width: 0;
+    font-size: var(--text-sm);
+    line-height: 1.25rem;
     overflow-wrap: anywhere;
 }
 
-.notif-excerpt {
-    font-size: 0.85rem;
+.fx-notif-text {
+    display: block;
+}
+
+.fx-notif-excerpt {
     color: var(--color-ink-muted);
-    overflow-wrap: anywhere;
 }
 
-.notif-time {
-    font-size: 0.78rem;
+.fx-notif-time {
+    font-size: var(--text-xs);
+    line-height: 1rem;
     color: var(--color-ink-faint);
 }
 
-.notif-dot {
-    width: 9px;
-    height: 9px;
-    border-radius: 50%;
-    background-color: var(--color-primary);
+.fx-notif-dot {
+    width: 8px;
+    height: 8px;
+    margin-top: var(--space-2);
     flex-shrink: 0;
-    margin-top: 6px;
+    border-radius: var(--radius-circle);
+    background: var(--color-primary);
 }
 
 /* ----- SEGUIR (shared/follow.ts) ----- */
@@ -1016,6 +1069,12 @@
 
     .r-tabs {
         margin: 0 calc(-1 * var(--r-gutter));
+    }
+
+    /* Fileira de filtros de ponta a ponta: o próximo chip aparece cortado na borda. */
+    .r-hscroll {
+        margin: 0 calc(-1 * var(--r-gutter));
+        padding: 0 var(--r-gutter);
     }
 
     .r-tabs .fx-tabs {

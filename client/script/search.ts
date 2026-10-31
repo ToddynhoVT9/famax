@@ -11,7 +11,8 @@
  * acrescenta a próxima página à lista.
  */
 import { api } from "./shared/api.js";
-import { ICONS, initLayout } from "./shared/layout.js";
+import { initLayout } from "./shared/layout.js";
+import { ICONS } from "./shared/icons.js";
 import { SCOPE_CHANGE, setSearchScope } from "./shared/header-dropdowns.js";
 import { communityUrl, postUrl, profileUrl, searchUrl, type SearchType } from "./shared/pages.js";
 import { avatarColor, initials, timeAgo, truncate } from "./shared/dom.js";

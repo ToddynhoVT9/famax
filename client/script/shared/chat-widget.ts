@@ -43,7 +43,7 @@ import { OPEN_CHAT_EVENT, type OpenChatDetail } from "./chat-bus.js";
 import { skeleton } from "./skeleton.js";
 import "./char-counter.js";
 import { trapFocus } from "./focus-trap.js";
-import { ICONS } from "./layout.js";
+import { ICONS } from "./icons.js";
 import type { Conversation, Message as ApiMessage, Participant } from "../../../shared/api-types.js";
 import type { UserSummary as UserResult } from "../../../shared/api-types.js";
 

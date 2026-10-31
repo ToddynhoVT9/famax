@@ -7,7 +7,7 @@
  * por innerHTML cru. Classes fx-gallery e fx-lightbox, no post.css.
  */
 import { escapeHtml } from "./dom.js";
-import { ICONS } from "./layout.js";
+import { ICONS } from "./icons.js";
 import type { PostImage } from "../../../shared/api-types.js";
 export type { PostImage };
 

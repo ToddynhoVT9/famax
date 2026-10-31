@@ -138,12 +138,19 @@
 }
 
 /* ----- Abas Comunidades / Seguindo ----- */
-/* Abas Comunidades / Seguindo (fx-tabs): só o espaço até o conteúdo. */
-.home-tabs {
-    margin-bottom: 20px;
+/* As abas (.r-tabs) ficam no topo da coluna de 1080 (.r-col--wide), no mesmo
+   lugar nas duas; o espaço até o conteúdo é o gap da coluna. */
+
+/* ----- Seguindo: 760 no centro, com o PostCard denso (post.css) ----- */
+.home-following {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-4);
+    width: 100%;
+    max-width: var(--content-width);
+    margin: 0 auto;
 }
 
-.home-following {
-    width: 100%;
-    max-width: 820px;
+.home-following .list-more {
+    margin-top: 0;
 }

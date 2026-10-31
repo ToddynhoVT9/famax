@@ -21,28 +21,34 @@
 
     <!-- Conteúdo Principal do Feed (renderizado por home.ts) -->
     <main class="main-content" id="main-content">
-        <h1 class="visually-hidden">Página inicial</h1>
-        <!-- Abas: Comunidades / Seguindo (só com sessão). ?tab=following na URL. -->
-        <div class="fx-tabs home-tabs" id="homeTabs" role="tablist" aria-label="O que ver" hidden>
-            <button type="button" class="fx-tab" role="tab" id="homeTabCommunities"
-                data-tab="communities" aria-selected="true" aria-controls="homeCommunities">Comunidades</button>
-            <button type="button" class="fx-tab" role="tab" id="homeTabFollowing"
-                data-tab="following" aria-selected="false" aria-controls="homeFollowing" tabindex="-1">Seguindo</button>
-        </div>
-
-        <section id="homeCommunities" role="tabpanel" aria-labelledby="homeTabCommunities">
-            <!-- Filtro por categoria (home.ts); a escolha vai para ?categoryId= -->
-            <div class="home-chips" id="homeChips" role="group" aria-label="Filtrar por categoria"></div>
-            <div id="homeFeed">
-                <div class="feed-status">Carregando comunidades...</div>
+        <div class="r-col r-col--wide">
+            <h1 class="visually-hidden">Página inicial</h1>
+            <!-- Abas: Comunidades / Seguindo (só com sessão), no topo da coluna de
+                 1080, no mesmo lugar nas duas. ?tab=following na URL. -->
+            <div class="r-tabs" id="homeTabsBar" hidden>
+                <div class="fx-tabs" id="homeTabs" role="tablist" aria-label="O que ver">
+                    <button type="button" class="fx-tab" role="tab" id="homeTabCommunities"
+                        data-tab="communities" aria-selected="true" aria-controls="homeCommunities">Comunidades</button>
+                    <button type="button" class="fx-tab" role="tab" id="homeTabFollowing"
+                        data-tab="following" aria-selected="false" aria-controls="homeFollowing" tabindex="-1">Seguindo</button>
+                </div>
             </div>
-        </section>
 
-        <!-- Posts recentes de quem você segue (GET /api/feed/following) -->
-        <section class="home-following" id="homeFollowing" role="tabpanel" aria-labelledby="homeTabFollowing" hidden>
-            <div class="fx-posts" id="followingList"></div>
-            <button type="button" class="fx-btn fx-btn--outline fx-btn--pill list-more" id="followingMore" hidden>Carregar mais</button>
-        </section>
+            <section id="homeCommunities" role="tabpanel" aria-labelledby="homeTabCommunities">
+                <!-- Filtro por categoria (home.ts); a escolha vai para ?categoryId= -->
+                <div class="home-chips" id="homeChips" role="group" aria-label="Filtrar por categoria"></div>
+                <div id="homeFeed">
+                    <div class="feed-status">Carregando comunidades...</div>
+                </div>
+            </section>
+
+            <!-- Posts recentes de quem você segue (GET /api/feed/following), em 760 no centro -->
+            <section class="home-following" id="homeFollowing" role="tabpanel" aria-labelledby="homeTabFollowing" hidden>
+                <div class="fx-posts r-edge" id="followingList"></div>
+                <div id="followingEmpty" hidden></div>
+                <button type="button" class="fx-btn fx-btn--outline fx-btn--pill list-more" id="followingMore" hidden>Carregar mais</button>
+            </section>
+        </div>
     </main>
 
     <script type="module" src="../script/home.ts"></script>

@@ -7,7 +7,8 @@
  * shared/post-thread.ts, os mesmos do feed da comunidade.
  */
 import { api } from "./shared/api.js";
-import { ICONS, initLayout } from "./shared/layout.js";
+import { initLayout } from "./shared/layout.js";
+import { ICONS } from "./shared/icons.js";
 import { communityUrl, pages } from "./shared/pages.js";
 import { queryParam, truncate } from "./shared/dom.js";
 import { toast } from "./shared/dialog.js";

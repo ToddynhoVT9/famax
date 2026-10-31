@@ -176,6 +176,7 @@ const communitiesPanel = document.getElementById("homeCommunities");
 const followingPanel = document.getElementById("homeFollowing");
 const followingList = document.getElementById("followingList");
 const followingMore = document.getElementById("followingMore") as HTMLButtonElement | null;
+const followingEmpty = document.getElementById("followingEmpty");
 const FOLLOWING_PER_PAGE = 10;
 
 const loggedIn = Boolean(getToken());
@@ -198,6 +199,8 @@ async function loadFollowing(reset: boolean): Promise<void> {
     if (reset) {
         followingPage = 0;
         followingThread.clear();
+        followingList.hidden = false;
+        if (followingEmpty) followingEmpty.hidden = true;
         followingList.replaceChildren(skeleton("post", 3, "Carregando posts de quem você segue..."));
         followingMore.hidden = true;
     }
@@ -207,8 +210,12 @@ async function loadFollowing(reset: boolean): Promise<void> {
         followingPage += 1;
         if (reset) followingList.innerHTML = "";
         followingThread.add(result.data);
-        if (followingThread.posts.size === 0) {
-            followingList.replaceChildren(
+        // Sem posts: o EmptyState fica fora do cartão branco da lista.
+        const empty = followingThread.posts.size === 0;
+        followingList.hidden = empty;
+        if (followingEmpty) followingEmpty.hidden = !empty;
+        if (empty) {
+            followingEmpty?.replaceChildren(
                 emptyState(
                     "Nada por aqui ainda.",
                     "Siga pessoas pelo perfil delas para ver aqui o que elas publicam. Comece pelas comunidades.",
@@ -261,7 +268,8 @@ tabsEl?.addEventListener("keydown", (event) => {
 followingMore?.addEventListener("click", () => void loadFollowing(false));
 
 // Visitante não segue ninguém: sem abas, só as comunidades.
-if (tabsEl) tabsEl.hidden = !loggedIn;
+const tabsBar = document.getElementById("homeTabsBar");
+if (tabsBar) tabsBar.hidden = !loggedIn;
 renderHomeTabs();
 if (tab === "following") void loadFollowing(true);
 

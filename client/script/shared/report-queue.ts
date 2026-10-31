@@ -5,6 +5,10 @@
  * admin (usuários). Filtro por status, lista paginada e as ações de
  * PATCH /api/reports/:id: em análise, descartar, remover conteúdo, banir
  * autor. Tudo entra por textContent.
+ *
+ * Desenho: ReportCard (fx-report, no moderation.css). As ações saem numa
+ * ordem fixa — a principal, as neutras e, separadas à direita, as de perigo
+ * —, sem mudar quais aparecem. O código acha o cartão por data-report-id.
  */
 import { api } from "./api.js";
 import { postUrl, profileUrl } from "./pages.js";
@@ -77,7 +81,8 @@ export function createReportQueue(root: HTMLElement, options: ReportQueueOptions
     let seq = 0;
     const reports = new Map<string, Report>();
 
-    const filters = el("div", "tf-category-chips");
+    // Filtros numa fileira que rola (no celular, sem quebrar em linhas).
+    const filters = el("div", "r-hscroll r-hscroll-row");
     filters.setAttribute("role", "group");
     filters.setAttribute("aria-label", "Filtrar por status");
     for (const f of STATUS_FILTERS) {
@@ -87,9 +92,9 @@ export function createReportQueue(root: HTMLElement, options: ReportQueueOptions
         chip.setAttribute("aria-pressed", String(f.value === status));
         filters.append(chip);
     }
-    const summary = el("p", "report-summary");
+    const summary = el("p", "mod-summary");
     summary.setAttribute("aria-live", "polite");
-    const list = el("div", "report-list");
+    const list = el("div", "fx-reports");
     const more = el("button", "fx-btn fx-btn--outline fx-btn--pill list-more", "Carregar mais");
     more.type = "button";
     more.hidden = true;
@@ -107,31 +112,31 @@ export function createReportQueue(root: HTMLElement, options: ReportQueueOptions
     }
 
     function renderTarget(report: Report): HTMLElement {
-        const box = el("div", "report-target");
+        const box = el("div", "fx-report-target");
         const author = report.authorDisplayName?.trim() || report.authorUsername || "Usuário";
 
         if (report.targetType === "user") {
-            const link = el("a", "report-target-title", `${author} (@${report.authorUsername ?? "?"})`);
+            const link = el("a", "fx-report-target-title", `${author} (@${report.authorUsername ?? "?"})`);
             if (report.authorId) link.href = profileUrl(report.authorId);
             box.append(link);
-            if (report.targetDeleted) box.append(el("span", "report-removed", "Conta excluída"));
+            if (report.targetDeleted) box.append(el("span", "fx-report-removed", "Conta excluída"));
             return box;
         }
 
         if (report.postTitle) {
             const title = el(
                 "a",
-                "report-target-title",
+                "fx-report-target-title",
                 report.targetType === "comment" ? `Em: ${report.postTitle}` : report.postTitle,
             );
             if (report.postId) title.href = postUrl(report.postId);
             box.append(title);
         }
         if (report.content) {
-            box.append(el("p", "report-target-content", truncate(report.content.replace(/\s+/g, " "), 280)));
+            box.append(el("p", "fx-report-target-content", truncate(report.content.replace(/\s+/g, " "), 280)));
         }
 
-        const by = el("p", "report-target-author");
+        const by = el("p", "fx-report-target-author");
         const authorLink = el("a", "", author);
         if (report.authorId) authorLink.href = profileUrl(report.authorId);
         by.append("por ", authorLink);
@@ -139,48 +144,57 @@ export function createReportQueue(root: HTMLElement, options: ReportQueueOptions
             by.append(" ", roleBadge(report.authorRole));
         }
         box.append(by);
-        if (report.targetDeleted) box.append(el("span", "report-removed", "Já removido"));
+        if (report.targetDeleted) box.append(el("span", "fx-report-removed", "Já removido"));
         return box;
     }
 
     function renderReport(report: Report): HTMLElement {
-        const card = el("article", "report-card");
+        const card = el("article", "fx-report");
         card.dataset.reportId = report.reportId;
 
-        const head = el("div", "report-head");
+        const head = el("div", "fx-report-head");
         head.append(
-            el("span", "report-type", TARGET_LABEL[report.targetType]),
+            el("span", "fx-report-type", TARGET_LABEL[report.targetType]),
             el("span", `fx-badge${STATUS_TONE[report.status]}`, STATUS_LABEL[report.status]),
-            el("span", "report-meta", `denunciado por @${report.reporterUsername} · ${timeAgo(report.createdAt)}`),
+            el("span", "fx-report-meta", `denunciado por @${report.reporterUsername} · ${timeAgo(report.createdAt)}`),
         );
 
-        const reason = el("blockquote", "report-reason", report.reason);
+        const reason = el("blockquote", "fx-report-reason", report.reason);
         card.append(head, reason, renderTarget(report));
 
         const open = report.status === "pending" || report.status === "reviewing";
         if (open) {
-            const actions = el("div", "report-actions");
-            if (report.status === "pending") actions.append(button("Em análise", "review"));
-            actions.append(button("Descartar", "dismiss"));
+            // As mesmas ações de antes, agrupadas para sair na ordem fixa.
+            const primary: HTMLElement[] = [];
+            const neutral: HTMLElement[] = [];
+            const danger: HTMLElement[] = [];
+            let hint: HTMLElement | null = null;
+            if (report.status === "pending") neutral.push(button("Em análise", "review"));
+            neutral.push(button("Descartar", "dismiss"));
             if (report.targetType === "user") {
-                actions.append(button("Resolver", "resolve", "primary"));
+                primary.push(button("Resolver", "resolve", "primary"));
             } else {
                 const canAct = canModerate(options.viewerRole, report.authorRole);
-                if (!report.targetDeleted && canAct) actions.append(button("Remover conteúdo", "remove", "danger"));
-                if (canAct && report.authorId) actions.append(button("Banir autor", "ban", "danger"));
+                if (!report.targetDeleted && canAct) danger.push(button("Remover conteúdo", "remove", "danger"));
+                if (canAct && report.authorId) danger.push(button("Banir autor", "ban", "danger"));
                 if (!canAct) {
                     // Conteúdo do dono ou de outro moderador: só quem está acima decide.
-                    actions.append(el("span", "report-hint", "Moderadores não removem conteúdo do dono nem de outro moderador."));
+                    hint = el("span", "fx-report-hint", "Moderadores não removem conteúdo do dono nem de outro moderador.");
                 }
-                if (report.targetDeleted) actions.append(button("Marcar como resolvida", "resolve", "primary"));
+                if (report.targetDeleted) primary.push(button("Marcar como resolvida", "resolve", "primary"));
             }
+            danger[0]?.classList.add("fx-report-sep");
+            const actions = el("div", "fx-report-actions");
+            actions.dataset.reportActions = "";
+            actions.append(...primary, ...neutral, ...danger);
+            if (hint) actions.append(hint);
             card.append(actions);
         } else {
             const closed = [`${STATUS_LABEL[report.status]}`];
             if (report.resolution && report.status === "resolved") closed.push(RESOLUTION_LABEL[report.resolution] ?? report.resolution);
             if (report.resolvedByUsername) closed.push(`por @${report.resolvedByUsername}`);
             if (report.resolvedAt) closed.push(timeAgo(report.resolvedAt));
-            card.append(el("p", "report-closed", closed.join(" · ")));
+            card.append(el("p", "fx-report-closed", closed.join(" · ")));
         }
         return card;
     }
@@ -295,8 +309,8 @@ export function createReportQueue(root: HTMLElement, options: ReportQueueOptions
     });
 
     list.addEventListener("click", (event) => {
-        const b = (event.target as Element).closest<HTMLButtonElement>(".report-actions button[data-action]");
-        const card = b?.closest<HTMLElement>(".report-card");
+        const b = (event.target as Element).closest<HTMLButtonElement>("[data-report-actions] button[data-action]");
+        const card = b?.closest<HTMLElement>("[data-report-id]");
         if (!b || !card || b.disabled) return;
         b.disabled = true;
         void act(card, b.dataset.action ?? "").finally(() => {

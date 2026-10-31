@@ -17,6 +17,7 @@ import { api, getToken } from "./api.js";
 import { communityUrl, pages, postUrl, profileUrl } from "./pages.js";
 import { avatarColor, initials, timeAgo, truncate } from "./dom.js";
 import { isRealtimeOpen, onRealtime, onRealtimeStatus } from "./realtime.js";
+import { ICONS } from "./icons.js";
 import type { AppNotification, NotificationPage, NotificationType } from "../../../shared/api-types.js";
 export type { AppNotification, NotificationPage, NotificationType };
 
@@ -106,7 +107,7 @@ export function notificationHref(n: AppNotification): string {
 function renderAvatar(n: AppNotification): HTMLElement {
     // Aviso do sistema (moderação): sem pessoa, um ícone.
     if (!n.actorId || n.type === "content_removed") {
-        const icon = el("span", "fx-avatar fx-avatar--md notif-avatar--system", "!");
+        const icon = el("span", "fx-avatar fx-avatar--md fx-avatar--system", "!");
         icon.setAttribute("aria-hidden", "true");
         return icon;
     }
@@ -123,25 +124,26 @@ function renderAvatar(n: AppNotification): HTMLElement {
 
 /** Um aviso como link. Quem chama decide o que fazer no clique (marcar lida). */
 export function renderNotification(n: AppNotification): HTMLAnchorElement {
-    const item = el("a", `notif-item${n.readAt ? "" : " is-unread"}`);
+    const item = el("a", `fx-notif-item${n.readAt ? "" : " is-unread"}`);
     item.href = notificationHref(n);
-    item.dataset.id = n.notificationId;
+    item.dataset.notifId = n.notificationId;
 
-    const body = el("span", "notif-body");
-    const text = el("span", "notif-text");
+    const body = el("span", "fx-notif-body");
+    const text = el("span", "fx-notif-text");
     for (const part of describe(n)) {
         text.append(typeof part === "string" ? part : el("strong", "", part.strong));
     }
     body.append(text);
 
     if ((n.type === "post_comment" || n.type === "comment_reply") && n.commentExcerpt) {
-        body.append(el("span", "notif-excerpt", truncate(n.commentExcerpt, 120)));
+        body.append(el("span", "fx-notif-excerpt", truncate(n.commentExcerpt, 120)));
     }
-    body.append(el("span", "notif-time", timeAgo(n.createdAt)));
+    body.append(el("span", "fx-notif-time", timeAgo(n.createdAt)));
 
     item.append(renderAvatar(n), body);
     if (!n.readAt) {
-        const dot = el("span", "notif-dot");
+        const dot = el("span", "fx-notif-dot");
+        dot.dataset.notifDot = "";
         dot.setAttribute("aria-label", "não lida");
         item.append(dot);
     }
@@ -211,11 +213,11 @@ export async function markRead(ids?: string[]): Promise<void> {
  * aba) só marca, sem segurar a navegação.
  */
 export function handleNotificationClick(event: MouseEvent, item: HTMLAnchorElement): void {
-    const id = item.dataset.id;
+    const id = item.dataset.notifId;
     if (!id || !item.classList.contains("is-unread")) return;
 
     item.classList.remove("is-unread");
-    item.querySelector(".notif-dot")?.remove();
+    item.querySelector("[data-notif-dot]")?.remove();
     const newTab = event.ctrlKey || event.metaKey || event.shiftKey || event.button === 1;
     if (newTab) {
         void markRead([id]).catch(() => {});
@@ -295,27 +297,26 @@ export function createNotificationBell(): HTMLElement {
     button.type = "button";
     button.setAttribute("aria-haspopup", "true");
     button.setAttribute("aria-expanded", "false");
-    const icon = el("span", "notif-bell-icon", "🔔");
-    icon.setAttribute("aria-hidden", "true");
     const badge = el("span", "fx-counter-badge");
     badge.hidden = true;
-    button.append(icon, badge);
+    button.innerHTML = ICONS.bell; // ícone fixo, sem dado
+    button.append(badge);
     // Notificação nova chegando (tempo real) é anunciada sem tirar o foco.
     const live = el("span", "visually-hidden");
     live.setAttribute("aria-live", "polite");
     let lastCount = 0;
 
-    const panel = el("div", "notif-panel");
+    const panel = el("div", "fx-notif notif-panel");
     panel.hidden = true;
     panel.setAttribute("role", "dialog");
     panel.setAttribute("aria-label", "Notificações");
 
-    const head = el("div", "notif-panel-head");
-    const markAll = el("button", "notif-mark-all", "Marcar todas como lidas");
+    const head = el("div", "fx-notif-head");
+    const markAll = el("button", "fx-link", "Marcar todas como lidas");
     markAll.type = "button";
-    head.append(el("strong", "", "Notificações"), markAll);
-    const list = el("div", "notif-list");
-    const footer = el("a", "notif-panel-footer", "Ver todas");
+    head.append(el("strong", "fx-notif-title", "Notificações"), markAll);
+    const list = el("div", "fx-notif-list");
+    const footer = el("a", "fx-notif-foot", "Ver todas");
     footer.href = pages.notifications;
     panel.append(head, list, footer);
     wrapper.append(button, live, panel);
@@ -332,19 +333,19 @@ export function createNotificationBell(): HTMLElement {
     let loadSeq = 0;
     const load = async (): Promise<void> => {
         const seq = ++loadSeq;
-        list.replaceChildren(el("p", "notif-status", "Carregando..."));
+        list.replaceChildren(el("p", "fx-notif-status", "Carregando..."));
         try {
             const { data } = await fetchNotifications(null, 8);
             if (seq !== loadSeq) return;
             list.replaceChildren(
                 ...(data.length
                     ? data.map(renderNotification)
-                    : [el("p", "notif-status", "Nenhuma notificação ainda.")]),
+                    : [el("p", "fx-notif-status", "Nenhuma notificação ainda.")]),
             );
         } catch (err) {
             if (seq === loadSeq) {
                 list.replaceChildren(
-                    el("p", "notif-status", err instanceof Error ? err.message : "Não foi possível carregar."),
+                    el("p", "fx-notif-status", err instanceof Error ? err.message : "Não foi possível carregar."),
                 );
             }
         }
@@ -371,7 +372,7 @@ export function createNotificationBell(): HTMLElement {
     });
 
     list.addEventListener("click", (event) => {
-        const item = (event.target as Element).closest<HTMLAnchorElement>(".notif-item");
+        const item = (event.target as Element).closest<HTMLAnchorElement>("[data-notif-id]");
         if (item) handleNotificationClick(event, item);
     });
 
@@ -379,9 +380,9 @@ export function createNotificationBell(): HTMLElement {
         markAll.disabled = true;
         try {
             await markRead();
-            list.querySelectorAll(".notif-item.is-unread").forEach((item) => {
+            list.querySelectorAll("[data-notif-id].is-unread").forEach((item) => {
                 item.classList.remove("is-unread");
-                item.querySelector(".notif-dot")?.remove();
+                item.querySelector("[data-notif-dot]")?.remove();
             });
         } catch {
             markAll.disabled = false;

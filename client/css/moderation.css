@@ -1,183 +1,192 @@
 /* ===================================
    FAMAX — Moderação da comunidade e denúncias do admin
+   A coluna (.r-col), a trilha (.r-crumb), o título (.r-ptitle), as abas
+   (.r-tabs) e os filtros que rolam (.r-hscroll) vêm do layout.css; a lista de
+   banidos é o MemberList (fx-members, no components.css). Aqui ficam o
+   ReportCard e o espaço entre as partes da página.
    =================================== */
 
-.mod-page {
-    max-width: 900px;
-    margin: 0 auto;
-}
-
-.mod-breadcrumb {
-    display: flex;
-    gap: 8px;
-    color: var(--color-text-faint);
-    font-size: 0.92rem;
-    margin-bottom: 10px;
-    overflow-wrap: anywhere;
-}
-
-.mod-breadcrumb a {
-    color: var(--color-text-soft);
-}
-
-.mod-title {
-    font-size: 1.8rem;
-    font-weight: 800;
-    margin-bottom: 8px;
-    overflow-wrap: anywhere;
-}
-
 .mod-intro,
-.mod-status {
+.mod-status,
+.mod-summary {
+    margin: 0;
     color: var(--color-text-faint);
-    margin-bottom: 18px;
-    line-height: 1.5;
 }
 
-.mod-section {
-    margin-top: 24px;
+.mod-summary {
+    font-size: var(--text-sm);
+    line-height: 1.25rem;
 }
 
-.mod-section-title {
-    font-size: 1.2rem;
-    font-weight: 700;
-    margin-bottom: 12px;
-}
-
-/* ----- Fila (shared/report-queue.ts) ----- */
-.report-summary {
-    color: var(--color-text-faint);
-    font-size: 0.9rem;
-    margin: 10px 0;
-}
-
-.report-list {
+/* Abas e o painel aberto; dentro do painel, filtros, resumo, lista e "Carregar mais". */
+.mod-content,
+.mod-panel,
+.mod-queue {
     display: flex;
     flex-direction: column;
-    gap: 12px;
+    gap: var(--space-4);
 }
 
-.report-card {
-    background-color: var(--color-paper);
+.mod-queue > .list-more {
+    margin-top: 0;
+}
+
+/* ----- ReportCard (shared/report-queue.ts) ----- */
+.fx-reports {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-3);
+}
+
+.fx-report {
+    padding: var(--space-4);
+    background: var(--color-paper);
     color: var(--color-ink);
-    border-radius: 8px;
-    padding: 16px 18px;
+    border: 1px solid var(--color-paper-border);
+    border-radius: var(--radius-lg);
 }
 
-.report-head {
+.fx-report-head {
     display: flex;
     flex-wrap: wrap;
     align-items: center;
-    gap: 8px;
-    margin-bottom: 10px;
+    gap: var(--space-2);
+    margin-bottom: var(--space-2);
 }
 
-.report-type {
-    font-weight: 700;
+.fx-report-type {
+    font-weight: var(--weight-bold);
 }
 
-.report-meta {
-    font-size: 0.85rem;
+.fx-report-meta {
+    font-size: var(--text-sm);
+    line-height: 1.25rem;
     color: var(--color-ink-faint);
 }
 
-.report-reason {
+.fx-report-reason {
+    margin: 0 0 var(--space-3);
+    padding: var(--space-1) 0 var(--space-1) var(--space-3);
     border-left: 3px solid var(--color-danger);
-    padding: 4px 0 4px 12px;
-    margin: 0 0 12px;
+    overflow-wrap: anywhere;
+}
+
+.fx-report-target {
+    padding: var(--space-3);
+    border-radius: var(--radius-md);
+    background: var(--color-paper-2);
+    font-size: var(--text-sm);
+    line-height: 1.25rem;
+}
+
+/* O título do alvo é um link numa linha própria. O padding dá o alvo da
+   faixa na altura, e a margem negativa devolve o espaço (cabe no padding
+   do quadro). */
+.fx-report-target-title {
+    display: block;
+    padding: calc((var(--r-touch) - 1.25rem) / 2) 0;
+    margin: calc((1.25rem - var(--r-touch)) / 2) 0;
     color: var(--color-ink);
+    font-weight: var(--weight-bold);
+    text-decoration: none;
     overflow-wrap: anywhere;
 }
 
-.report-target {
-    background-color: var(--color-paper-2);
-    border-radius: 6px;
-    padding: 10px 12px;
-    font-size: 0.93rem;
+.fx-report-target-title[href]:hover {
+    text-decoration: underline;
 }
 
-.report-target-title {
-    font-weight: 700;
-    overflow-wrap: anywhere;
-}
-
-.report-target-content {
-    margin-top: 6px;
+/* O trecho denunciado, na medida de leitura. */
+.fx-report-target-content {
+    margin: var(--space-1) 0 0;
+    max-width: var(--prose-measure);
     color: var(--color-ink-soft);
-    line-height: 1.45;
     overflow-wrap: anywhere;
 }
 
-.report-target-author {
-    margin-top: 6px;
+.fx-report-target-author {
+    margin: var(--space-1) 0 0;
     color: var(--color-ink-muted);
-    font-size: 0.85rem;
 }
 
-.report-removed {
+.fx-report-target-author a {
+    color: inherit;
+}
+
+.fx-report-removed {
     display: inline-block;
-    margin-top: 6px;
-    font-size: 0.8rem;
-    font-weight: 700;
+    margin-top: var(--space-1);
     color: var(--color-danger);
+    font-size: var(--text-xs);
+    font-weight: var(--weight-bold);
 }
 
-.report-actions {
+/* Ordem fixa: a principal, as neutras e, separadas à direita, as de perigo. */
+.fx-report-actions {
     display: flex;
     flex-wrap: wrap;
     align-items: center;
-    gap: 8px;
-    margin-top: 12px;
+    gap: var(--space-2);
+    margin-top: var(--space-3);
 }
 
-.report-hint {
-    font-size: 0.82rem;
+.fx-report-actions .fx-report-sep {
+    margin-left: auto;
+}
+
+.fx-report-hint {
+    flex-basis: 100%;
+    font-size: var(--text-sm);
+    line-height: 1.25rem;
     color: var(--color-ink-faint);
 }
 
-.report-closed {
-    margin-top: 12px;
-    font-size: 0.85rem;
+.fx-report-closed {
+    margin: var(--space-3) 0 0;
+    font-size: var(--text-sm);
+    line-height: 1.25rem;
     color: var(--color-ink-faint);
 }
 
-/* ----- Banidos ----- */
-.mod-bans {
-    list-style: none;
-    background-color: var(--color-paper);
-    border-radius: 8px;
-    overflow: hidden;
-}
-
-.mod-ban {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    padding: 12px 18px;
-    color: var(--color-ink);
-    border-bottom: 1px solid var(--color-paper-border);
-}
-
-.mod-ban:last-child {
-    border-bottom: none;
-}
-
-.mod-ban-info {
-    flex: 1;
-    min-width: 0;
-    display: flex;
-    flex-direction: column;
-    gap: 2px;
-}
-
-.mod-ban-name {
-    font-weight: 700;
-    overflow-wrap: anywhere;
-}
-
-.mod-ban-meta,
+/* Banidos: o motivo, abaixo do nome e da data. */
 .mod-ban-reason {
-    font-size: 0.85rem;
+    font-size: var(--text-sm);
+    line-height: 1.25rem;
     color: var(--color-ink-faint);
     overflow-wrap: anywhere;
+}
+
+/* ----- Celular (até 599px) ----- */
+@media (max-width: 599px) {
+    /* Cartões de ponta a ponta, com 4px entre eles. */
+    .fx-reports {
+        gap: var(--space-1);
+        margin: 0 calc(-1 * var(--r-gutter));
+    }
+
+    .fx-reports .fx-report {
+        border-left: 0;
+        border-right: 0;
+        border-radius: 0;
+    }
+
+    /* Ações em grade de 2 colunas, com botões de 44px; a dica ocupa a linha toda. */
+    .fx-report-actions {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .fx-report-actions .fx-btn {
+        width: 100%;
+        padding: 0 var(--space-3);
+        white-space: normal;
+    }
+
+    .fx-report-actions .fx-report-sep {
+        margin-left: 0;
+    }
+
+    .fx-report-hint {
+        grid-column: 1 / -1;
+    }
 }

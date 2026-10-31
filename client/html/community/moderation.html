@@ -9,7 +9,6 @@
     <title>FAMAX - Moderação</title>
     <link rel="stylesheet" href="../../css/global.css">
     <link rel="stylesheet" href="../../css/layout.css">
-    <link rel="stylesheet" href="../../css/community.css">
     <link rel="stylesheet" href="../../css/moderation.css">
 </head>
 <body class="r">
@@ -18,25 +17,31 @@
     <aside id="app-sidebar" class="sidebar"></aside>
 
     <main class="main-content" id="main-content">
-        <div class="mod-page">
-            <nav class="mod-breadcrumb" aria-label="Você está em">
+        <div class="r-col">
+            <nav class="r-crumb" aria-label="Você está em">
                 <a id="backToCommunity" href="../home.html">Comunidade</a>
-                <span aria-hidden="true">›</span>
+                <span class="r-crumb-sep" aria-hidden="true">›</span>
                 <span aria-current="page">Moderação</span>
             </nav>
-            <h1 class="mod-title" id="modTitle">Moderação</h1>
+            <h1 class="r-ptitle" id="modTitle">Moderação</h1>
             <p class="mod-status" id="modStatus">Carregando...</p>
 
             <!-- Visível só para dono e moderadores (community-moderation.ts). -->
-            <div id="modContent" hidden>
-                <section class="mod-section" aria-labelledby="reportsTitle">
-                    <h2 class="mod-section-title" id="reportsTitle">Denúncias</h2>
-                    <div id="reportQueue"></div>
+            <div class="mod-content" id="modContent" hidden>
+                <div class="r-tabs">
+                    <div class="fx-tabs" role="tablist" aria-label="Moderação" id="modTabs">
+                        <button type="button" class="fx-tab" role="tab" id="modTab-denuncias" aria-controls="modPanel-denuncias" data-tab="denuncias" aria-selected="true">Denúncias</button>
+                        <button type="button" class="fx-tab" role="tab" id="modTab-banidos" aria-controls="modPanel-banidos" data-tab="banidos" aria-selected="false">Banidos</button>
+                    </div>
+                </div>
+
+                <section class="mod-panel" id="modPanel-denuncias" role="tabpanel" aria-labelledby="modTab-denuncias">
+                    <div class="mod-queue" id="reportQueue"></div>
                 </section>
 
-                <section class="mod-section" aria-labelledby="bansTitle">
-                    <h2 class="mod-section-title" id="bansTitle">Banidos</h2>
-                    <ul class="mod-bans" id="bansList"></ul>
+                <section class="mod-panel" id="modPanel-banidos" role="tabpanel" aria-labelledby="modTab-banidos" hidden>
+                    <p class="mod-summary" id="bansSummary" aria-live="polite"></p>
+                    <ul class="fx-members r-edge" id="bansList"></ul>
                 </section>
             </div>
         </div>

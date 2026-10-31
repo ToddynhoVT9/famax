@@ -6,49 +6,86 @@
     <!-- Tema escolhido à mão (shared/theme.ts), aplicado antes da primeira pintura:
          sem isto a página piscaria no tema errado até o módulo carregar. -->
     <script>try{var t=localStorage.getItem("famax_theme");if(t==="light"||t==="dark")document.documentElement.dataset.theme=t}catch(e){}</script>
-    <title>FAMAX - Termos de Uso</title>
+    <title>FAMAX - Termos de uso</title>
     <link rel="stylesheet" href="../../css/global.css">
+    <link rel="stylesheet" href="../../css/layout.css">
     <link rel="stylesheet" href="../../css/legal/terms.css">
 </head>
-<body>
+<body class="r r--nobar">
+    <!-- Página sem script de layout: o header da moldura escrito aqui, só com o
+         logo, que leva ao início (a tela inicial manda quem tem sessão para a home). -->
+    <header id="app-header" class="header">
+        <a class="r-logo" href="../../index.html" aria-label="FAMAX — início">FAMAX</a>
+    </header>
 
-    <div class="container">
-        <a href="../user-pages/register.html" class="fx-btn fx-btn--chrome" id="backButton">← Voltar para o Cadastro</a>
-        
-        <h1>Termos de Uso e Condições</h1>
-        <p class="terms-updated">Última atualização: Março de 2026</p>
+    <main class="main-content" id="main-content">
+        <div class="r-col">
+            <a href="../user-pages/register.html" class="terms-back" id="backButton">← Voltar</a>
 
-        <h2>1. Aceitação dos Termos</h2>
-        <p>Ao acessar, registrar uma conta e utilizar o fórum <strong>FAMAX</strong>, você concorda automática e integralmente em cumprir e estar vinculado a estes Termos de Uso. Caso não concorde com qualquer regra imposta aqui, você não deve utilizar a plataforma.</p>
+            <article class="terms-card">
+                <h1 class="r-ptitle">Termos de uso e condições</h1>
+                <p class="terms-updated">Última atualização: Março de 2026</p>
 
-        <h2>2. Regras de Conduta e Postagem</h2>
-        <p>O FAMAX é uma comunidade focada no respeito mútuo e na troca saudável de ideias. Ao interagir no fórum, você compromete-se a <strong>não praticar</strong> as seguintes ações:</p>
-        <ul>
-            <li><strong>Discurso de Ódio e Assédio:</strong> Publicar conteúdos ou proferir ofensas de cunho racista, homofóbico, machista, ou atacar diretamente outro membro ou minoria.</li>
-            <li><strong>Conteúdo Inadequado:</strong> Postar imagens, links ou textos explícitos (NSFW/Pornografia), violência extrema ou gore fora de seções dedicadas com aviso explícito e bloqueio de idade (caso existam).</li>
-            <li><strong>Spam e Pirataria:</strong> Divulgar bots, correntes, links suspeitos, malwares, ou fornecer caminhos para pirataria e atividades consideradas ilegais por lei.</li>
-            <li><strong>Doxxing:</strong> Expor intencionalmente dados sensíveis/pessoais de outros usuários ou indivíduos (endereços, telefones, fotos não autorizadas, etc.).</li>
-        </ul>
+                <details class="terms-toc">
+                    <summary>Nesta página · 7 seções<svg class="r-ico" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M6 9l6 6 6-6"/></svg></summary>
+                    <ol class="terms-toc-list">
+                        <li><a href="#secao-1">1. Aceitação dos termos</a></li>
+                        <li><a href="#secao-2">2. Regras de Conduta e Postagem</a></li>
+                        <li><a href="#secao-3">3. Moderação e Punições</a></li>
+                        <li><a href="#secao-4">4. Propriedade Intelectual</a></li>
+                        <li><a href="#secao-5">5. Responsabilidade e Isenção</a></li>
+                        <li><a href="#secao-6">6. Atualizações do Termo</a></li>
+                        <li><a href="#secao-7">7. Contato e Denúncias</a></li>
+                    </ol>
+                </details>
 
-        <h2>3. Moderação e Punições</h2>
-        <p>É responsabilidade da equipe de Moderação e Administração zelar pelo bom andamento do fórum. Reservamo-nos o direito de:</p>
-        <ul>
-            <li>Monitorar, editar, trancar ou apagar postagens, tópicos ou comentários que descumpram este regulamento.</li>
-            <li>Aplicar advertências, suspensões provisórias (mutes) e banimentos temporários ou permanentes a usuários infratores, de acordo com a gravidade da violação, a nosso exclusivo critério.</li>
-        </ul>
+                <section class="terms-sec" id="secao-1">
+                    <h2>1. Aceitação dos termos</h2>
+                    <p>Ao acessar, registrar uma conta e utilizar o fórum <strong>FAMAX</strong>, você concorda automática e integralmente em cumprir e estar vinculado a estes Termos de Uso. Caso não concorde com qualquer regra imposta aqui, você não deve utilizar a plataforma.</p>
+                </section>
 
-        <h2>4. Propriedade Intelectual</h2>
-        <p>Você continua sendo o(a) dono(a) de tudo o que escreve ou posta no fórum. No entanto, ao usar nossa plataforma, você confere ao FAMAX a permissão (licença não-exclusiva e gratuita) para reproduzir, hospedar e exibir publicamente esse material dentro do escopo de serviço do site para outros usuários.</p>
+                <section class="terms-sec" id="secao-2">
+                    <h2>2. Regras de Conduta e Postagem</h2>
+                    <p>O FAMAX é uma comunidade focada no respeito mútuo e na troca saudável de ideias. Ao interagir no fórum, você compromete-se a <strong>não praticar</strong> as seguintes ações:</p>
+                    <ul>
+                        <li><strong>Discurso de Ódio e Assédio:</strong> Publicar conteúdos ou proferir ofensas de cunho racista, homofóbico, machista, ou atacar diretamente outro membro ou minoria.</li>
+                        <li><strong>Conteúdo Inadequado:</strong> Postar imagens, links ou textos explícitos (NSFW/Pornografia), violência extrema ou gore fora de seções dedicadas com aviso explícito e bloqueio de idade (caso existam).</li>
+                        <li><strong>Spam e Pirataria:</strong> Divulgar bots, correntes, links suspeitos, malwares, ou fornecer caminhos para pirataria e atividades consideradas ilegais por lei.</li>
+                        <li><strong>Doxxing:</strong> Expor intencionalmente dados sensíveis/pessoais de outros usuários ou indivíduos (endereços, telefones, fotos não autorizadas, etc.).</li>
+                    </ul>
+                </section>
 
-        <h2>5. Responsabilidade e Isenção</h2>
-        <p>O conteúdo publicado no fórum é de total responsabilidade civil e penal de quem o escreve. O FAMAX funciona exclusivamente como uma plataforma hospedeira de discussões, logo, não se responsabiliza pelas opiniões divulgadas nem endossa o que é postado por terceiros.</p>
+                <section class="terms-sec" id="secao-3">
+                    <h2>3. Moderação e Punições</h2>
+                    <p>É responsabilidade da equipe de Moderação e Administração zelar pelo bom andamento do fórum. Reservamo-nos o direito de:</p>
+                    <ul>
+                        <li>Monitorar, editar, trancar ou apagar postagens, tópicos ou comentários que descumpram este regulamento.</li>
+                        <li>Aplicar advertências, suspensões provisórias (mutes) e banimentos temporários ou permanentes a usuários infratores, de acordo com a gravidade da violação, a nosso exclusivo critério.</li>
+                    </ul>
+                </section>
 
-        <h2>6. Atualizações do Termo</h2>
-        <p>A equipe do FAMAX garante o direito de modificar e atualizar estes Termos de Uso em qualquer momento, visando melhorar as dinâmicas de segurança. Avisaremos a comunidade sobre alterações significativas, e continuar a usar a plataforma configurará sua aprovação às mudanças.</p>
+                <section class="terms-sec" id="secao-4">
+                    <h2>4. Propriedade Intelectual</h2>
+                    <p>Você continua sendo o(a) dono(a) de tudo o que escreve ou posta no fórum. No entanto, ao usar nossa plataforma, você confere ao FAMAX a permissão (licença não-exclusiva e gratuita) para reproduzir, hospedar e exibir publicamente esse material dentro do escopo de serviço do site para outros usuários.</p>
+                </section>
 
-        <h2>7. Contato e Denúncias</h2>
-        <p>Em caso de dúvidas a respeito do processo, ou se necessitar reportar postagens irregulares, utilize a ferramenta oficial de "Denunciar Post" ou entre em contato direto com a administração/moderação ativa.</p>
-    </div>
+                <section class="terms-sec" id="secao-5">
+                    <h2>5. Responsabilidade e Isenção</h2>
+                    <p>O conteúdo publicado no fórum é de total responsabilidade civil e penal de quem o escreve. O FAMAX funciona exclusivamente como uma plataforma hospedeira de discussões, logo, não se responsabiliza pelas opiniões divulgadas nem endossa o que é postado por terceiros.</p>
+                </section>
+
+                <section class="terms-sec" id="secao-6">
+                    <h2>6. Atualizações do Termo</h2>
+                    <p>A equipe do FAMAX garante o direito de modificar e atualizar estes Termos de Uso em qualquer momento, visando melhorar as dinâmicas de segurança. Avisaremos a comunidade sobre alterações significativas, e continuar a usar a plataforma configurará sua aprovação às mudanças.</p>
+                </section>
+
+                <section class="terms-sec" id="secao-7">
+                    <h2>7. Contato e Denúncias</h2>
+                    <p>Em caso de dúvidas a respeito do processo, ou se necessitar reportar postagens irregulares, utilize a ferramenta oficial de "Denunciar Post" ou entre em contato direto com a administração/moderação ativa.</p>
+                </section>
+            </article>
+        </div>
+    </main>
 
     <script type="module">
         // Quem chegou aqui pelo modal do cadastro (ou de outra página do site)
