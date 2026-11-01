@@ -1,9 +1,10 @@
 /* ===========================================================================
    FAMAX — Widget de Chat
    ---------------------------------------------------------------------------
-   Extraído da template string que o protótipo injetava via JS. Como CSS de
-   verdade o estilo entra no pipeline do Vite e a página não pisca sem estilo
-   antes do script rodar.
+   O desenho do painel, dos contatos, das mensagens e da busca é o ChatWidget
+   e o ChatPanels do design system (components.css, .fx-chat-*). Aqui fica só
+   o que é do app: onde o painel se põe em cada modo, o véu, o Voltar, os
+   estados de lista vazia, o ⋯ da mensagem e o painel do grupo.
    =========================================================================== */
 
 /* O widget só agrupa o painel e o véu: o ícone que abre fica no header
@@ -14,28 +15,28 @@
     display: contents;
 }
 
-/* Ao lado e por cima: 380px colados à direita, do fim do header ao fim da tela. */
-.chat-panel {
+/* Ao lado e por cima: 380px colados à direita, do fim do header ao fim da
+   tela. Sem o canto arredondado nem a sombra do painel solto do bundle. */
+.chat-widget .fx-chat-panel {
     position: fixed;
     top: var(--r-header);
     right: 0;
     bottom: 0;
     z-index: var(--z-chat);
     display: none;
-    flex-direction: column;
     width: var(--chat-width);
     max-width: 100%;
-    overflow: hidden;
-    background: var(--color-paper);
-    color: var(--color-ink);
+    height: auto;
+    border-radius: 0;
+    box-shadow: none;
 }
 
-.chat-widget.open .chat-panel {
+.chat-widget.open .fx-chat-panel {
     display: flex;
 }
 
 /* Ao lado: divide a tela com a página, que ganha a margem do painel. */
-.chat-widget[data-modo="ao-lado"] .chat-panel {
+.chat-widget[data-modo="ao-lado"] .fx-chat-panel {
     border-left: 1px solid var(--color-border);
 }
 
@@ -46,7 +47,7 @@
 }
 
 /* Por cima: sombra e um véu sobre a página, que fecha ao toque. */
-.chat-widget[data-modo="por-cima"] .chat-panel {
+.chat-widget[data-modo="por-cima"] .fx-chat-panel {
     box-shadow: var(--shadow-lg);
 }
 
@@ -66,7 +67,7 @@
 }
 
 /* Tela cheia (tablet e celular): cobre a página e a barra, com Voltar no topo. */
-.chat-widget[data-modo="tela-cheia"] .chat-panel {
+.chat-widget[data-modo="tela-cheia"] .fx-chat-panel {
     top: 0;
     left: 0;
     width: 100%;
@@ -82,6 +83,7 @@
     display: inline-flex;
 }
 
+/* ----- Cabeçalho ----- */
 .chat-title {
     display: flex;
     align-items: center;
@@ -89,108 +91,89 @@
     min-width: 0;
 }
 
-.chat-header {
-    background: var(--color-chrome);
-    color: var(--color-on-chrome);
-    padding: 14px 16px;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 10px;
-}
-
-.chat-header h3 {
-    margin: 0;
-    font-size: 1rem;
-}
-
-.chat-header p {
-    margin: 4px 0 0;
-    font-size: 0.8rem;
-    opacity: 0.9;
-}
-
 .chat-header-actions {
     display: flex;
     align-items: center;
-    gap: 6px;
+    gap: var(--space-1);
 }
 
-.chat-body {
-    display: flex;
-    flex: 1;
+/* Moldura R: os botões de ícone do chat com o alvo inteiro (o bundle usa 36px). */
+.chat-widget .fx-chat-head .fx-btn--icon,
+.chat-widget .fx-chat-conv-head .fx-btn--icon {
+    width: var(--touch-target);
+    min-height: var(--touch-target);
+}
+
+/* ----- Contatos ----- */
+/* Grupo: sem pessoa, um ícone sobre o cinza do cartão. */
+.chat-widget .chat-avatar-group {
+    background: var(--color-paper-3);
+    color: var(--color-ink);
+    font-size: var(--text-lg);
+}
+
+/* "Mais" no fim da lista de conversas. O link do bundle usa a cor do texto da
+   página, que no escuro é branca: no papel ele vai com a tinta. */
+.chat-widget .chat-contacts-more {
+    width: 100%;
+    min-height: var(--r-touch);
+    color: var(--color-ink);
+    font-size: var(--text-xs);
+}
+
+/* Tela cheia: as conversas viram uma fileira que rola, em cima da conversa. */
+.chat-widget[data-modo="tela-cheia"] .fx-chat-body {
+    flex-direction: column;
+}
+
+.chat-widget[data-modo="tela-cheia"] .fx-contacts {
+    flex-direction: row;
+    width: 100%;
+    max-height: 112px;
+    overflow-x: auto;
+    overflow-y: hidden;
+    border-right: none;
+    border-bottom: 1px solid var(--color-paper-border);
+    scrollbar-width: none;
+}
+
+.chat-widget[data-modo="tela-cheia"] .fx-contacts::-webkit-scrollbar {
+    display: none;
+}
+
+.chat-widget[data-modo="tela-cheia"] .fx-contact {
+    flex-shrink: 0;
+    width: 88px;
+}
+
+.chat-widget[data-modo="tela-cheia"] .chat-contacts-more {
+    flex-shrink: 0;
+    width: auto;
+}
+
+/* ----- Conversa ----- */
+.fx-chat-conv {
+    position: relative;
+}
+
+/* Tela cheia: a conversa fica embaixo dos contatos, numa coluna. Sem o
+   min-height 0 ela cresce até caber todas as mensagens e empurra o campo de
+   mensagem para fora da tela; com ele, quem rola é a lista. */
+.chat-widget[data-modo="tela-cheia"] .fx-chat-conv {
     min-height: 0;
 }
 
-.chat-contacts {
-    width: 116px;
-    background: var(--color-paper-2);
-    border-right: 1px solid var(--color-paper-border);
-    padding: 8px;
-    overflow-y: auto;
-    flex-shrink: 0;
+.fx-chat-conv-head[hidden] {
+    display: none;
 }
 
-.contact-item {
-    position: relative;
-    width: 100%;
-    border: none;
-    background: transparent;
-    padding: 10px 8px;
-    border-radius: 10px;
-    margin-bottom: 8px;
-    text-align: left;
-    cursor: pointer;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 6px;
-    color: var(--color-ink);
-    font-family: inherit;
-}
-
-.contact-item:hover {
-    background: var(--color-paper-3);
-}
-
-.contact-item.active {
-    background: var(--color-paper-3);
-}
-
-.contact-name {
-    font-size: 0.78rem;
-    font-weight: 600;
-    max-width: 100%;
+.chat-conv-title {
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
 }
 
-.contact-item > .fx-counter-badge {
-    position: absolute;
-    top: 6px;
-    right: 6px;
-}
-
-.chat-conversation {
-    position: relative;
-    flex: 1;
-    display: flex;
-    flex-direction: column;
-    min-width: 0;
-}
-
-.chat-messages {
-    flex: 1;
-    padding: 12px;
-    overflow-y: auto;
-    display: flex;
-    flex-direction: column;
-    gap: 10px;
-    background: var(--color-paper-2);
-}
-
-.chat-messages.is-changing {
+.fx-chat-msgs.is-changing {
     animation: chatSlideIn 0.25s ease;
 }
 
@@ -206,279 +189,173 @@
     }
 }
 
-.message-bubble {
-    max-width: 80%;
-    padding: 10px 12px;
-    border-radius: 12px;
-    font-size: 0.9rem;
-    line-height: 1.3;
-    word-break: break-word;
-    white-space: pre-wrap;
+@media (prefers-reduced-motion: reduce) {
+    .fx-chat-msgs.is-changing {
+        animation: none;
+    }
 }
 
-.message-bubble.me {
-    align-self: flex-end;
-    background: var(--color-chrome);
-    color: var(--color-on-chrome);
-}
-
-.message-bubble.other {
-    align-self: flex-start;
-    background: var(--color-paper);
-    color: var(--color-ink);
-    border: 1px solid var(--color-paper-border);
-}
-
-/* Mensagem já desenhada mas ainda não confirmada pelo servidor. */
-.message-bubble.pending {
-    opacity: 0.55;
-}
-
-.message-bubble.failed {
-    background: var(--color-danger-strong);
-    color: var(--color-on-accent);
-}
-
-.message-time {
-    display: block;
-    margin-top: 4px;
-    font-size: 0.68rem;
-    opacity: 0.75;
-}
-
+/* Sem conversa, sem mensagens ou com erro: um aviso no meio da área. */
 .chat-status {
     margin: auto;
+    padding: var(--space-4);
+    font-size: var(--text-sm);
+    line-height: 1.25rem;
     color: var(--color-ink-faint);
-    font-size: 0.86rem;
     text-align: center;
-    padding: 16px;
-    line-height: 1.4;
 }
 
-.chat-input-row {
-    display: flex;
-    gap: 8px;
-    padding: 10px;
-    border-top: 1px solid var(--color-paper-border);
-    background: var(--color-paper);
-}
-
-/* Campo (fx-input pílula) e "Enviar" (fx-btn chrome) lado a lado. */
-.chat-input-row > .fx-input {
-    flex: 1;
-    min-width: 0;
-}
-
-/* ----- Busca de pessoas (nova conversa) ----- */
-.chat-search {
-    display: none;
-    flex-direction: column;
-    padding: 10px;
-    gap: 8px;
-    border-bottom: 1px solid var(--color-paper-border);
-    background: var(--color-paper);
-}
-
-.chat-widget.searching .chat-search {
-    display: flex;
-}
-
-.chat-search-results {
-    display: flex;
-    flex-direction: column;
-    gap: 4px;
-    max-height: 180px;
-    overflow-y: auto;
-}
-
-.chat-search-item {
-    border: none;
-    background: transparent;
-    text-align: left;
-    padding: 8px 10px;
-    border-radius: 8px;
-    cursor: pointer;
-    font-size: 0.88rem;
-    color: var(--color-ink);
-    font-family: inherit;
-}
-
-.chat-search-item:hover {
-    background: var(--color-paper-2);
-}
-
-.chat-search-empty {
-    font-size: 0.82rem;
-    color: var(--color-ink-faint);
-    padding: 4px 10px;
-}
-
-/* Tela cheia: a lista de conversas vira uma fileira em cima. */
-.chat-widget[data-modo="tela-cheia"] .chat-body {
-    flex-direction: column;
-}
-
-.chat-widget[data-modo="tela-cheia"] .chat-contacts {
-    width: 100%;
-    max-height: 112px;
-    border-right: none;
-    border-bottom: 1px solid var(--color-paper-border);
-    display: flex;
-    gap: 8px;
-    overflow-x: auto;
-}
-
-.chat-widget[data-modo="tela-cheia"] .contact-item {
-    min-width: 78px;
-    margin-bottom: 0;
-}
-
-/* ===========================================================================
-   Chat completo (prompt 11): cabeçalho da conversa, histórico, ações nas
-   mensagens, visto, digitando, grupos.
-   =========================================================================== */
-
-/* Grupo: sem pessoa, um ícone sobre o cinza do cartão. */
-.contact-avatar--group {
-    background: var(--color-paper-3);
-    color: var(--color-ink);
-    font-size: 1.1rem;
-}
-
-.contacts-more {
-    width: 100%;
-    border: 1px dashed var(--color-paper-border-strong);
-    background: transparent;
-    border-radius: 10px;
-    padding: 6px;
-    font-size: 0.75rem;
-    color: var(--color-ink-muted);
-    cursor: pointer;
-    font-family: inherit;
-}
-
-.chat-conv-header {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 8px;
-    padding: 8px 12px;
-    border-bottom: 1px solid var(--color-paper-border);
-    background: var(--color-paper);
-}
-
-.chat-conv-header[hidden] {
-    display: none;
-}
-
-.chat-conv-title {
-    font-weight: 700;
-    font-size: 0.9rem;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-}
-
+/* "Início da conversa" e "Role para cima...", como as mensagens do sistema. */
 .chat-history-hint {
     align-self: center;
-    font-size: 0.72rem;
+    font-size: var(--text-xs);
+    line-height: 1rem;
     color: var(--color-ink-faint);
 }
 
-.message-system {
-    align-self: center;
-    max-width: 90%;
-    text-align: center;
-    font-size: 0.76rem;
-    color: var(--color-ink-faint);
-    background: var(--color-paper-2);
-    padding: 4px 10px;
-    border-radius: 999px;
+/* Grupo: as mensagens seguidas da mesma pessoa ficam juntas, sem o avatar,
+   que deixa o lugar vazio para a bolha não pular. */
+.fx-msg-row.is-continued {
+    margin-top: calc(-1 * var(--space-1));
 }
 
-.message-row {
-    display: flex;
-    align-items: flex-end;
-    gap: 6px;
-    max-width: 88%;
-}
-
-.message-row .message-bubble {
-    max-width: 100%;
-}
-
-.message-row.is-continued {
-    margin-top: -6px;
-}
-
-/* Lugar do avatar (fx-avatar--xs) nas mensagens seguidas da mesma pessoa. */
-.message-avatar-space {
+.chat-avatar-space {
     flex-shrink: 0;
     width: var(--avatar-xs);
     height: var(--avatar-xs);
 }
 
-.message-stack {
-    display: flex;
-    flex-direction: column;
-    min-width: 0;
+.fx-msg-seen {
+    margin-top: calc(-1 * var(--space-1));
 }
 
-.message-sender {
-    font-size: 0.72rem;
-    font-weight: 700;
-    color: var(--color-ink-muted);
-    margin: 0 0 2px 4px;
+.fx-typing[hidden] {
+    display: none;
 }
 
-.message-bubble.is-deleted {
-    background: transparent;
-    color: var(--color-ink-faint);
-    border: 1px dashed var(--color-paper-border-strong);
-}
-
-.message-deleted {
-    font-size: 0.85rem;
-}
-
-.message-action {
+/* Ação de texto ("Tentar de novo", "Descartar" na bolha que falhou;
+   "Remover" no grupo). O alvo da faixa vem na altura, e a margem negativa
+   devolve o espaço: a linha não cresce. */
+.chat-link {
+    display: inline-flex;
+    align-items: center;
+    min-height: var(--r-touch);
+    margin: calc((1rem - var(--r-touch)) / 2) 0;
+    padding: 0;
     border: none;
     background: none;
-    padding: 0;
     color: inherit;
     font: inherit;
     text-decoration: underline;
+    text-underline-offset: 2px;
     cursor: pointer;
 }
 
-/* "apagar" só aparece ao passar o mouse (ou focar), para não poluir. */
-.message-bubble.me .message-action[data-action="delete"] {
-    opacity: 0;
-    transition: opacity 0.15s;
+.chat-link--danger {
+    color: var(--color-danger);
 }
 
-.message-bubble.me:hover .message-action[data-action="delete"],
-.message-bubble.me .message-action[data-action="delete"]:focus-visible {
-    opacity: 1;
+/* Na bolha que falhou, as duas ações podem quebrar linha: com a margem
+   negativa o alvo de uma cobriria o da outra. Ali cada uma ocupa o seu alvo
+   inteiro, e a bolha cresce enquanto a mensagem não sai. */
+.fx-bubble.is-failed .fx-msg-time {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    column-gap: var(--space-1);
 }
 
-.message-seen {
+.fx-bubble.is-failed .chat-link {
+    margin: 0;
+}
+
+/* ----- ⋯ da mensagem (só nas suas, já enviadas) -----
+   A linha vem com a bolha primeiro no HTML (o ⋯ é lido e alcançado pelo Tab
+   depois dela) e o row-reverse põe o ⋯ à esquerda da bolha. */
+.chat-msg-row-me {
+    position: relative;
     align-self: flex-end;
-    margin-top: -6px;
-    font-size: 0.7rem;
-    color: var(--color-ink-faint);
+    flex-direction: row-reverse;
+    align-items: center;
 }
 
-.chat-typing {
-    padding: 4px 12px;
-    font-size: 0.75rem;
-    font-style: italic;
-    color: var(--color-ink-faint);
-    background: var(--color-paper-2);
+.chat-msg-row-me > .fx-bubble--me {
+    max-width: 100%;
 }
 
-.chat-typing[hidden] {
+.chat-msg-menu > .fx-btn {
+    flex-shrink: 0;
+    color: var(--color-ink-soft);
+}
+
+/* O menu (de 1024px para cima) abre ancorado na borda direita da linha, que
+   é a borda da área das mensagens: assim cabe na coluna estreita do painel.
+   Abre para baixo; perto do fim da área, para cima (.is-up, posto pelo TS). */
+.chat-msg-menu > .fx-menu {
+    position: absolute;
+    top: calc(100% + var(--space-1));
+    right: 0;
+    z-index: var(--z-popover);
+    min-width: 160px;
+}
+
+.chat-msg-menu > .fx-menu.is-up {
+    top: auto;
+    bottom: calc(100% + var(--space-1));
+}
+
+/* Com mouse, o ⋯ aparece ao passar na linha ou com o foco dentro dela. Só o
+   ícone some (opacity no botão, não em texto): com visibility ou display ele
+   sairia da ordem do Tab. No toque fica sempre à vista. */
+@media (hover: hover) {
+    .chat-msg-menu > .fx-btn {
+        opacity: 0;
+    }
+
+    .chat-msg-row-me:hover .chat-msg-menu > .fx-btn,
+    .chat-msg-row-me:focus-within .chat-msg-menu > .fx-btn,
+    .chat-msg-menu > .fx-btn[aria-expanded="true"] {
+        opacity: 1;
+    }
+}
+
+/* ----- Busca de pessoas (nova conversa ou grupo) ----- */
+.chat-widget:not(.searching) .fx-chat-search {
     display: none;
+}
+
+.chat-search-modes {
+    display: flex;
+    gap: var(--space-2);
+}
+
+.chat-search-modes > .fx-chip {
+    flex: 1;
+}
+
+.fx-chat-results {
+    max-height: 180px;
+    overflow-y: auto;
+}
+
+.fx-chat-chips[hidden] {
+    display: none;
+}
+
+/* O "@usuário" ao lado do nome, no resultado. */
+.chat-result-handle {
+    color: var(--color-ink-faint);
+}
+
+/* Pessoa escolhida para o grupo: a pílula do bundle, com o alvo da faixa na
+   altura. As bordas transparentes de cima e de baixo aumentam o botão sem
+   pintar (o fundo fica na caixa de dentro), e a margem negativa devolve o
+   espaço à fileira. */
+.chat-widget .fx-chat-chip {
+    border-top: calc((var(--r-touch) - 20px) / 2) solid transparent;
+    border-bottom: calc((var(--r-touch) - 20px) / 2) solid transparent;
+    margin: calc((20px - var(--r-touch)) / 2) 0;
+    background-clip: padding-box;
 }
 
 /* ----- Painel do grupo (sobre as mensagens) ----- */
@@ -486,12 +363,12 @@
     position: absolute;
     inset: 0;
     z-index: 2;
-    background: var(--color-paper);
-    padding: 12px;
-    overflow-y: auto;
     display: flex;
     flex-direction: column;
-    gap: 10px;
+    gap: var(--space-3);
+    padding: var(--space-3);
+    overflow-y: auto;
+    background: var(--color-paper);
 }
 
 .chat-group-panel[hidden] {
@@ -502,11 +379,19 @@
     display: flex;
     align-items: center;
     justify-content: space-between;
+    gap: var(--space-2);
+}
+
+.chat-group-head h4 {
+    margin: 0;
+    font-size: var(--text-md);
+    line-height: 1.5rem;
+    font-weight: var(--weight-bold);
 }
 
 .chat-group-rename {
     display: flex;
-    gap: 6px;
+    gap: var(--space-2);
 }
 
 .chat-group-rename > .fx-input {
@@ -516,24 +401,26 @@
 
 .chat-group-label {
     margin: 0;
-    font-size: 0.78rem;
+    font-size: var(--text-xs);
+    line-height: 1rem;
     color: var(--color-ink-faint);
 }
 
 .chat-group-members {
-    list-style: none;
-    margin: 0;
-    padding: 0;
     display: flex;
     flex-direction: column;
-    gap: 6px;
-    font-size: 0.85rem;
+    gap: var(--space-2);
+    margin: 0;
+    padding: 0;
+    list-style: none;
+    font-size: var(--text-sm);
+    line-height: 1.25rem;
 }
 
 .chat-group-member {
     display: flex;
     align-items: center;
-    gap: 8px;
+    gap: var(--space-2);
 }
 
 .chat-group-member > span:first-child {
@@ -545,34 +432,28 @@
 }
 
 .chat-group-role {
-    font-size: 0.68rem;
+    padding: 2px var(--space-2);
+    border-radius: var(--radius-pill);
     background: var(--color-paper-3);
-    border-radius: 999px;
-    padding: 1px 7px;
+    font-size: var(--text-xs);
+    line-height: 1rem;
 }
 
 /* "Sair do grupo" fica no fim do painel. */
 .chat-group-leave {
+    align-self: flex-start;
     margin-top: auto;
 }
 
-/* ----- Nova conversa: conversa x grupo ----- */
-.chat-search-modes {
-    display: flex;
-    gap: 6px;
+/* ----- Moldura R: campo e "Enviar" com o alvo da faixa ----- */
+.chat-widget .fx-chat-input .fx-input {
+    min-height: max(40px, var(--r-touch));
 }
 
-.chat-search-modes > .fx-chip {
-    flex: 1;
+.chat-widget .fx-chat-input .fx-btn {
+    min-height: var(--r-touch);
 }
 
-.chat-chips {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 4px;
-}
-
-/* ----- Celular: o chat aberto ocupa a tela inteira ----- */
 /* Tablet e celular: o chat aberto cobre a barra inferior, e a página atrás
    não rola junto. */
 @media (max-width: 1023px) {
@@ -585,3 +466,10 @@
     }
 }
 
+/* Celular: abaixo de 16px no campo o iPhone dá zoom na página ao focar (o
+   tamanho pequeno do bundle ganharia da regra do Field). */
+@media (max-width: 599px) {
+    .chat-widget .fx-chat-input .fx-input {
+        font-size: max(16px, 1rem);
+    }
+}

@@ -546,6 +546,57 @@ textarea.fx-input { min-height: 96px; resize: vertical; }
 .fx-member-actions { display: flex; flex-wrap: wrap; gap: var(--space-2); }
 .fx-member > .fx-btn { flex-shrink: 0; }
 
+/* ----- ChatWidget -----
+   O painel, os contatos, as mensagens e o envio. Onde o painel fica (ao lado,
+   por cima, tela cheia) é do chat-widget.css. Do bundle ficam de fora o
+   .fx-chat-launcher (o ícone está no header desde a moldura R) e o .fx-chat,
+   que só agrupa a galeria. */
+.fx-chat-panel { width: min(var(--chat-width), 100%); height: var(--chat-height); display: flex; flex-direction: column; overflow: hidden; background: var(--color-paper); color: var(--color-ink); border-radius: var(--radius-xl); box-shadow: var(--shadow-lg); }
+.fx-chat-head { display: flex; align-items: center; justify-content: space-between; gap: var(--space-3); padding: var(--space-3) var(--space-4); background: var(--color-chrome); color: var(--color-on-chrome); }
+.fx-chat-head h3 { margin: 0; font-size: var(--text-md); line-height: 1.5rem; font-weight: var(--weight-bold); }
+.fx-chat-head p { margin: 0; font-size: var(--text-sm); line-height: 1.25rem; }
+.fx-chat-head .fx-btn--icon { width: 36px; min-height: 36px; font-size: var(--text-md); }
+.fx-chat-body { display: flex; flex: 1; min-height: 0; }
+.fx-contacts { width: 112px; flex-shrink: 0; padding: var(--space-2); background: var(--color-paper-2); border-right: 1px solid var(--color-paper-border); display: flex; flex-direction: column; gap: var(--space-2); overflow-y: auto; }
+.fx-contact { position: relative; display: flex; flex-direction: column; align-items: center; gap: var(--space-1); padding: var(--space-2); border: none; border-radius: var(--radius-lg); background: transparent; color: var(--color-ink); font: inherit; cursor: pointer; }
+.fx-contact:hover, .fx-contact[aria-current="true"] { background: var(--color-paper-3); }
+.fx-contact-name { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: var(--text-xs); line-height: 1rem; font-weight: var(--weight-semibold); }
+.fx-contact .fx-counter-badge { position: absolute; top: var(--space-1); right: var(--space-1); }
+.fx-chat-conv { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.fx-chat-msgs { flex: 1; display: flex; flex-direction: column; gap: var(--space-2); padding: var(--space-3); background: var(--color-paper-2); overflow-y: auto; }
+.fx-msg-row { display: flex; align-items: flex-end; gap: var(--space-2); max-width: 88%; }
+.fx-msg-stack { display: flex; flex-direction: column; min-width: 0; }
+.fx-msg-sender { margin: 0 0 2px var(--space-1); font-size: var(--text-xs); line-height: 1rem; font-weight: var(--weight-bold); color: var(--color-ink-muted); }
+.fx-bubble { max-width: 100%; padding: var(--space-2) var(--space-3); border-radius: var(--radius-lg); font-size: var(--text-sm); line-height: 1.25rem; white-space: pre-wrap; overflow-wrap: anywhere; }
+/* No app a conversa direta não embrulha a bolha do outro numa linha (só o
+   grupo, com o avatar): solta na lista, ela fica à esquerda, como a linha. */
+.fx-bubble--other { background: var(--color-paper); color: var(--color-ink); border: 1px solid var(--color-paper-border); }
+.fx-chat-msgs > .fx-bubble--other { align-self: flex-start; max-width: 80%; }
+.fx-bubble--me { align-self: flex-end; max-width: 80%; background: var(--color-chrome); color: var(--color-on-chrome); }
+/* A apagada fica do lado de quem mandou: o lado vem do --me ou do --other
+   (no bundle ela ia sempre para a direita). */
+.fx-bubble--deleted { background: transparent; color: var(--color-ink-faint); border: 1px dashed var(--color-paper-border-strong); font-style: italic; }
+/* Não enviada: o estado é dito em palavras na linha da hora; a cor só reforça. */
+.fx-bubble.is-failed { background: var(--color-danger-strong); color: var(--color-on-accent); }
+.fx-msg-time { display: block; margin-top: 2px; font-size: var(--text-xs); line-height: 1rem; }
+.fx-msg-system { align-self: center; max-width: 90%; padding: 2px var(--space-3); border-radius: var(--radius-pill); background: var(--color-paper); color: var(--color-ink-faint); font-size: var(--text-xs); line-height: 1rem; text-align: center; }
+.fx-msg-seen { align-self: flex-end; font-size: var(--text-xs); line-height: 1rem; color: var(--color-ink-faint); }
+.fx-typing { padding: var(--space-1) var(--space-3); background: var(--color-paper-2); color: var(--color-ink-faint); font-size: var(--text-xs); line-height: 1rem; font-style: italic; }
+.fx-chat-input { display: flex; gap: var(--space-2); padding: var(--space-3); border-top: 1px solid var(--color-paper-border); background: var(--color-paper); }
+.fx-chat-input .fx-input { flex: 1; min-width: 0; min-height: 40px; padding: var(--space-2) var(--space-3); font-size: var(--text-sm); }
+
+/* ----- ChatPanels -----
+   A busca (nova conversa ou grupo) e o topo da conversa. */
+.fx-chat-conv-head { display: flex; align-items: center; justify-content: space-between; gap: var(--space-2); padding: var(--space-2) var(--space-3); border-bottom: 1px solid var(--color-paper-border); font-size: var(--text-sm); font-weight: var(--weight-bold); }
+.fx-chat-conv-head .fx-btn--icon { width: 36px; min-height: 36px; font-size: var(--text-md); color: var(--color-ink-soft); }
+.fx-chat-search { display: flex; flex-direction: column; gap: var(--space-2); padding: var(--space-3); border-bottom: 1px solid var(--color-paper-border); }
+.fx-chat-results { display: flex; flex-direction: column; gap: 2px; }
+.fx-chat-result { display: flex; align-items: center; gap: var(--space-2); padding: var(--space-2) var(--space-3); border: none; border-radius: var(--radius-lg); background: none; color: var(--color-ink); font: inherit; font-size: var(--text-sm); text-align: left; cursor: pointer; }
+.fx-chat-result:hover, .fx-chat-result:focus-visible { background: var(--color-paper-2); }
+.fx-chat-chips { display: flex; flex-wrap: wrap; gap: var(--space-1); }
+.fx-chat-chip { display: inline-flex; align-items: center; gap: var(--space-1); padding: 2px var(--space-2); border: none; border-radius: var(--radius-pill); background: var(--color-paper-3); color: var(--color-ink); font: inherit; font-size: var(--text-xs); line-height: 1rem; cursor: pointer; }
+.fx-chat-empty { margin: 0; padding: var(--space-1) var(--space-3); font-size: var(--text-sm); line-height: 1.25rem; color: var(--color-ink-faint); }
+
 /* ----- Alvos de toque da R: 44px abaixo de 1280px, 32px no desktop -----
    É um piso (min-height): nada encolhe. O .fx-btn normal e o .fx-btn--icon já
    têm 44px e ficam assim em todas as faixas, como nas pranchas. */

@@ -44,6 +44,7 @@ import { skeleton } from "./skeleton.js";
 import "./char-counter.js";
 import { trapFocus } from "./focus-trap.js";
 import { ICONS } from "./icons.js";
+import { openSheet } from "./layout.js";
 import type { Conversation, Message as ApiMessage, Participant } from "../../../shared/api-types.js";
 import type { UserSummary as UserResult } from "../../../shared/api-types.js";
 
@@ -82,8 +83,8 @@ function initChatWidget(): void {
     widget.id = "chatWidget";
     widget.innerHTML = `
         <div class="chat-veil" id="chatVeil"></div>
-        <div class="chat-panel" id="chatPanel" role="dialog" aria-label="Chat bate-papo">
-            <div class="chat-header">
+        <div class="fx-chat-panel" id="chatPanel" role="dialog" aria-label="Chat bate-papo">
+            <div class="fx-chat-head">
                 <div class="chat-title">
                     <!-- Tela cheia (tablet e celular): Voltar no lugar do ✕. -->
                     <button type="button" class="fx-btn fx-btn--icon chat-back" id="chatBack" aria-label="Voltar">${ICONS.back}</button>
@@ -97,28 +98,28 @@ function initChatWidget(): void {
                     <button type="button" class="fx-btn fx-btn--icon chat-close" id="chatClose" aria-label="Fechar chat">${ICONS.close}</button>
                 </div>
             </div>
-            <div class="chat-search" id="chatSearch">
+            <div class="fx-chat-search" id="chatSearch">
                 <div class="chat-search-modes" role="group" aria-label="Tipo de conversa">
                     <button type="button" class="fx-chip fx-chip--paper" data-mode="direct" aria-pressed="true">Conversa</button>
                     <button type="button" class="fx-chip fx-chip--paper" data-mode="group" aria-pressed="false">Grupo</button>
                 </div>
                 <input class="fx-input fx-input--paper fx-input--pill" id="chatGroupTitle" type="text" placeholder="Nome do grupo" maxlength="80" hidden />
-                <div class="chat-chips" id="chatGroupChips" hidden></div>
+                <div class="fx-chat-chips" id="chatGroupChips" hidden></div>
                 <input class="fx-input fx-input--paper fx-input--pill" id="chatSearchInput" type="text" placeholder="Buscar pessoa pelo nome ou @usuário" maxlength="50" />
-                <div class="chat-search-results" id="chatSearchResults"></div>
+                <div class="fx-chat-results" id="chatSearchResults"></div>
                 <button type="button" class="fx-btn fx-btn--chrome fx-btn--sm fx-btn--pill" id="chatGroupCreate" hidden>Criar grupo</button>
             </div>
-            <div class="chat-body">
-                <aside class="chat-contacts" id="chatContacts"></aside>
-                <section class="chat-conversation">
-                    <div class="chat-conv-header" id="chatConvHeader" hidden>
+            <div class="fx-chat-body">
+                <nav class="fx-contacts" id="chatContacts" aria-label="Conversas"></nav>
+                <section class="fx-chat-conv">
+                    <div class="fx-chat-conv-head" id="chatConvHeader" hidden>
                         <span class="chat-conv-title" id="chatConvTitle"></span>
-                        <button type="button" class="fx-btn fx-btn--icon fx-btn--icon-paper" id="chatGroupBtn" hidden aria-label="Detalhes do grupo" title="Detalhes do grupo">⚙</button>
+                        <button type="button" class="fx-btn fx-btn--icon fx-btn--icon-paper" id="chatGroupBtn" hidden aria-label="Detalhes do grupo" title="Detalhes do grupo">${ICONS.info}</button>
                     </div>
-                    <div class="chat-messages" id="chatMessages" aria-live="polite"></div>
+                    <div class="fx-chat-msgs" id="chatMessages" aria-live="polite"></div>
                     <div class="chat-group-panel" id="chatGroupPanel" hidden></div>
-                    <div class="chat-typing" id="chatTyping" hidden></div>
-                    <form class="chat-input-row" id="chatForm">
+                    <div class="fx-typing" id="chatTyping" hidden></div>
+                    <form class="fx-chat-input" id="chatForm">
                         <input class="fx-input fx-input--paper fx-input--pill" id="chatInput" type="text" placeholder="Digite uma mensagem..." maxlength="2000" data-char-counter="near" disabled aria-label="Mensagem" />
                         <button type="submit" class="fx-btn fx-btn--chrome fx-btn--pill" id="chatSend" disabled>Enviar</button>
                     </form>
@@ -203,7 +204,7 @@ function initChatWidget(): void {
 
     function renderContacts(): void {
         if (conversations.length === 0) {
-            contactsEl.innerHTML = '<div class="chat-search-empty">Nenhuma conversa</div>';
+            contactsEl.innerHTML = '<p class="fx-chat-empty">Nenhuma conversa</p>';
             return;
         }
 
@@ -216,19 +217,20 @@ function initChatWidget(): void {
                             ? `<span class="fx-counter-badge">${conversation.unreadCount > 99 ? "99+" : conversation.unreadCount}</span>`
                             : "";
                     const avatar = conversation.isGroup
-                        ? `<span class="fx-avatar fx-avatar--md contact-avatar--group" aria-hidden="true">👥</span>`
+                        ? `<span class="fx-avatar fx-avatar--md chat-avatar-group" aria-hidden="true">👥</span>`
                         : avatarHtml(conversation.otherUserId, name, conversation.otherAvatarUrl, "fx-avatar fx-avatar--md");
+                    const current = conversation.conversationId === active?.id ? ' aria-current="true"' : "";
                     return `
-                    <button type="button" class="contact-item ${conversation.conversationId === active?.id ? "active" : ""}"
+                    <button type="button" class="fx-contact"${current}
                             data-conversation="${escapeHtml(conversation.conversationId)}" title="${escapeHtml(name)}">
                         ${unread}
                         ${avatar}
-                        <span class="contact-name">${escapeHtml(name)}</span>
+                        <span class="fx-contact-name">${escapeHtml(name)}</span>
                     </button>`;
                 })
                 .join("") +
             (conversationsCursor
-                ? '<button type="button" class="contacts-more" id="chatContactsMore">Mais</button>'
+                ? '<button type="button" class="fx-btn fx-btn--link chat-contacts-more" id="chatContactsMore">Mais</button>'
                 : "");
     }
 
@@ -260,49 +262,65 @@ function initChatWidget(): void {
 
     function messageHtml(message: Message, previous: Message | undefined, seenLabel: string | null): string {
         if (message.kind === "system") {
-            return `<div class="message-system">${escapeHtml(message.content ?? "")}</div>`;
+            return `<div class="fx-msg-system">${escapeHtml(message.content ?? "")}</div>`;
         }
         const mine = message.senderId === currentUserId;
         const id = escapeHtml(message.messageId);
 
+        // O estado vai em palavras na linha da hora, sempre na cor cheia da
+        // bolha (com opacidade a hora e o "enviando..." ficavam abaixo de 4.5:1).
         let body: string;
         let meta: string;
         if (message.isDeleted) {
-            body = '<em class="message-deleted">mensagem apagada</em>';
+            body = "mensagem apagada";
             meta = escapeHtml(shortTime(message.createdAt));
         } else {
             body = escapeHtml(message.content ?? "");
             if (message._state === "failed") {
                 meta = `não enviada ·
-                    <button type="button" class="message-action" data-action="retry" data-id="${id}">Tentar de novo</button> ·
-                    <button type="button" class="message-action" data-action="discard" data-id="${id}">Descartar</button>`;
+                    <button type="button" class="chat-link" data-action="retry" data-id="${id}">Tentar de novo</button> ·
+                    <button type="button" class="chat-link" data-action="discard" data-id="${id}">Descartar</button>`;
             } else if (message._state === "pending") {
                 meta = "enviando...";
             } else {
                 meta = escapeHtml(shortTime(message.createdAt));
-                if (mine) {
-                    // O "·" vai dentro do botão: some junto com ele (só aparece no hover).
-                    meta += ` <button type="button" class="message-action" data-action="delete" data-id="${id}" aria-label="Apagar mensagem">· apagar</button>`;
-                }
             }
         }
 
-        const state = message._state ? ` ${message._state}` : "";
-        const bubble = `<div class="message-bubble ${mine ? "me" : "other"}${state}${message.isDeleted ? " is-deleted" : ""}">${body}<span class="message-time">${meta}</span></div>`;
-        const seen = seenLabel ? `<div class="message-seen">${escapeHtml(seenLabel)}</div>` : "";
+        const classes = ["fx-bubble", mine ? "fx-bubble--me" : "fx-bubble--other"];
+        if (message.isDeleted) classes.push("fx-bubble--deleted");
+        if (message._state) classes.push(`is-${message._state}`);
+        const bubble = `<div class="${classes.join(" ")}">${body}<span class="fx-msg-time">${meta}</span></div>`;
+        const seen = seenLabel ? `<div class="fx-msg-seen">${escapeHtml(seenLabel)}</div>` : "";
 
         // Grupo: avatar e nome de quem mandou (só no começo de uma sequência).
         if (!mine && active?.isGroup) {
             const name = message.senderDisplayName?.trim() || message.senderUsername || "Alguém";
             const firstOfRun = previous?.senderId !== message.senderId || previous?.kind === "system";
             return `
-                <div class="message-row other${firstOfRun ? "" : " is-continued"}">
-                    ${firstOfRun ? avatarHtml(message.senderId, name, message.senderAvatarUrl, "fx-avatar fx-avatar--xs") : '<span class="message-avatar-space"></span>'}
-                    <div class="message-stack">
-                        ${firstOfRun ? `<span class="message-sender">${escapeHtml(name)}</span>` : ""}
+                <div class="fx-msg-row${firstOfRun ? "" : " is-continued"}">
+                    ${firstOfRun ? avatarHtml(message.senderId, name, message.senderAvatarUrl, "fx-avatar fx-avatar--xs") : '<span class="chat-avatar-space"></span>'}
+                    <div class="fx-msg-stack">
+                        ${firstOfRun ? `<span class="fx-msg-sender">${escapeHtml(name)}</span>` : ""}
                         ${bubble}
                     </div>
                 </div>`;
+        }
+
+        // Sua mensagem já enviada: o ⋯ ao lado da bolha, com "Apagar". A
+        // pendente, a que falhou e a apagada não têm o que apagar.
+        if (mine && !message._state && !message.isDeleted) {
+            return `
+                <div class="fx-msg-row chat-msg-row-me">
+                    ${bubble}
+                    <div class="chat-msg-menu" data-msg-menu>
+                        <button type="button" class="fx-btn fx-btn--icon fx-btn--icon-paper" data-action="msg-menu" data-id="${id}"
+                                aria-haspopup="menu" aria-expanded="false" aria-label="Opções da mensagem">${ICONS.dots}</button>
+                        <div class="fx-menu" role="menu" aria-label="Opções da mensagem" hidden>
+                            <button type="button" class="fx-menu-item fx-menu-item--danger" role="menuitem" data-action="delete" data-id="${id}">Apagar</button>
+                        </div>
+                    </div>
+                </div>${seen}`;
         }
         return bubble + seen;
     }
@@ -340,6 +358,13 @@ function initChatWidget(): void {
             break;
         }
 
+        // O redesenho troca todos os botões: o foco num deles (⋯, "Tentar de
+        // novo") volta ao mesmo botão da mensagem, se ele continuar existindo.
+        const focused = messagesEl.contains(document.activeElement)
+            ? (document.activeElement as HTMLElement).closest<HTMLElement>("[data-action][data-id]")
+            : null;
+        const refocus = focused ? { action: focused.dataset.action, id: focused.dataset.id } : null;
+
         const top = hasOlder
             ? '<div class="chat-history-hint">Role para cima para ver mensagens anteriores</div>'
             : '<div class="chat-history-hint">Início da conversa</div>';
@@ -348,6 +373,15 @@ function initChatWidget(): void {
             messages
                 .map((message, index) => messageHtml(message, messages[index - 1], index === seenIndex ? seenLabel : null))
                 .join("");
+
+        if (refocus) {
+            const find = (action: string | undefined): HTMLElement | undefined =>
+                Array.from(messagesEl.querySelectorAll<HTMLElement>("[data-action][data-id]")).find(
+                    (b) => b.dataset.action === action && b.dataset.id === refocus.id && b.getClientRects().length > 0,
+                );
+            // O menu aberto fecha no redesenho: quem estava num item volta ao ⋯.
+            (find(refocus.action) ?? find("msg-menu"))?.focus();
+        }
 
         if (scroll === "bottom" || (scroll === "auto" && nearBottom)) {
             messagesEl.scrollTop = messagesEl.scrollHeight;
@@ -676,6 +710,77 @@ function initChatWidget(): void {
         void api.conversations.typing(active.id).catch(() => {});
     });
 
+    // ----- ⋯ da mensagem -----------------------------------------------------
+    // Em lista de 1024px para cima; abaixo, numa folha inferior, como o ⋯ do
+    // post aberto (post-thread.ts).
+    const sheetMedia = window.matchMedia("(max-width: 1023px)");
+
+    function closeMessageMenus(except?: Element): void {
+        messagesEl.querySelectorAll<HTMLElement>('[data-msg-menu] > [role="menu"]:not([hidden])').forEach((menu) => {
+            if (except && menu.parentElement?.contains(except)) return;
+            // O foco num item que vai sumir volta ao ⋯ (e a confirmação que o
+            // item abrir devolve o foco a ele).
+            const toggle = menu.previousElementSibling as HTMLElement | null;
+            if (menu.contains(document.activeElement)) toggle?.focus();
+            menu.hidden = true;
+            menu.classList.remove("is-up");
+            toggle?.setAttribute("aria-expanded", "false");
+        });
+    }
+
+    function toggleMessageMenu(button: HTMLElement): void {
+        const menu = button.nextElementSibling as HTMLElement | null;
+        if (!menu) return;
+        closeMessageMenus(button);
+        if (sheetMedia.matches) {
+            // Os itens da folha são cópias: o clique fecha a folha (o foco
+            // volta ao ⋯) e repete o clique no item original, que segue pela
+            // delegação abaixo como na lista.
+            const items = Array.from(menu.querySelectorAll<HTMLElement>('[role="menuitem"]')).map((original) => {
+                const copy = original.cloneNode(true) as HTMLElement;
+                copy.addEventListener("click", () => {
+                    close();
+                    original.click();
+                });
+                return copy;
+            });
+            const title = el("span", "r-sheet-name", "Opções da mensagem");
+            const close = openSheet({ label: "Opções da mensagem", menuLabel: "Opções da mensagem", head: [title], items, opener: button });
+            return;
+        }
+        menu.hidden = !menu.hidden;
+        button.setAttribute("aria-expanded", String(!menu.hidden));
+        if (menu.hidden) return;
+        // Perto do fim da área das mensagens, o menu abre para cima.
+        menu.classList.toggle("is-up", menu.getBoundingClientRect().bottom > messagesEl.getBoundingClientRect().bottom);
+    }
+
+    // Clique fora fecha (na captura: o widget para a propagação de vários cliques).
+    document.addEventListener(
+        "click",
+        (event) => {
+            const target = event.target as Element | null;
+            closeMessageMenus(target?.closest("[data-msg-menu]") ?? undefined);
+        },
+        true,
+    );
+
+    // Esc com o menu aberto fecha só o menu. Registrado antes da armadilha de
+    // foco do painel (que fecharia o chat), por isso corre primeiro e a para.
+    document.addEventListener(
+        "keydown",
+        (event) => {
+            if (event.key !== "Escape") return;
+            if (!messagesEl.querySelector('[data-msg-menu] > [role="menu"]:not([hidden])')) return;
+            event.stopImmediatePropagation();
+            const open = messagesEl.querySelector<HTMLElement>('[data-msg-menu] > [role="menu"]:not([hidden])');
+            const toggle = open?.previousElementSibling as HTMLElement | null;
+            closeMessageMenus();
+            toggle?.focus();
+        },
+        true,
+    );
+
     messagesEl.addEventListener("click", async (event: MouseEvent) => {
         const button = (event.target as Element).closest<HTMLButtonElement>("[data-action]");
         const id = button?.dataset.id;
@@ -684,6 +789,9 @@ function initChatWidget(): void {
         event.stopPropagation();
 
         switch (button.dataset.action) {
+            case "msg-menu":
+                toggleMessageMenu(button);
+                return;
             case "retry":
                 void deliver(message);
                 return;
@@ -692,6 +800,7 @@ function initChatWidget(): void {
                 renderMessages();
                 return;
             case "delete": {
+                closeMessageMenus();
                 const ok = await confirmDialog({
                     title: "Apagar mensagem?",
                     message: "Ela some para todos e fica no lugar o aviso “mensagem apagada”.",
@@ -704,6 +813,8 @@ function initChatWidget(): void {
                     message.isDeleted = true;
                     message.content = null;
                     renderMessages();
+                    // A apagada não tem mais o ⋯: o foco vai para o campo.
+                    input.focus();
                     void loadConversations();
                 } catch (err) {
                     toast(errorText(err, "Não foi possível apagar."), "error");
@@ -736,8 +847,9 @@ function initChatWidget(): void {
         groupPanel.replaceChildren();
 
         const head = el("div", "chat-group-head");
-        const title = el("strong", "", "Detalhes do grupo");
-        const close = el("button", "fx-btn fx-btn--icon fx-btn--icon-paper", "✕");
+        const title = el("h4", "", "Detalhes do grupo");
+        const close = el("button", "fx-btn fx-btn--icon fx-btn--icon-paper");
+        close.innerHTML = ICONS.close;
         close.type = "button";
         close.setAttribute("aria-label", "Fechar detalhes");
         close.addEventListener("click", () => {
@@ -779,8 +891,9 @@ function initChatWidget(): void {
             item.append(label);
             if (p.role === "admin") item.append(el("span", "chat-group-role", "admin"));
             if (isAdmin && p.userId !== currentUserId) {
-                const remove = el("button", "message-action", "remover");
+                const remove = el("button", "chat-link chat-link--danger", "Remover");
                 remove.type = "button";
+                remove.setAttribute("aria-label", `Remover ${participantName(p)}`);
                 remove.addEventListener("click", async () => {
                     const ok = await confirmDialog({
                         title: "Remover do grupo?",
@@ -806,7 +919,7 @@ function initChatWidget(): void {
             addInput.placeholder = "Adicionar pessoa: nome ou @usuário";
             addInput.maxLength = 50;
             addInput.setAttribute("aria-label", "Adicionar pessoa ao grupo");
-            const results = el("div", "chat-search-results");
+            const results = el("div", "fx-chat-results");
             let timer: number | null = null;
             addInput.addEventListener("input", () => {
                 if (timer !== null) window.clearTimeout(timer);
@@ -822,7 +935,8 @@ function initChatWidget(): void {
                         ...found
                             .filter((u) => !inGroup.has(u.userId))
                             .map((u) => {
-                                const button = el("button", "chat-search-item", u.displayName?.trim() || u.username);
+                                const button = el("button", "fx-chat-result");
+                                button.innerHTML = resultHtml(u);
                                 button.type = "button";
                                 button.addEventListener("click", async () => {
                                     button.disabled = true;
@@ -877,6 +991,13 @@ function initChatWidget(): void {
     // Nova conversa / novo grupo
     // =====================================================================
 
+    /** Linha do resultado: avatar, nome e @usuário (já escapados). */
+    function resultHtml(user: UserResult): string {
+        const name = user.displayName?.trim() || user.username;
+        return `${avatarHtml(user.userId, name, null, "fx-avatar fx-avatar--xs")}
+                <span>${escapeHtml(name)} <span class="chat-result-handle">@${escapeHtml(user.username)}</span></span>`;
+    }
+
     async function searchUsers(term: string): Promise<UserResult[]> {
         try {
             const { data } = await api.users.search(term);
@@ -901,7 +1022,7 @@ function initChatWidget(): void {
     function renderGroupChips(): void {
         groupChips.replaceChildren(
             ...groupSelection.map((u) => {
-                const chip = el("button", "fx-chip fx-chip--paper", `${u.displayName?.trim() || u.username} ✕`);
+                const chip = el("button", "fx-chat-chip", `${u.displayName?.trim() || u.username} ×`);
                 chip.type = "button";
                 chip.setAttribute("aria-label", `Tirar ${u.displayName?.trim() || u.username}`);
                 chip.addEventListener("click", (event) => {
@@ -938,7 +1059,7 @@ function initChatWidget(): void {
         const term = searchInput.value.trim();
 
         if (term.length < 2) {
-            searchResults.innerHTML = '<div class="chat-search-empty">Digite ao menos 2 caracteres</div>';
+            searchResults.innerHTML = '<p class="fx-chat-empty">Digite ao menos 2 caracteres</p>';
             return;
         }
 
@@ -950,20 +1071,19 @@ function initChatWidget(): void {
                     ? data
                           .map(
                               (user) => `
-                        <button type="button" class="chat-search-item" data-user="${escapeHtml(user.userId)}"
+                        <button type="button" class="fx-chat-result" data-user="${escapeHtml(user.userId)}"
                                 data-name="${escapeHtml(user.displayName?.trim() || user.username)}" data-username="${escapeHtml(user.username)}">
-                            ${escapeHtml(user.displayName?.trim() || user.username)}
-                            <span class="chat-search-empty">@${escapeHtml(user.username)}</span>
+                            ${resultHtml(user)}
                         </button>`,
                           )
                           .join("")
-                    : '<div class="chat-search-empty">Ninguém encontrado</div>';
+                    : '<p class="fx-chat-empty">Ninguém encontrado</p>';
         }, 300);
     });
 
     searchResults.addEventListener("click", async (event: MouseEvent) => {
         event.stopPropagation();
-        const button = (event.target as Element | null)?.closest<HTMLButtonElement>(".chat-search-item");
+        const button = (event.target as Element | null)?.closest<HTMLButtonElement>(".fx-chat-result");
         const userId = button?.dataset.user;
         if (!button || !userId) return;
 
@@ -984,8 +1104,8 @@ function initChatWidget(): void {
 
         button.disabled = true;
         await openWithUser(userId).catch((err) => {
-            searchResults.innerHTML = '<div class="chat-search-empty"></div>';
-            const empty = searchResults.querySelector(".chat-search-empty");
+            searchResults.innerHTML = '<p class="fx-chat-empty"></p>';
+            const empty = searchResults.querySelector(".fx-chat-empty");
             if (empty) empty.textContent = errorText(err, "Não foi possível abrir a conversa.");
         });
     });
@@ -1040,7 +1160,7 @@ function initChatWidget(): void {
             void loadConversations(true);
             return;
         }
-        const button = target?.closest<HTMLButtonElement>(".contact-item");
+        const button = target?.closest<HTMLButtonElement>(".fx-contact");
         const conversationId = button?.dataset.conversation;
         if (conversationId && conversationId !== active?.id) {
             void openConversation(conversationId);
