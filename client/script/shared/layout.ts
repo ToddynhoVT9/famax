@@ -637,6 +637,24 @@ export function initLayout(options: LayoutOptions = {}): void {
     initHeaderDropdowns();
     initSidebar();
     initHideOnScroll();
+
+    layoutReady = true;
+    document.dispatchEvent(new Event(LAYOUT_READY_EVENT));
+}
+
+/** Disparado no document quando o header (e os lugares dele) já existe. */
+export const LAYOUT_READY_EVENT = "famax:layout-ready";
+let layoutReady = false;
+
+/**
+ * Roda fn com o header montado: na hora, se o initLayout já rodou; senão,
+ * quando ele rodar. Quem põe algo no header (o chat) não pode contar com a
+ * ordem dos scripts: no build, o Rollup junta módulos num mesmo pedaço, e o
+ * chat chegou a rodar antes do initLayout da página, sem achar o lugar dele.
+ */
+export function whenLayoutReady(fn: () => void): void {
+    if (layoutReady) fn();
+    else document.addEventListener(LAYOUT_READY_EVENT, fn, { once: true });
 }
 
 /**

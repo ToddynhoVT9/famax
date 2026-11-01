@@ -44,7 +44,7 @@ import { skeleton } from "./skeleton.js";
 import "./char-counter.js";
 import { trapFocus } from "./focus-trap.js";
 import { ICONS } from "./icons.js";
-import { openSheet } from "./layout.js";
+import { openSheet, whenLayoutReady } from "./layout.js";
 import type { Conversation, Message as ApiMessage, Participant } from "../../../shared/api-types.js";
 import type { UserSummary as UserResult } from "../../../shared/api-types.js";
 
@@ -130,7 +130,8 @@ function initChatWidget(): void {
     document.body.appendChild(widget);
 
     // O ícone do chat vai para o header (layout.ts reserva o lugar, entre o
-    // sino e o avatar). Sem header (página sem moldura), fica no widget.
+    // sino e o avatar). Fica no widget até o header existir: no build, este
+    // módulo pode rodar antes do initLayout da página (ver whenLayoutReady).
     const toggle = el("button", "fx-btn fx-btn--icon r-chat-btn");
     toggle.type = "button";
     toggle.id = "chatToggle";
@@ -138,7 +139,8 @@ function initChatWidget(): void {
     toggle.setAttribute("aria-expanded", "false");
     toggle.setAttribute("aria-controls", "chatPanel");
     toggle.innerHTML = `${ICONS.chat}<span class="fx-counter-badge" id="chatUnreadBadge" aria-hidden="true" hidden></span>`;
-    (document.getElementById("headerChatSlot") ?? widget).append(toggle);
+    widget.append(toggle);
+    whenLayoutReady(() => document.getElementById("headerChatSlot")?.append(toggle));
 
     const closeBtn = must<HTMLButtonElement>("chatClose");
     const newBtn = must<HTMLButtonElement>("chatNewBtn");
