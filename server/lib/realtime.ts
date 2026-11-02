@@ -1,7 +1,7 @@
 import type { Response } from "express";
 import pg from "pg";
 import { config } from "../config.js";
-import { pool } from "../db.js";
+import { pool, sslOptions } from "../db.js";
 import { toCamel } from "./case.js";
 
 /**
@@ -201,9 +201,8 @@ let reconnectDelay = 1_000;
 async function connectListener(): Promise<void> {
   const client = new pg.Client({
     connectionString: config.REALTIME_DATABASE_URL,
-    ssl: config.DB_MODE === "embedded" || process.env.DATABASE_SSL === "false"
-      ? false
-      : { rejectUnauthorized: false },
+    // As mesmas regras de TLS do pool (verificação pela DATABASE_CA).
+    ssl: sslOptions(),
   });
   client.on("notification", (message) => {
     if (message.channel !== CHANNEL || !message.payload) return;

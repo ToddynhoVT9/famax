@@ -59,6 +59,26 @@ const FILE_SIZE_MESSAGES: Record<string, string> = {
   images: "Cada imagem deve ter no máximo 2MB",
 };
 
+/** Resposta do cadastro quando o e-mail ou o username já tem dono. */
+export const REGISTER_CONFLICT = "Email ou username já cadastrado";
+
+// Índices únicos de users: o 23505 deles é o cadastro (ou a troca de e-mail)
+// que perdeu a corrida para outra requisição depois da checagem prévia.
+const USER_IDENTITY_CONSTRAINTS = new Set([
+  "uq_users_email",
+  "uq_users_username",
+  "uq_users_email_lower",
+  "uq_users_username_lower",
+]);
+
+/** Erro do Postgres (driver pg): o código SQLSTATE e, quando há, a constraint. */
+function pgError(err: unknown): { code: string; constraint?: string } | null {
+  if (typeof err !== "object" || err === null) return null;
+  const { code, constraint } = err as { code?: unknown; constraint?: unknown };
+  if (typeof code !== "string" || !/^[0-9A-Z]{5}$/.test(code)) return null;
+  return { code, constraint: typeof constraint === "string" ? constraint : undefined };
+}
+
 export function errorHandler(
   err: unknown,
   _req: Request,
@@ -96,6 +116,32 @@ export function errorHandler(
       return res.status(400).json({ error: "Arquivos demais de uma vez" });
     }
     return res.status(400).json({ error: "Arquivo inválido" });
+  }
+
+  // Corpo que o express.json não conseguiu ler: JSON malformado ou maior que
+  // o limite. É erro de quem mandou, não do servidor.
+  const bodyErrorType = (err as { type?: unknown } | null)?.type;
+  if (bodyErrorType === "entity.parse.failed") {
+    return res.status(400).json({ error: "JSON inválido no corpo da requisição." });
+  }
+  if (bodyErrorType === "entity.too.large") {
+    return res.status(413).json({ error: "Corpo da requisição grande demais." });
+  }
+
+  // Redes de segurança do banco, para o que a validação da rota deixou
+  // passar: em vez de 500, a resposta que a pessoa consegue entender.
+  const pg = pgError(err);
+  if (pg?.code === "23505") {
+    // unique_violation: a checagem prévia da rota passou, mas outra
+    // requisição gravou o mesmo valor no meio do caminho.
+    const message = USER_IDENTITY_CONSTRAINTS.has(pg.constraint ?? "")
+      ? REGISTER_CONFLICT
+      : "Este registro já existe.";
+    return res.status(409).json({ error: message });
+  }
+  if (pg?.code === "22001") {
+    // string_data_right_truncation: texto maior que a coluna.
+    return res.status(400).json({ error: "Um dos campos passou do tamanho máximo." });
   }
 
   console.error("Erro não tratado:", err);

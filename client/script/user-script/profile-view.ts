@@ -58,6 +58,7 @@ const padlockEl = $("privatePadlockProfile");
 const usernameEl = $("profileUsername");
 const bioEl = $("profileBio");
 const joinedEl = $("profileJoined");
+const birthdayEl = $("profileBirthday");
 const socialEl = $("profileSocial");
 const statsEl = $("profileStats");
 const privateNotice = $("privateNotice");
@@ -210,6 +211,16 @@ function renderProfile(profile: PublicProfile): void {
         });
         joinedEl.textContent = `Membro desde ${since}`;
         joinedEl.hidden = false;
+    }
+
+    // Só dia e mês ("MM-DD"), e só quando o dono escolheu mostrar para quem
+    // está vendo — o servidor já filtra.
+    if (birthdayEl && profile.birthday) {
+        const [month, day] = profile.birthday.split("-").map(Number);
+        const date = new Date(Date.UTC(2000, month - 1, day));
+        const label = date.toLocaleDateString("pt-BR", { day: "numeric", month: "long", timeZone: "UTC" });
+        birthdayEl.textContent = `Aniversário em ${label}`;
+        birthdayEl.hidden = false;
     }
 
     renderSocialLinks(profile.socialLinks ?? []);

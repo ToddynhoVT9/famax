@@ -12,6 +12,7 @@
  */
 import type {
     AppNotification,
+    BirthdayVisibility,
     Category,
     Comment,
     CommunityBan,
@@ -84,6 +85,8 @@ export function buildEndpoints(request: Request) {
                 username: string;
                 password: string;
                 displayName: string;
+                /** AAAA-MM-DD; o servidor exige 13 anos ou mais. */
+                birthDate: string;
                 termsAccepted: true;
                 isPrivate: boolean;
             }) => request<{ token: string; user: unknown }>("/auth/register", post(body)),
@@ -103,7 +106,8 @@ export function buildEndpoints(request: Request) {
             updateProfile: (body: {
                 displayName?: string;
                 nickname?: string;
-                birthDate?: string | null;
+                birthDate?: string;
+                birthdayVisibility?: BirthdayVisibility;
                 gender?: string | null;
                 bio?: string;
             }) => request<UserBody>("/me/profile", patch(body)),

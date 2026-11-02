@@ -1,11 +1,12 @@
+import { z } from "zod";
 import { pool } from "../db.js";
 
 /**
- * Regras de perfil compartilhadas entre me.routes (o dono editando) e
- * users.routes (os outros vendo).
+ * Regras de perfil compartilhadas entre auth.routes (o cadastro), me.routes
+ * (o dono editando) e users.routes (os outros vendo).
  */
 
-/** Idade mínima para ter conta informando nascimento. */
+/** Idade mínima para ter conta (o cadastro exige o nascimento). */
 export const MIN_AGE = 13;
 /** Idade para liberar conteúdo adulto (users.is_adult). */
 export const ADULT_AGE = 18;
@@ -22,6 +23,51 @@ export function ageFrom(birthDate: string, today = new Date()): number {
     (today.getMonth() + 1 === month && today.getDate() < day);
   if (beforeBirthday) age--;
   return age;
+}
+
+/**
+ * Data de nascimento YYYY-MM-DD, no passado, com pelo menos MIN_AGE anos. Um
+ * schema só para o cadastro e a edição; muda apenas a frase de quem tem menos
+ * de 13, que no cadastro fala em criar a conta.
+ */
+export function birthDateSchema(underAgeMessage = `É preciso ter pelo menos ${MIN_AGE} anos`) {
+  return (
+    z
+      .string({
+        required_error: "Informe a data de nascimento",
+        invalid_type_error: "Data de nascimento inválida",
+      })
+      .regex(/^\d{4}-\d{2}-\d{2}$/, "Data de nascimento inválida")
+      // "2023-02-31" passa na regex; a volta pelo Date pega o dia que não existe.
+      .refine((value) => {
+        const date = new Date(`${value}T00:00:00Z`);
+        return !Number.isNaN(date.getTime()) && date.toISOString().startsWith(value);
+      }, "Data de nascimento inválida")
+      .refine((value) => ageFrom(value) >= 0 && new Date(value) < new Date(), "A data de nascimento precisa estar no passado")
+      .refine((value) => ageFrom(value) >= MIN_AGE, underAgeMessage)
+      .refine((value) => ageFrom(value) <= 120, "Data de nascimento inválida")
+  );
+}
+
+/** Quem vê o aniversário no perfil (migration 029). */
+export const BIRTHDAY_VISIBILITIES = ["self", "following", "everyone"] as const;
+export type BirthdayVisibility = (typeof BIRTHDAY_VISIBILITIES)[number];
+
+/**
+ * O aniversário que o perfil mostra a quem vê: só "MM-DD", nunca o ano (a
+ * idade fica com a pessoa). null quando ela não informou a data ou quando
+ * quem vê não está na escolha dela. ownerFollowsViewer: o dono do perfil
+ * segue quem está vendo — é o "Quem eu sigo".
+ */
+export function visibleBirthday(
+  birthDate: string | null,
+  visibility: BirthdayVisibility,
+  { isOwner, ownerFollowsViewer }: { isOwner: boolean; ownerFollowsViewer: boolean },
+): string | null {
+  if (!birthDate) return null;
+  const allowed =
+    isOwner || visibility === "everyone" || (visibility === "following" && ownerFollowsViewer);
+  return allowed ? birthDate.slice(5, 10) : null;
 }
 
 /**

@@ -4,22 +4,31 @@ import { config } from "./config.js";
 const { Pool } = pg;
 
 /**
- * O Supabase exige SSL; um Postgres local (dev ou teste) recusa a negociação e
- * o pg aborta com "server does not support SSL". Por isso o SSL é ligado por
- * padrão e desligado explicitamente via DATABASE_SSL=false.
+ * O `ssl` de toda conexão com o banco: o pool daqui e o LISTEN do tempo real
+ * (lib/realtime.ts). Uma função só, para os dois não divergirem.
  *
- * O socket do PGlite não fala TLS, então o modo embarcado desliga sozinho —
- * exigir DATABASE_SSL=false junto de DB_MODE=embedded seria uma pegadinha.
+ * - O Supabase exige SSL; um Postgres local (dev ou teste) recusa a
+ *   negociação e o pg aborta com "server does not support SSL". Por isso o
+ *   SSL é ligado por padrão e desligado explicitamente via DATABASE_SSL=false.
+ * - O socket do PGlite não fala TLS, então o modo embarcado desliga sozinho —
+ *   exigir DATABASE_SSL=false junto de DB_MODE=embedded seria uma pegadinha.
+ * - Com DATABASE_CA, o certificado do servidor é verificado contra ela (e o
+ *   nome do host, pelo padrão do Node). Sem ela, cifrado mas sem verificação
+ *   — o config.ts avisa no boot de produção.
  */
-const useSsl =
-  config.DB_MODE === "embedded" ? false : process.env.DATABASE_SSL !== "false";
+export function sslOptions(): false | { ca?: string; rejectUnauthorized: boolean } {
+  if (!config.DATABASE_SSL) return false;
+  return config.DATABASE_CA
+    ? { ca: config.DATABASE_CA, rejectUnauthorized: true }
+    : { rejectUnauthorized: false };
+}
 
 export const pool = new Pool({
   connectionString: config.DATABASE_URL,
   max: 10,
   idleTimeoutMillis: 30000,
   connectionTimeoutMillis: 10000,
-  ssl: useSsl ? { rejectUnauthorized: false } : false,
+  ssl: sslOptions(),
 });
 
 /**

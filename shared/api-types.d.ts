@@ -48,6 +48,9 @@ export interface SocialLink {
     url: string;
 }
 
+/** Quem vê o aniversário no perfil (migration 029). */
+export type BirthdayVisibility = "self" | "following" | "everyone";
+
 export interface Me {
     userId: string;
     email: string;
@@ -57,7 +60,9 @@ export interface Me {
     bannerUrl: string | null;
     bio: string | null;
     nickname: string | null;
+    /** Obrigatória no cadastro; null só em contas anteriores a essa regra. */
     birthDate: string | null;
+    birthdayVisibility: BirthdayVisibility;
     gender: string | null;
     isPrivate: boolean;
     isAdult: boolean;
@@ -372,6 +377,8 @@ export interface PublicProfile {
     nickname?: string | null;
     bannerUrl?: string | null;
     bio?: string | null;
+    /** Aniversário "MM-DD", sem o ano; ausente ou null fora da escolha do dono. */
+    birthday?: string | null;
     createdAt?: string;
     stats?: { posts: number; comments: number; communities: number; followers: number; following: number };
     socialLinks?: SocialLink[];

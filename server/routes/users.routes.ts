@@ -2,7 +2,7 @@ import { Router, type Request, type Response } from "express";
 import { z } from "zod";
 import { pool } from "../db.js";
 import { optionalAuth, requireAuth } from "../middleware/auth.js";
-import { loadSocialLinks, profileAccess } from "../lib/profile.js";
+import { loadSocialLinks, profileAccess, visibleBirthday } from "../lib/profile.js";
 import { nsfwHiddenSql } from "../lib/nsfw.js";
 import { parseWith } from "../middleware/error.js";
 
@@ -106,6 +106,8 @@ router.get("/users/:userId", optionalAuth, async (req, res, next) => {
          up.avatar_url,
          up.banner_url,
          up.bio,
+         up.birth_date::text AS birth_date,
+         up.birthday_visibility,
          (SELECT COUNT(*)::int
             FROM posts p
             INNER JOIN communities c ON c.community_id = p.community_id
@@ -137,6 +139,10 @@ router.get("/users/:userId", optionalAuth, async (req, res, next) => {
            SELECT 1 FROM follows f
            WHERE f.follower_id = $2 AND f.following_id = u.user_id
          ) AS followed_by_me,
+         EXISTS (
+           SELECT 1 FROM follows f
+           WHERE f.follower_id = u.user_id AND f.following_id = $2
+         ) AS follows_me,
          EXISTS (
            SELECT 1 FROM user_blocks b
            WHERE b.blocker_id = $2 AND b.blocked_id = u.user_id
@@ -173,6 +179,11 @@ router.get("/users/:userId", optionalAuth, async (req, res, next) => {
         avatarUrl: row.avatar_url,
         bannerUrl: row.banner_url,
         bio: row.bio,
+        // Só dia e mês, e só para quem a pessoa escolheu (migration 029).
+        birthday: visibleBirthday(row.birth_date, row.birthday_visibility ?? "self", {
+          isOwner: access.isOwner,
+          ownerFollowsViewer: row.follows_me,
+        }),
         createdAt: row.created_at,
         isPrivate: access.isPrivate,
         isOwner: access.isOwner,

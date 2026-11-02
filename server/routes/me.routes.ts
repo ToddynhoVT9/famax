@@ -19,10 +19,11 @@ import {
 } from "../lib/email-verification.js";
 import {
   ADULT_AGE,
+  BIRTHDAY_VISIBILITIES,
   MAX_SOCIAL_LINKS,
-  MIN_AGE,
   SOCIAL_PLATFORMS,
   ageFrom,
+  birthDateSchema,
   loadSocialLinks,
 } from "../lib/profile.js";
 import {
@@ -65,6 +66,7 @@ async function loadMe(userId: string): Promise<Me | null> {
        up.bio,
        up.nickname,
        up.birth_date::text AS birth_date,
+       up.birthday_visibility,
        up.gender,
        us.is_private,
        us.notify_likes,
@@ -95,6 +97,7 @@ async function loadMe(userId: string): Promise<Me | null> {
     bio: row.bio,
     nickname: row.nickname,
     birthDate: row.birth_date,
+    birthdayVisibility: row.birthday_visibility ?? "self",
     gender: row.gender,
     // Mesma regra da busca de usuários: sem linha de settings, privado.
     isPrivate: row.is_private ?? true,
@@ -134,7 +137,8 @@ router.get("/me", requireAuth, async (req, res, next) => {
 });
 
 // ===========================================================================
-// PATCH /api/me/profile — nome, apelido, bio, nascimento, gênero
+// PATCH /api/me/profile — nome, apelido, bio, nascimento (e quem vê o
+// aniversário), gênero
 // ---------------------------------------------------------------------------
 // Atualização parcial: só os campos enviados mudam. String vazia em apelido
 // e bio vira null (o campo foi apagado, não preenchido com "").
@@ -149,18 +153,6 @@ const optionalText = (max: number, label: string) =>
     .nullable()
     .optional();
 
-const birthDateSchema = z
-  .string()
-  .regex(/^\d{4}-\d{2}-\d{2}$/, "Data de nascimento inválida")
-  // "2023-02-31" passa na regex; a volta pelo Date pega o dia que não existe.
-  .refine((value) => {
-    const date = new Date(`${value}T00:00:00Z`);
-    return !Number.isNaN(date.getTime()) && date.toISOString().startsWith(value);
-  }, "Data de nascimento inválida")
-  .refine((value) => ageFrom(value) >= 0 && new Date(value) < new Date(), "A data de nascimento precisa estar no passado")
-  .refine((value) => ageFrom(value) >= MIN_AGE, `É preciso ter pelo menos ${MIN_AGE} anos`)
-  .refine((value) => ageFrom(value) <= 120, "Data de nascimento inválida");
-
 const profileSchema = z
   .object({
     displayName: z
@@ -171,7 +163,15 @@ const profileSchema = z
       .optional(),
     nickname: optionalText(50, "Apelido"),
     bio: optionalText(500, "Bio"),
-    birthDate: birthDateSchema.nullable().optional(),
+    // Obrigatória desde o cadastro com idade mínima (up3 · prompt 01): dá para
+    // trocar, não para apagar. Contas antigas sem data seguem sem ela até
+    // preencherem.
+    birthDate: birthDateSchema().optional(),
+    birthdayVisibility: z
+      .enum(BIRTHDAY_VISIBILITIES, {
+        errorMap: () => ({ message: "Visibilidade do aniversário inválida" }),
+      })
+      .optional(),
     gender: z
       .enum(["masculino", "feminino", "outro"], {
         errorMap: () => ({ message: "Gênero inválido" }),
@@ -187,6 +187,7 @@ const PROFILE_COLUMNS = {
   nickname: "nickname",
   bio: "bio",
   birthDate: "birth_date",
+  birthdayVisibility: "birthday_visibility",
   gender: "gender",
 } as const;
 
@@ -211,11 +212,11 @@ router.patch("/me/profile", requireAuth, async (req, res, next) => {
         params,
       );
 
-      // Conteúdo adulto depende da idade: se a data nova (ou a falta dela)
-      // deixa de comprovar 18 anos, a flag cai junto. Sem isto bastaria pôr
+      // Conteúdo adulto depende da idade: se a data nova deixa de comprovar
+      // 18 anos, a flag cai junto. Sem isto bastaria pôr
       // uma data falsa, ligar "Adulto" e depois corrigir a data.
       if ("birthDate" in data) {
-        const birthDate = data.birthDate ?? null;
+        const birthDate = data.birthDate;
         if (!birthDate || ageFrom(birthDate) < ADULT_AGE) {
           await client.query("UPDATE users SET is_adult = FALSE WHERE user_id = $1", [
             req.userId,

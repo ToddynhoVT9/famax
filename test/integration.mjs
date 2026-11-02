@@ -66,7 +66,10 @@ async function call(method, endpoint, { token, body, raw, keepUnverified } = {})
 console.log("Iniciando Postgres em processo (PGlite)...");
 // pg_trgm carregado como em produção: a busca (migration 011) usa trigramas.
 const db = await PGlite.create({ extensions: { pg_trgm } });
-const pgServer = new PGLiteSocketServer({ db, port: DB_PORT, host: "127.0.0.1" });
+// Mais de uma conexão para o teste de cadastros em paralelo (up3 · 01) poder
+// abrir duas. O socket enfileira as consultas e, durante uma transação, só
+// atende a conexão que a abriu: as transações não se misturam.
+const pgServer = new PGLiteSocketServer({ db, port: DB_PORT, host: "127.0.0.1", maxConnections: 4 });
 await pgServer.start();
 
 console.log("Aplicando schema base...");
@@ -87,8 +90,8 @@ process.env.DATABASE_SSL = "false";
 process.env.JWT_SECRET = "segredo-de-teste-com-mais-de-32-caracteres-ok";
 process.env.PORT = String(API_PORT);
 process.env.NODE_ENV = "development";
-// O socket do PGlite atende uma conexão por vez: um LISTEN parado nela
-// travaria a suíte. O barramento em memória cobre o mesmo caminho (ver
+// O socket do PGlite roda uma consulta por vez numa fila: um LISTEN parado
+// numa conexão travaria a suíte. O barramento em memória cobre o mesmo caminho (ver
 // lib/realtime.ts).
 process.env.REALTIME_BUS = "memory";
 // Chave da 2FA só de teste (32 bytes em hex).
@@ -134,12 +137,17 @@ if (!dbReady) {
 // ---------------------------------------------------------------------------
 
 const stamp = Date.now();
+// Nascimento de quem a suíte cadastra: o cadastro exige a data, com 13 anos
+// ou mais (up3 · prompt 01). Adulto, mas o +18 continua desligado até a
+// pessoa ligar nas configurações.
+const BIRTH_DATE = "2000-05-10";
 const alice = {
     email: `alice${stamp}@famax.test`,
     username: `alice${stamp}`,
     password: "senha123!forte",
     displayName: "Alice Teste",
     termsAccepted: true,
+    birthDate: BIRTH_DATE,
 };
 const bob = {
     email: `bob${stamp}@famax.test`,
@@ -147,6 +155,7 @@ const bob = {
     password: "senha123!forte",
     displayName: "Bob Teste",
     termsAccepted: true,
+    birthDate: BIRTH_DATE,
 };
 
 console.log("\n[0] Migrations no boot");
@@ -405,6 +414,7 @@ const dave = {
     password: "senha123!forte",
     displayName: "Dave Teste",
     termsAccepted: true,
+    birthDate: BIRTH_DATE,
 };
 const daveReg = await call("POST", "/auth/register", { body: dave });
 const daveToken = daveReg.body?.token;
@@ -776,6 +786,7 @@ const carol = {
     password: "senha123!forte",
     displayName: "Carol Teste",
     termsAccepted: true,
+    birthDate: BIRTH_DATE,
 };
 const carolReg = await call("POST", "/auth/register", { body: carol });
 const intruder = await call("GET", `/conversations/${conversationId}/messages`, {
@@ -813,6 +824,7 @@ const erin = {
     password: "senha123!forte",
     displayName: "Erin Teste",
     termsAccepted: true,
+    birthDate: BIRTH_DATE,
 };
 const erinReg = await call("POST", "/auth/register", { body: erin });
 const erinToken = erinReg.body?.token;
@@ -862,6 +874,7 @@ const frank = {
     password: "senha123!forte",
     displayName: "Frank Teste",
     termsAccepted: true,
+    birthDate: BIRTH_DATE,
     isPrivate: true,
 };
 const frankReg = await call("POST", "/auth/register", { body: frank });
@@ -912,6 +925,7 @@ const hank = {
     password: "senha123!forte",
     displayName: "Hank Teste",
     termsAccepted: true,
+    birthDate: BIRTH_DATE,
 };
 const hankReg = await call("POST", "/auth/register", { body: hank });
 const hankRegToken = hankReg.body?.token;
@@ -1032,6 +1046,7 @@ const ivy = {
     password: "senha123!forte",
     displayName: "Ivy Teste",
     termsAccepted: true,
+    birthDate: BIRTH_DATE,
 };
 const ivyReg = await call("POST", "/auth/register", { body: ivy });
 const ivyId = ivyReg.body?.user?.userId;
@@ -1383,6 +1398,7 @@ const kate = {
     password: "senha123!forte",
     displayName: "Kate Teste",
     termsAccepted: true,
+    birthDate: BIRTH_DATE,
 };
 await call("POST", "/auth/register", { body: kate });
 const kateOldToken = (
@@ -1909,6 +1925,7 @@ const lena = {
     password: "senha123!forte",
     displayName: "Lena Privada",
     termsAccepted: true,
+    birthDate: BIRTH_DATE,
     isPrivate: true,
 };
 const lenaReg = await call("POST", "/auth/register", { body: lena });
@@ -1975,6 +1992,7 @@ async function newUser(name) {
             password: "senha123!forte",
             displayName: name,
             termsAccepted: true,
+            birthDate: BIRTH_DATE,
         },
     });
     return { token: reg.body?.token, id: reg.body?.user?.userId };
@@ -3867,6 +3885,7 @@ const a_vReg = await call("POST", "/auth/register", {
         password: "senha123!forte",
         displayName: "Vera Verificação",
         termsAccepted: true,
+        birthDate: BIRTH_DATE,
     },
 });
 const a_vToken = a_vReg.body?.token;
@@ -4272,7 +4291,7 @@ check(
     "durante o prazo o e-mail continua reservado",
     (
         await call("POST", "/auth/register", {
-            body: { email: d_delEmail, username: `outro${stamp}`.slice(0, 30), password: "senha123!forte", displayName: "X", termsAccepted: true },
+            body: { email: d_delEmail, username: `outro${stamp}`.slice(0, 30), password: "senha123!forte", displayName: "X", termsAccepted: true, birthDate: BIRTH_DATE },
         })
     ).status === 409,
 );
@@ -4317,7 +4336,7 @@ check(
     (await call("POST", "/auth/reactivate", { body: { identifier: d_delName, password: "senha123!forte" } })).status === 401 &&
         (
             await call("POST", "/auth/register", {
-                body: { email: d_delEmail, username: d_delName, password: "senha123!forte", displayName: "Nova", termsAccepted: true },
+                body: { email: d_delEmail, username: d_delName, password: "senha123!forte", displayName: "Nova", termsAccepted: true, birthDate: BIRTH_DATE },
             })
         ).status === 201,
 );
@@ -4568,6 +4587,332 @@ check(
     "menor não marca o próprio post como +18",
     (await call("PATCH", `/posts/${f_minorPost.body?.post?.postId}`, { token: nsMinor.token, body: { isNsfw: true } }))
         .status === 403,
+);
+
+// ---------------------------------------------------------------------------
+
+console.log("\n[up3 · 01] Contas: maiúsculas, limites, corrida e idade mínima");
+resetRateLimits();
+
+/** Corpo de cadastro válido, com sobrescritas. Username curto: o limite é 50. */
+const u3Body = (tag, extra = {}) => ({
+    email: `u3${tag}${stamp}@famax.test`,
+    username: `u3${tag}${stamp}`.slice(0, 30),
+    password: "senha123!forte",
+    displayName: `U3 ${tag}`,
+    termsAccepted: true,
+    birthDate: BIRTH_DATE,
+    ...extra,
+});
+
+// --- B1/D1: e-mail e username sem diferença de maiúsculas -------------------
+
+const u3Mixed = u3Body("caixa", { email: `U3Caixa${stamp}@FAMAX.test`, username: `U3Caixa${stamp}`.slice(0, 30) });
+const u3MixedReg = await call("POST", "/auth/register", { body: u3Mixed });
+const { rows: u3Stored } = await db.query("SELECT email, username FROM users WHERE user_id = $1", [
+    u3MixedReg.body?.user?.userId ?? null,
+]);
+check(
+    "cadastro guarda o e-mail em minúsculas e o username como foi escrito",
+    u3MixedReg.status === 201 &&
+        u3Stored[0]?.email === u3Mixed.email.toLowerCase() &&
+        u3Stored[0]?.username === u3Mixed.username &&
+        u3MixedReg.body.user.email === u3Mixed.email.toLowerCase(),
+    JSON.stringify({ status: u3MixedReg.status, row: u3Stored[0] }),
+);
+
+const u3SameEmail = await call("POST", "/auth/register", {
+    body: u3Body("outra", { email: u3Mixed.email.toUpperCase() }),
+});
+check("e-mail já usado em outra grafia → 409", u3SameEmail.status === 409, `${u3SameEmail.status} ${JSON.stringify(u3SameEmail.body)}`);
+
+const u3SameUser = await call("POST", "/auth/register", {
+    body: u3Body("outro", { username: u3Mixed.username.toLowerCase() }),
+});
+check("username já usado em outra grafia → 409", u3SameUser.status === 409, `${u3SameUser.status} ${JSON.stringify(u3SameUser.body)}`);
+
+const u3LoginEmail = await call("POST", "/auth/login", {
+    body: { identifier: u3Mixed.email.toLowerCase(), password: u3Mixed.password },
+});
+const u3LoginUser = await call("POST", "/auth/login", {
+    body: { identifier: u3Mixed.username.toUpperCase(), password: u3Mixed.password },
+});
+check(
+    "login com o e-mail e o username em outra grafia → 200",
+    u3LoginEmail.status === 200 &&
+        u3LoginUser.status === 200 &&
+        u3LoginUser.body?.user?.userId === u3MixedReg.body?.user?.userId,
+    `${u3LoginEmail.status} ${u3LoginUser.status}`,
+);
+
+const u3Lookup = await call("GET", `/users/by-username/${u3Mixed.username.toLowerCase()}`);
+check(
+    "by-username em outra grafia acha a mesma pessoa",
+    u3Lookup.status === 200 && u3Lookup.body?.user?.userId === u3MixedReg.body?.user?.userId,
+    JSON.stringify(u3Lookup.body),
+);
+
+const { rows: u3Indexes } = await db.query(
+    "SELECT indexname FROM pg_indexes WHERE tablename = 'users' AND indexname IN ('uq_users_email_lower', 'uq_users_username_lower')",
+);
+check("migration 028 criou os índices únicos em lower()", u3Indexes.length === 2, JSON.stringify(u3Indexes));
+
+// A migration para com duplicatas em vez de escolher uma conta. Dentro de uma
+// transação desfeita no fim: o índice sai só para a duplicata poder entrar.
+const u3Migration = await readFile(path.join(sqlDir, "028_case_insensitive_identity.sql"), "utf8");
+let u3DupError = "";
+await db.exec("BEGIN");
+try {
+    await db.exec("DROP INDEX uq_users_email_lower");
+    await db.query(
+        "INSERT INTO users (user_id, email, username, password_hash) VALUES ($1, $2, $3, '!')",
+        [crypto.randomUUID(), u3Mixed.email.toUpperCase(), `u3dup${stamp}`.slice(0, 30)],
+    );
+    await db.exec(u3Migration);
+} catch (err) {
+    u3DupError = err instanceof Error ? err.message : String(err);
+} finally {
+    await db.exec("ROLLBACK");
+}
+check(
+    "migration 028 com duplicata para com mensagem clara",
+    u3DupError.includes("Contas duplicadas") && u3DupError.includes(u3Mixed.email.toLowerCase()),
+    u3DupError,
+);
+
+// --- D2: limites de tamanho ---------------------------------------------------
+
+// 64 + 1 + 63 + 1 + 63 + 1 + 58 + 1 + 4 = 256 caracteres, num formato que o
+// .email() aceita: só o tamanho reprova.
+const u3Email256 = `${"a".repeat(64)}@${"b".repeat(63)}.${"c".repeat(63)}.${"d".repeat(58)}.test`;
+const u3LongName = await call("POST", "/auth/register", { body: u3Body("nome", { displayName: "x".repeat(101) }) });
+const u3LongEmail = await call("POST", "/auth/register", { body: u3Body("mail", { email: u3Email256 }) });
+check(
+    "nome com 101 caracteres → 400, e-mail com 256 → 400",
+    u3Email256.length === 256 && u3LongName.status === 400 && u3LongEmail.status === 400,
+    `${u3Email256.length} · ${u3LongName.status} ${JSON.stringify(u3LongName.body?.error)} · ${u3LongEmail.status} ${JSON.stringify(u3LongEmail.body?.error)}`,
+);
+resetRateLimits();
+const u3Trimmed = await call("POST", "/auth/register", { body: u3Body("trim", { displayName: `  ${"y".repeat(100)}  ` }) });
+check("nome com 100 caracteres e espaços em volta → 201", u3Trimmed.status === 201, String(u3Trimmed.status));
+
+// --- B4: dois cadastros iguais ao mesmo tempo ---------------------------------
+
+resetRateLimits();
+const u3Race = u3Body("corrida");
+const u3RaceResults = await Promise.all([
+    call("POST", "/auth/register", { body: u3Race }),
+    call("POST", "/auth/register", { body: { ...u3Race, email: u3Race.email.toUpperCase() } }),
+]);
+const u3RaceStatuses = u3RaceResults.map((r) => r.status).sort();
+check(
+    "dois cadastros iguais em paralelo → um 201 e um 409, nenhum 500",
+    JSON.stringify(u3RaceStatuses) === "[201,409]" &&
+        u3RaceResults.find((r) => r.status === 409)?.body?.error === "Email ou username já cadastrado",
+    JSON.stringify(u3RaceResults.map((r) => [r.status, r.body?.error])),
+);
+
+// --- R5: data de nascimento e idade mínima de 13 ------------------------------
+
+resetRateLimits();
+const u3Pad = (n) => String(n).padStart(2, "0");
+const u3Today = new Date();
+/** A data de quem faz `years` anos hoje, deslocada `dayShift` dias. */
+const u3YearsAgo = (years, dayShift = 0) => {
+    const d = new Date(u3Today.getFullYear() - years, u3Today.getMonth(), u3Today.getDate() + dayShift);
+    return `${d.getFullYear()}-${u3Pad(d.getMonth() + 1)}-${u3Pad(d.getDate())}`;
+};
+const { birthDate: _u3Omit, ...u3NoBirthBody } = u3Body("semdata");
+const u3NoBirth = await call("POST", "/auth/register", { body: u3NoBirthBody });
+const u3BadBirth = await call("POST", "/auth/register", { body: u3Body("datainv", { birthDate: "2001-02-31" }) });
+// Faz 13 amanhã: hoje ainda tem 12.
+const u3Twelve = await call("POST", "/auth/register", { body: u3Body("doze", { birthDate: u3YearsAgo(13, 1) }) });
+check(
+    "cadastro sem data, com data inválida e com 12 anos → 400",
+    u3NoBirth.status === 400 && u3BadBirth.status === 400 && u3Twelve.status === 400,
+    `${u3NoBirth.status} ${u3BadBirth.status} ${u3Twelve.status}`,
+);
+check(
+    "menos de 13: a mensagem diz a idade mínima e aponta o campo",
+    u3Twelve.body?.error === "É preciso ter pelo menos 13 anos para criar uma conta." &&
+        Array.isArray(u3Twelve.body?.details?.fieldErrors?.birthDate) &&
+        u3NoBirth.body?.error === "Informe a data de nascimento",
+    JSON.stringify([u3Twelve.body, u3NoBirth.body?.error]).slice(0, 240),
+);
+
+resetRateLimits();
+const u3ThirteenDate = u3YearsAgo(13);
+const u3Thirteen = await call("POST", "/auth/register", { body: u3Body("treze", { birthDate: u3ThirteenDate }) });
+const { rows: u3Birth } = await db.query(
+    "SELECT birth_date::text AS birth_date FROM user_profiles WHERE user_id = $1",
+    [u3Thirteen.body?.user?.userId ?? null],
+);
+check(
+    "13 anos feitos hoje → 201, e a data fica no perfil",
+    u3Thirteen.status === 201 && u3Birth[0]?.birth_date === u3ThirteenDate,
+    `${u3Thirteen.status} ${JSON.stringify(u3Thirteen.body?.error)} ${u3Birth[0]?.birth_date}`,
+);
+
+const u3Token = u3Thirteen.body?.token;
+check(
+    "a data não pode ser apagada na edição, nem trocada para menos de 13",
+    (await call("PATCH", "/me/profile", { token: u3Token, body: { birthDate: null } })).status === 400 &&
+        (await call("PATCH", "/me/profile", { token: u3Token, body: { birthDate: u3YearsAgo(12) } })).status === 400 &&
+        (await call("PATCH", "/me/profile", { token: u3Token, body: { birthDate: "2008-03-14" } })).status === 200,
+);
+
+// --- Quem vê o aniversário (só dia e mês) ------------------------------------
+
+resetRateLimits();
+const u3Owner = { token: u3Token, id: u3Thirteen.body?.user?.userId };
+const u3FriendReg = await call("POST", "/auth/register", { body: u3Body("amigo") });
+const u3StrangerReg = await call("POST", "/auth/register", { body: u3Body("estranho") });
+const u3Friend = { token: u3FriendReg.body?.token, id: u3FriendReg.body?.user?.userId };
+const u3Stranger = { token: u3StrangerReg.body?.token };
+// A dona segue o amigo: é ele quem entra no "Quem eu sigo".
+await call("POST", `/users/${u3Friend.id}/follow`, { token: u3Owner.token });
+
+const u3BirthdayAs = async (viewer) =>
+    (await call("GET", `/users/${u3Owner.id}`, { token: viewer?.token })).body?.user?.birthday ?? null;
+
+const u3Me = await call("GET", "/me", { token: u3Owner.token });
+check(
+    "padrão: só a própria pessoa vê o aniversário",
+    u3Me.body?.user?.birthdayVisibility === "self" &&
+        (await u3BirthdayAs(u3Owner)) === "03-14" &&
+        (await u3BirthdayAs(u3Friend)) === null &&
+        (await u3BirthdayAs(null)) === null,
+);
+
+await call("PATCH", "/me/profile", { token: u3Owner.token, body: { birthdayVisibility: "following" } });
+check(
+    "\"Quem eu sigo\": quem ela segue vê, os outros não",
+    (await u3BirthdayAs(u3Friend)) === "03-14" &&
+        (await u3BirthdayAs(u3Stranger)) === null &&
+        (await u3BirthdayAs(null)) === null,
+);
+
+const u3Everyone = await call("PATCH", "/me/profile", { token: u3Owner.token, body: { birthdayVisibility: "everyone" } });
+const u3PublicProfile = (await call("GET", `/users/${u3Owner.id}`)).body?.user;
+check(
+    "\"Todos\": até visitante vê, e nunca o ano",
+    u3Everyone.body?.user?.birthdayVisibility === "everyone" &&
+        u3PublicProfile?.birthday === "03-14" &&
+        !JSON.stringify(u3PublicProfile).includes("2008"),
+    JSON.stringify(u3PublicProfile).slice(0, 200),
+);
+
+await call("PATCH", "/me/settings", { token: u3Owner.token, body: { isPrivate: true } });
+check(
+    "perfil privado esconde o aniversário mesmo com \"Todos\"",
+    (await u3BirthdayAs(u3Friend)) === null && (await u3BirthdayAs(u3Owner)) === "03-14",
+);
+check(
+    "visibilidade fora da lista → 400",
+    (await call("PATCH", "/me/profile", { token: u3Owner.token, body: { birthdayVisibility: "amigos" } })).status === 400,
+);
+
+// ---------------------------------------------------------------------------
+
+console.log("\n[up3 · 02] Cabeçalhos, CSP, CORS e JWT");
+resetRateLimits();
+
+// A home de verdade (HTML) é conferida no build; aqui o servidor roda do
+// código, sem server/public, então vale uma resposta qualquer que não o health.
+const h2Home = await fetch(`${BASE}/rota-que-nao-existe`);
+const h2Api = await fetch(`${BASE}/health`);
+for (const [label, res] of [["404 da API", h2Home], ["health", h2Api]]) {
+    const csp = res.headers.get("content-security-policy-report-only") ?? "";
+    check(
+        `${label}: cabeçalhos de segurança`,
+        res.headers.get("x-content-type-options") === "nosniff" &&
+            res.headers.get("referrer-policy") === "strict-origin-when-cross-origin" &&
+            res.headers.get("x-frame-options") === "DENY" &&
+            !res.headers.has("x-powered-by"),
+        JSON.stringify(Object.fromEntries(res.headers)),
+    );
+    check(
+        `${label}: CSP em report-only, com as diretivas pedidas`,
+        !res.headers.has("content-security-policy") &&
+            csp.includes("default-src 'self'") &&
+            /script-src 'self'/.test(csp) &&
+            csp.includes("style-src 'self'") &&
+            /img-src 'self' data: blob:/.test(csp) &&
+            csp.includes("connect-src 'self'") &&
+            csp.includes("object-src 'none'") &&
+            csp.includes("base-uri 'self'") &&
+            csp.includes("form-action 'self'") &&
+            csp.includes("report-uri /api/csp-report") &&
+            !csp.includes("unsafe-inline"),
+        csp,
+    );
+    check(`${label}: sem HSTS fora de produção`, !res.headers.has("strict-transport-security"));
+}
+await h2Home.arrayBuffer();
+
+// O hash sai do HTML publicado; aqui, das páginas-fonte (o build não muda o script).
+const { inlineScriptHashes } = await import("../server/lib/security-headers.js");
+const h2Hashes = inlineScriptHashes(path.join(root, "client"));
+const h2Theme =
+    'try{var t=localStorage.getItem("famax_theme");if(t==="light"||t==="dark")document.documentElement.dataset.theme=t}catch(e){}';
+check(
+    "um só script inline nas 16 páginas, e o hash é o do script de tema",
+    h2Hashes.length === 1 && h2Hashes[0] === createHash("sha256").update(h2Theme).digest("base64"),
+    JSON.stringify(h2Hashes),
+);
+
+const h2Cross = await fetch(`${BASE}/communities`, { headers: { Origin: "https://exemplo.com" } });
+const h2Preflight = await fetch(`${BASE}/auth/login`, {
+    method: "OPTIONS",
+    headers: { Origin: "https://exemplo.com", "Access-Control-Request-Method": "POST" },
+});
+check(
+    "Origin de fora não recebe Access-Control-Allow-Origin (nem no preflight)",
+    !h2Cross.headers.has("access-control-allow-origin") &&
+        !h2Cross.headers.has("access-control-allow-credentials") &&
+        !h2Preflight.headers.has("access-control-allow-origin"),
+    `${h2Cross.headers.get("access-control-allow-origin")} / ${h2Preflight.headers.get("access-control-allow-origin")}`,
+);
+await h2Cross.arrayBuffer();
+await h2Preflight.arrayBuffer();
+
+const h2Report = await fetch(`${BASE}/csp-report`, {
+    method: "POST",
+    headers: { "Content-Type": "application/csp-report" },
+    body: JSON.stringify({
+        "csp-report": { "document-uri": "http://x/teste", "violated-directive": "img-src", "blocked-uri": "https://fora.example" },
+    }),
+});
+const h2BadReport = await fetch(`${BASE}/csp-report`, {
+    method: "POST",
+    headers: { "Content-Type": "application/csp-report" },
+    body: "não é json",
+});
+check("POST /api/csp-report → 204; corpo que não é JSON → 400, não 500", h2Report.status === 204 && h2BadReport.status === 400, `${h2Report.status} ${h2BadReport.status}`);
+
+// JWT: o algoritmo vem do servidor (HS256), não do cabeçalho do token.
+const h2Token = (
+    await call("POST", "/auth/register", {
+        body: {
+            email: `h2jwt${stamp}@famax.test`,
+            username: `h2jwt${stamp}`.slice(0, 30),
+            password: "senha123!forte",
+            displayName: "H2 JWT",
+            termsAccepted: true,
+            birthDate: BIRTH_DATE,
+        },
+    })
+).body?.token;
+const h2Claims = jwt.decode(h2Token);
+const { iat: _iat, exp: _exp, ...h2Payload } = h2Claims ?? {};
+const h2Hs384 = jwt.sign(h2Payload, process.env.JWT_SECRET, { algorithm: "HS384", expiresIn: "1h" });
+const h2B64 = (obj) => Buffer.from(JSON.stringify(obj)).toString("base64url");
+const h2None = `${h2B64({ alg: "none", typ: "JWT" })}.${h2B64({ ...h2Payload, exp: Math.floor(Date.now() / 1000) + 3600 })}.`;
+check(
+    "token com alg none ou HS384 (mesmo segredo e sessão válida) → 401",
+    (await call("GET", "/me", { token: h2None })).status === 401 &&
+        (await call("GET", "/me", { token: h2Hs384 })).status === 401 &&
+        (await call("GET", "/me", { token: h2Token })).status === 200,
 );
 
 // ---------------------------------------------------------------------------

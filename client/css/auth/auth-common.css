@@ -163,6 +163,11 @@
     padding-left: calc(20px + var(--space-2));
 }
 
+/* Dica logo abaixo de um campo: a mesma distância das regras da senha. */
+.acc-fieldhint {
+    margin-top: calc(-1 * var(--space-2));
+}
+
 /* Regras da senha, marcadas ao digitar (shared/password-rules.ts). */
 .fx-rules {
     display: flex;

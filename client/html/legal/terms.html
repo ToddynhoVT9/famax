@@ -87,16 +87,6 @@
         </div>
     </main>
 
-    <script type="module">
-        // Quem chegou aqui pelo modal do cadastro (ou de outra página do site)
-        // volta para onde estava, com o formulário preenchido. Aberta direto,
-        // sem histórico, o href segue apontando para o cadastro.
-        document.getElementById("backButton")?.addEventListener("click", (event) => {
-            if (history.length > 1 && document.referrer.startsWith(location.origin)) {
-                event.preventDefault();
-                history.back();
-            }
-        });
-    </script>
+    <script type="module" src="../../script/terms.ts"></script>
 </body>
 </html>

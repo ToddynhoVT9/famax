@@ -1,5 +1,4 @@
 import express from "express";
-import cors from "cors";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { config } from "./config.js";
@@ -26,6 +25,7 @@ import twoFactorRoutes from "./routes/two-factor.routes.js";
 import accountRoutes from "./routes/account.routes.js";
 import blocksRoutes from "./routes/blocks.routes.js";
 import { toCamel } from "./lib/case.js";
+import { corsMiddleware, cspReportRoute, securityHeaders } from "./lib/security-headers.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const publicDir = path.join(__dirname, "public");
@@ -36,7 +36,11 @@ const app = express();
 // limit do login/cadastro depende disso. Ver TRUST_PROXY em config.ts.
 app.set("trust proxy", config.TRUST_PROXY);
 
-app.use(cors({ origin: true, credentials: true }));
+// Cabeçalhos de segurança e CSP em toda resposta (HTML, estáticos e API).
+app.use(securityHeaders(publicDir));
+// CORS só existe com CORS_ORIGIN: front e API têm a mesma origem.
+const corsHandler = corsMiddleware();
+if (corsHandler) app.use(corsHandler);
 app.use(express.json({ limit: "1mb" }));
 
 // Toda resposta JSON da API sai em camelCase (o banco é snake_case). Ver
@@ -84,6 +88,10 @@ app.get("/api/health", (_req, res) => {
     timestamp: new Date().toISOString(),
   });
 });
+
+// Relatórios de violação da CSP: não dependem do banco, então ficam antes da
+// barreira (como o health).
+app.use(cspReportRoute());
 
 // Barreira: toda rota de API depende do banco. Sem isto, uma requisição que
 // chegasse na janela de boot receberia um ECONNREFUSED cru vindo do pool.
@@ -191,10 +199,12 @@ async function initDatabase() {
     // diagnóstico separa esses casos — só no caminho de falha, para não
     // custar nada quando está tudo bem.
     if (config.DB_MODE === "external") {
-      const { diagnoseDatabaseReachability } = await import(
+      const { diagnoseDatabaseReachability, explainDatabaseTlsError } = await import(
         "./net-diagnostics.js"
       );
-      await diagnoseDatabaseReachability(config.DATABASE_URL);
+      if (!explainDatabaseTlsError(err, Boolean(config.DATABASE_CA))) {
+        await diagnoseDatabaseReachability(config.DATABASE_URL);
+      }
     }
     throw err;
   }

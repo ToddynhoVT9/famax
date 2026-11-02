@@ -245,7 +245,18 @@
             <div class="r-win-body">
                 <div class="fx-field">
                     <label class="fx-label" for="sobreBirthDate">Data de nascimento</label>
-                    <input type="date" class="fx-input st-date" id="sobreBirthDate">
+                    <input type="date" class="fx-input st-date" id="sobreBirthDate" aria-describedby="sobreBirthHint">
+                    <p class="fx-hint" id="sobreBirthHint">Dá para trocar, mas não apagar. Ninguém vê o ano nem a sua idade.</p>
+                </div>
+
+                <div class="fx-field">
+                    <div class="fx-label" id="aniversarioLabel">Quem vê seu aniversário</div>
+                    <div class="st-chips" id="aniversarioOptions" role="radiogroup" aria-labelledby="aniversarioLabel" aria-describedby="aniversarioHint">
+                        <button type="button" class="fx-chip" role="radio" aria-checked="false" data-visibility="self">Só eu</button>
+                        <button type="button" class="fx-chip" role="radio" aria-checked="false" data-visibility="following">Quem eu sigo</button>
+                        <button type="button" class="fx-chip" role="radio" aria-checked="false" data-visibility="everyone">Todos</button>
+                    </div>
+                    <p class="fx-hint" id="aniversarioHint">Só o dia e o mês aparecem no seu perfil. Com o perfil privado, só você vê.</p>
                 </div>
 
                 <div class="fx-field">

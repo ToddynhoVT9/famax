@@ -50,6 +50,13 @@
                     <label class="fx-label" for="display-name">Nome de exibição</label>
                     <input type="text" id="display-name" class="fx-input" autocomplete="nickname">
                 </div>
+                <!-- Idade mínima de 13 anos: quem confere é o servidor; o max só
+                     evita escolher uma data no futuro. -->
+                <div class="fx-field">
+                    <label class="fx-label" for="birth-date">Data de nascimento</label>
+                    <input type="date" id="birth-date" class="fx-input" autocomplete="bday" aria-describedby="birthHint">
+                </div>
+                <p class="acc-hint acc-fieldhint" id="birthHint">É preciso ter pelo menos 13 anos. Ninguém vê a data; o aniversário (só dia e mês) aparece no perfil se você escolher, nas configurações.</p>
 
                 <label class="fx-check"><input type="checkbox" id="private-checkbox" aria-describedby="privateHint"> Perfil privado</label>
                 <p class="acc-hint acc-checkhint" id="privateHint">Perfis privados só aparecem na busca para quem já conversa com você. Dá para mudar depois.</p>

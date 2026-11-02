@@ -38,7 +38,8 @@ import {
   verifyLink,
   verifyVerifyToken,
 } from "../lib/email-verification.js";
-import { parseWith } from "../middleware/error.js";
+import { REGISTER_CONFLICT, parseWith } from "../middleware/error.js";
+import { MIN_AGE, birthDateSchema } from "../lib/profile.js";
 
 const router = Router();
 
@@ -90,15 +91,30 @@ const registerLimitByIp = rateLimit({
 // POST /api/auth/register
 // ===========================================================================
 
+// O e-mail é guardado em minúsculas e o username com a grafia escolhida;
+// a unicidade dos dois ignora maiúsculas (migration 028). Os .max() são os
+// tamanhos das colunas: sem eles o banco recusava com 22001 e virava 500.
 const registerSchema = z.object({
-  email: z.string().email("Email inválido"),
+  email: z
+    .string({ required_error: "Informe o e-mail" })
+    .trim()
+    .toLowerCase()
+    .email("Email inválido")
+    .max(255, "Email deve ter no máximo 255 caracteres"),
   username: z
-    .string()
+    .string({ required_error: "Informe o username" })
     .min(3, "Username deve ter no mínimo 3 caracteres")
-    .max(50)
+    .max(50, "Username deve ter no máximo 50 caracteres")
     .regex(/^[a-zA-Z0-9_]+$/, "Username só pode conter letras, números e _"),
   password: passwordSchema,
-  displayName: z.string().min(1, "Nome de exibição obrigatório"),
+  displayName: z
+    .string({ required_error: "Nome de exibição obrigatório" })
+    .trim()
+    .min(1, "Nome de exibição obrigatório")
+    .max(100, "Nome de exibição deve ter no máximo 100 caracteres"),
+  // Idade mínima de 13 anos (up3 · prompt 01); a data vai para
+  // user_profiles.birth_date, a mesma que libera o +18.
+  birthDate: birthDateSchema(`É preciso ter pelo menos ${MIN_AGE} anos para criar uma conta.`),
   termsAccepted: z.literal(true, {
     errorMap: () => ({ message: "Você precisa aceitar os termos" }),
   }),
@@ -109,14 +125,19 @@ const registerSchema = z.object({
 
 router.post("/register", registerLimitByIp, async (req, res, next) => {
   try {
-    const data = parseWith(registerSchema, req.body, "Dados inválidos");
+    // parse puro, não parseWith: a tela mostra a regra que falhou (a idade
+    // mínima, principalmente), e não um "Dados inválidos" genérico.
+    const data = registerSchema.parse(req.body);
 
+    // Checagem prévia só para a resposta comum; dois cadastros ao mesmo tempo
+    // passam por ela, e o segundo bate no índice único — o errorHandler
+    // responde 409 com esta mesma frase (REGISTER_CONFLICT).
     const { rows: existing } = await pool.query(
-      "SELECT user_id FROM users WHERE email = $1 OR username = $2 LIMIT 1",
+      "SELECT user_id FROM users WHERE lower(email) = lower($1) OR lower(username) = lower($2) LIMIT 1",
       [data.email, data.username],
     );
     if (existing.length > 0) {
-      return res.status(409).json({ error: "Email ou username já cadastrado" });
+      return res.status(409).json({ error: REGISTER_CONFLICT });
     }
 
     const passwordHash = await bcrypt.hash(data.password, BCRYPT_ROUNDS);
@@ -140,9 +161,9 @@ router.post("/register", registerLimitByIp, async (req, res, next) => {
 
       await client.query(
         `INSERT INTO user_profiles
-         (profile_id, user_id, display_name)
-         VALUES ($1, $2, $3)`,
-        [profileId, userId, data.displayName],
+         (profile_id, user_id, display_name, birth_date)
+         VALUES ($1, $2, $3, $4)`,
+        [profileId, userId, data.displayName, data.birthDate],
       );
 
       await client.query(
@@ -199,8 +220,10 @@ router.post("/register", registerLimitByIp, async (req, res, next) => {
 // POST /api/auth/login
 // ===========================================================================
 
+// Sem diferença de maiúsculas no e-mail nem no username (migration 028): o
+// índice em lower(...) atende os dois lados do OR.
 const loginSchema = z.object({
-  identifier: z.string().min(1, "Email ou username obrigatório"),
+  identifier: z.string().trim().min(1, "Email ou username obrigatório"),
   password: z.string().min(1, "Senha obrigatória"),
 });
 
@@ -216,7 +239,7 @@ router.post("/login", loginLimitByIp, loginLimitByIdentifier, async (req, res, n
        FROM users u
        LEFT JOIN user_profiles p ON p.user_id = u.user_id
        LEFT JOIN account_deletions d ON d.user_id = u.user_id AND d.purge_after > NOW()
-       WHERE (u.email = $1 OR u.username = $1)
+       WHERE (lower(u.email) = lower($1) OR lower(u.username) = lower($1))
          AND (u.deleted_at IS NULL OR d.user_id IS NOT NULL)
        LIMIT 1`,
       [identifier],
@@ -290,7 +313,7 @@ router.post("/reactivate", loginLimitByIp, loginLimitByIdentifier, async (req, r
       `SELECT u.user_id, u.email, u.username, u.password_hash, u.two_factor_enabled
        FROM users u
        INNER JOIN account_deletions d ON d.user_id = u.user_id AND d.purge_after > NOW()
-       WHERE (u.email = $1 OR u.username = $1) AND u.deleted_at IS NOT NULL
+       WHERE (lower(u.email) = lower($1) OR lower(u.username) = lower($1)) AND u.deleted_at IS NOT NULL
        LIMIT 1`,
       [identifier],
     );
@@ -601,7 +624,7 @@ const resetLimitByIp = rateLimit({
   message: "Muitas tentativas. Tente novamente mais tarde.",
 });
 
-const emailSchema = z.string().trim().email("Email inválido").max(255);
+const emailSchema = z.string().trim().toLowerCase().email("Email inválido").max(255);
 
 const FORGOT_MESSAGE =
   "Se houver uma conta com este e-mail, enviamos um código de recuperação.";

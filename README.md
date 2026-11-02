@@ -37,7 +37,7 @@ node -e "console.log(require('crypto').randomBytes(48).toString('base64url'))"
 | `PORT` | não | Porta da API (padrão `3000`) |
 | `NODE_ENV` | não | `development` \| `production` |
 | `JWT_EXPIRES_IN` | não | Validade do token (padrão `7d`) |
-| `CORS_ORIGIN` | não | Origem liberada no CORS |
+| `CORS_ORIGIN` | não | Origens de fora liberadas no CORS, separadas por vírgula. Padrão: nenhuma (front e API têm a mesma origem) |
 | `MIGRATE_ON_BOOT` | não | `false` desliga a aplicação de migrations no boot (padrão: ligado) |
 | `MAIL_PROVIDER` | não | `console` (padrão: só log), `resend` ou `smtp` |
 | `MAIL_FROM` | com resend/smtp | Remetente dos e-mails |
@@ -45,6 +45,9 @@ node -e "console.log(require('crypto').randomBytes(48).toString('base64url'))"
 | `SMTP_URL` | com smtp | `smtps://usuario:senha@host:465` |
 | `TRUST_PROXY` | não | Proxies confiáveis à frente da API (`1`, `true`, `loopback`...). Padrão: nenhum |
 | `DATABASE_SSL` | não | `false` desliga o SSL (Postgres local) |
+| `DATABASE_CA` | em produção | Certificado (PEM) da CA do banco: com ele o certificado do servidor é verificado. Ver "Banco com TLS" |
+| `DATABASE_CA_FILE` | não | Caminho do arquivo da CA, no lugar de `DATABASE_CA` |
+| `CSP_REPORT_ONLY` | não | `false` faz a CSP bloquear de verdade. Padrão: `true` (só observa e registra) |
 | `SUPABASE_URL` | não | Project URL — necessária para upload de capa |
 | `SUPABASE_SERVICE_KEY` | não | Chave `service_role` — necessária para upload de capa |
 | `SUPABASE_COVERS_BUCKET` | não | Bucket das capas (padrão `community-covers`) |
@@ -90,6 +93,50 @@ navega, publica e comenta, mas não cria comunidade nem manda mensagem no chat.
   exclusão definitiva depois do prazo: troca e-mail e username, apaga
   vínculos e imagens. Posts, comentários e mensagens ficam como "Usuário
   removido". Durante os 30 dias o e-mail e o username continuam reservados.
+
+### Banco com TLS
+
+A conexão com o Supabase é sempre cifrada. Para o servidor também **verificar o
+certificado** do banco (e não aceitar um intermediário na rede), configure a CA:
+
+1. No Supabase: **Project Settings → Database → SSL Configuration → Download
+   certificate**. Vem um arquivo `.crt` em PEM (começa com
+   `-----BEGIN CERTIFICATE-----`).
+2. No painel do Hostinger, nas variáveis de ambiente do app Node.js (onde já
+   estão `DATABASE_URL` e `JWT_SECRET`), crie `DATABASE_CA` com o conteúdo do
+   arquivo. Se o painel não aceitar várias linhas, use a versão numa linha só,
+   com `\n` no lugar das quebras:
+
+   ```bash
+   node -e "console.log(require('fs').readFileSync('prod-ca-2021.crt','utf8').trim().replace(/\n/g,'\\n'))"
+   ```
+
+   Outra opção é subir o arquivo para uma pasta **fora** da pasta do app (o
+   deploy substitui a pasta do app) e apontar `DATABASE_CA_FILE` para ele.
+3. Reinicie o app. Se a CA estiver errada, o log mostra "Certificado do banco
+   recusado" e a API fica em 503; remover a variável volta ao modo anterior.
+
+Sem a CA em produção o servidor sobe normalmente, cifrado mas sem verificar, e
+avisa no log. O `npm run migrate` usa as mesmas variáveis.
+
+### Cabeçalhos de segurança, CSP e CORS
+
+Toda resposta sai com os cabeçalhos do `helmet` (`server/lib/security-headers.ts`):
+`X-Content-Type-Options: nosniff`, `Referrer-Policy: strict-origin-when-cross-origin`,
+`X-Frame-Options: DENY` e, só com `NODE_ENV=production`, HSTS (180 dias).
+
+A **CSP** só deixa rodar script do próprio site, mais o script de tema que
+fica inline no `<head>` das páginas (liberado pelo hash, calculado na subida a
+partir do HTML publicado). Estilo só de arquivo (nada de `style=""` nem
+`<style>`; pelo JS, use `el.style.x = ...`). Imagens: o próprio site, `data:`,
+`blob:` e a origem do `SUPABASE_URL`. Por enquanto ela está em
+**report-only** (`CSP_REPORT_ONLY`, padrão `true`): nada é bloqueado, e cada
+violação aparece no console do navegador e no log do servidor ("CSP
+(report-only): ...", via `POST /api/csp-report`). Com o log limpo depois de um
+tempo no ar, defina `CSP_REPORT_ONLY=false` para ela passar a bloquear.
+
+**CORS:** front e API têm a mesma origem, então por padrão não há CORS (outro
+site não lê a API pelo navegador). `CORS_ORIGIN` libera origens específicas.
 
 ## Banco de dados
 

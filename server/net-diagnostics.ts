@@ -109,3 +109,42 @@ export async function diagnoseDatabaseReachability(
   }
   console.error("────────────────────────────────────────────────────\n");
 }
+
+// Códigos do OpenSSL/Node para certificado que não fecha com a CA ou com o
+// nome do host. É o que aparece quando DATABASE_CA está errada (ou é de outro
+// projeto), e o erro cru ("self-signed certificate in certificate chain") não
+// diz qual variável mexer.
+const TLS_CERT_ERRORS = new Set([
+  "SELF_SIGNED_CERT_IN_CHAIN",
+  "DEPTH_ZERO_SELF_SIGNED_CERT",
+  "UNABLE_TO_VERIFY_LEAF_SIGNATURE",
+  "UNABLE_TO_GET_ISSUER_CERT",
+  "UNABLE_TO_GET_ISSUER_CERT_LOCALLY",
+  "CERT_HAS_EXPIRED",
+  "CERT_NOT_YET_VALID",
+  "CERT_SIGNATURE_FAILURE",
+  "ERR_TLS_CERT_ALTNAME_INVALID",
+]);
+
+/**
+ * Se a falha de conexão foi o certificado do banco, explica no log e devolve
+ * true (o diagnóstico de alcance não acrescenta nada nesse caso: a rede
+ * funcionou até o TLS). Nunca lança.
+ */
+export function explainDatabaseTlsError(err: unknown, hasCa: boolean): boolean {
+  const code = (err as NodeJS.ErrnoException | null)?.code;
+  if (!code || !TLS_CERT_ERRORS.has(code)) return false;
+  console.error(
+    `\n── Certificado do banco recusado (${code}) ──\n` +
+      (hasCa
+        ? "  → A conexão chegou ao banco, mas o certificado dele não fecha com a\n" +
+          "    DATABASE_CA configurada. Confira se a CA é a do projeto certo\n" +
+          "    (Supabase → Project Settings → Database → SSL Configuration →\n" +
+          "    Download certificate) e se o PEM está inteiro. Para voltar a\n" +
+          "    subir sem verificar enquanto isso, remova DATABASE_CA.\n"
+        : "  → O certificado do banco não foi aceito. Confira DATABASE_SSL e a\n" +
+          "    DATABASE_URL.\n") +
+      "────────────────────────────────────────────────────\n",
+  );
+  return true;
+}

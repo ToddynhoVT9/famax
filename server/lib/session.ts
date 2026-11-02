@@ -58,10 +58,15 @@ export async function createSession(
   return token;
 }
 
-/** Devolve o payload se a assinatura for válida e houver jti, ou null. */
+/**
+ * Devolve o payload se a assinatura for válida e houver jti, ou null.
+ *
+ * algorithms fixo em HS256 (o que o sign usa), aqui e nos outros verify de
+ * lib/: sem ele, a escolha do algoritmo fica com o cabeçalho do próprio token.
+ */
 export function verifyToken(token: string): SessionPayload | null {
   try {
-    const payload = jwt.verify(token, config.JWT_SECRET) as Partial<SessionPayload>;
+    const payload = jwt.verify(token, config.JWT_SECRET, { algorithms: ["HS256"] }) as Partial<SessionPayload>;
     if (typeof payload.sub !== "string" || typeof payload.jti !== "string") {
       return null;
     }

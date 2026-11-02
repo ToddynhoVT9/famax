@@ -27,7 +27,7 @@ export function signVerifyToken(userId: string, email: string): string {
 
 export function verifyVerifyToken(token: string): { userId: string; email: string } | null {
   try {
-    const payload = jwt.verify(token, config.JWT_SECRET) as {
+    const payload = jwt.verify(token, config.JWT_SECRET, { algorithms: ["HS256"] }) as {
       purpose?: string;
       email?: string;
       sub?: string;

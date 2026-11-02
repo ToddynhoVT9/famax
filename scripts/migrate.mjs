@@ -30,9 +30,21 @@ if (!process.env.DATABASE_URL) {
   process.exit(1);
 }
 
+// As mesmas regras do sslOptions() de server/db.ts (este script roda sem o
+// build, então não importa o TypeScript): com DATABASE_CA ou DATABASE_CA_FILE,
+// verifica o certificado do servidor.
+const ca =
+  process.env.DATABASE_CA?.trim().replace(/\\n/g, "\n") ||
+  (process.env.DATABASE_CA_FILE ? await readFile(process.env.DATABASE_CA_FILE.trim(), "utf8") : null);
+
 const client = new pg.Client({
   connectionString: process.env.DATABASE_URL,
-  ssl: process.env.DATABASE_SSL === "false" ? false : { rejectUnauthorized: false },
+  ssl:
+    process.env.DATABASE_SSL === "false"
+      ? false
+      : ca
+        ? { ca, rejectUnauthorized: true }
+        : { rejectUnauthorized: false },
   connectionTimeoutMillis: 20000,
 });
 

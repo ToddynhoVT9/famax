@@ -10,6 +10,7 @@
  * partir dele, então o que aparece é sempre o que o servidor gravou.
  */
 import { api, getMe, logoutAll, setMeCache, type Me, type SocialLink } from "../shared/api.js";
+import type { BirthdayVisibility } from "../../../shared/api-types.js";
 import { requireLogin } from "../shared/auth-guard.js";
 import { initLayout, updateHeaderUser } from "../shared/layout.js";
 import { avatarColor, initials } from "../shared/dom.js";
@@ -478,7 +479,7 @@ step2?.addEventListener("submit", async (event) => {
 });
 
 // ===========================================================================
-// Modal "Sobre": nascimento, gênero e bio
+// Modal "Sobre": nascimento (e quem vê o aniversário), gênero e bio
 // ===========================================================================
 
 const sobreOverlay = $("sobreModalOverlay");
@@ -492,7 +493,23 @@ const genderButtons = Array.from(
     document.querySelectorAll<HTMLButtonElement>('#generoOptionsContainer [role="radio"]'),
 );
 
+const visibilityButtons = Array.from(
+    document.querySelectorAll<HTMLButtonElement>('#aniversarioOptions [role="radio"]'),
+);
+
 let selectedGender = "";
+let selectedVisibility: BirthdayVisibility = "self";
+
+function selectVisibility(value: BirthdayVisibility): void {
+    selectedVisibility = value;
+    for (const button of visibilityButtons) {
+        button.setAttribute("aria-checked", String(button.dataset.visibility === value));
+    }
+}
+
+for (const button of visibilityButtons) {
+    button.addEventListener("click", () => selectVisibility((button.dataset.visibility ?? "self") as BirthdayVisibility));
+}
 
 function selectGender(value: string): void {
     selectedGender = value;
@@ -516,8 +533,11 @@ $("btnSobre")?.addEventListener("click", () => {
     birthInput.max = new Date().toISOString().slice(0, 10);
     bioInput.value = me.bio ?? "";
     selectGender(me.gender ?? "");
+    selectVisibility(me.birthdayVisibility);
     updateBioCounter();
     show(sobreError, null);
+    birthInput.removeAttribute("aria-invalid");
+    birthInput.removeAttribute("aria-errormessage");
     openModal(sobreOverlay, birthInput);
 });
 
@@ -525,10 +545,28 @@ sobreForm?.addEventListener("submit", async (event) => {
     event.preventDefault();
     if (!birthInput || !bioInput || !sobreSave) return;
 
+    // A data não pode mais ser apagada (o servidor recusa). Conta antiga que
+    // nunca informou a data continua podendo salvar o resto sem ela.
+    const birthDate = birthInput.value;
+    if (!birthDate && me?.birthDate) {
+        show(sobreError, "Informe a data de nascimento. Ela pode ser trocada, mas não apagada.");
+        birthInput.setAttribute("aria-invalid", "true");
+        birthInput.setAttribute("aria-errormessage", "sobreError");
+        birthInput.focus();
+        return;
+    }
+    birthInput.removeAttribute("aria-invalid");
+    birthInput.removeAttribute("aria-errormessage");
+
     sobreSave.disabled = true;
     show(sobreError, null);
     try {
-        const { user } = await api.me.updateProfile({ birthDate: birthInput.value || null, gender: selectedGender || null, bio: bioInput.value });
+        const { user } = await api.me.updateProfile({
+            ...(birthDate ? { birthDate } : {}),
+            birthdayVisibility: selectedVisibility,
+            gender: selectedGender || null,
+            bio: bioInput.value,
+        });
         apply(user);
         closeModal(sobreOverlay);
         flash(settingsStatus, "Sobre atualizado.");

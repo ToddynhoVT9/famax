@@ -6,6 +6,7 @@
  * em produção, as env vars do painel de hospedagem.
  */
 import "dotenv/config";
+import { readFileSync } from "node:fs";
 
 function required(name: string): string {
   const value = process.env[name];
@@ -126,6 +127,55 @@ if (!TWO_FACTOR_KEY && process.env.NODE_ENV === "production") {
   console.warn("⚠️  TWO_FACTOR_KEY não definida: a verificação em duas etapas fica indisponível.");
 }
 
+/**
+ * Certificado da autoridade (CA) que assina o certificado do banco, em PEM.
+ * Com ele a conexão verifica o servidor (rejectUnauthorized: true); sem ele é
+ * cifrada mas aceita qualquer certificado — um intermediário na rede passaria.
+ *
+ * DATABASE_CA traz o conteúdo (painéis que não aceitam várias linhas podem
+ * usar "\n" literal); DATABASE_CA_FILE, o caminho do arquivo. Arquivo
+ * apontado e inexistente é erro no boot: ninguém configura isso por acaso.
+ */
+function readDatabaseCa(): string | null {
+  const inline = process.env.DATABASE_CA?.trim();
+  if (inline) return inline.replace(/\\n/g, "\n");
+  const file = process.env.DATABASE_CA_FILE?.trim();
+  if (!file) return null;
+  try {
+    return readFileSync(file, "utf8");
+  } catch (err) {
+    throw new Error(
+      `DATABASE_CA_FILE aponta para "${file}", que não pôde ser lido: ${(err as Error).message}`,
+    );
+  }
+}
+
+const DATABASE_CA = readDatabaseCa();
+if (DATABASE_CA && !DATABASE_CA.includes("-----BEGIN CERTIFICATE-----")) {
+  throw new Error("DATABASE_CA/DATABASE_CA_FILE não contém um certificado PEM (-----BEGIN CERTIFICATE-----).");
+}
+const DATABASE_SSL = DB_MODE === "external" && process.env.DATABASE_SSL !== "false";
+if (DATABASE_SSL && !DATABASE_CA && process.env.NODE_ENV === "production") {
+  // Aviso, não erro: derrubar produção por uma variável que ainda não foi
+  // configurada lá seria pior que o risco (ver README, "Banco com TLS").
+  console.warn(
+    "⚠️  DATABASE_CA não definida: a conexão com o banco é cifrada, mas o\n" +
+      "   certificado do servidor NÃO é verificado. Baixe a CA do Supabase e\n" +
+      "   configure DATABASE_CA (ver README, \"Banco com TLS\").",
+  );
+}
+
+/**
+ * Origens de fora que podem chamar a API pelo navegador. O front e a API têm
+ * a mesma origem (o Express serve os dois, e no dev o Vite faz proxy de
+ * /api), então o padrão é nenhuma: sem o middleware de CORS, o navegador só
+ * aceita a própria origem.
+ */
+const CORS_ORIGINS = (process.env.CORS_ORIGIN ?? "")
+  .split(",")
+  .map((origin) => origin.trim().replace(/\/+$/, ""))
+  .filter(Boolean);
+
 if (process.env.NODE_ENV === "production" && !process.env.APP_URL) {
   console.warn(
     "⚠️  APP_URL não definida em produção: os links dos e-mails usarão o host\n" +
@@ -140,6 +190,10 @@ export const config = {
     | "production",
 
   DB_MODE,
+  // TLS do banco externo (db.ts, sslOptions). Desligado no embarcado, que
+  // não fala TLS, e com DATABASE_SSL=false (Postgres local).
+  DATABASE_SSL,
+  DATABASE_CA,
   PGLITE_PORT,
   PGLITE_DATA_DIR: process.env.PGLITE_DATA_DIR ?? "./data/pglite",
 
@@ -153,7 +207,12 @@ export const config = {
   JWT_SECRET: required("JWT_SECRET"),
   JWT_EXPIRES_IN: (process.env.JWT_EXPIRES_IN ?? "7d") as `${number}d`,
 
-  CORS_ORIGIN: process.env.CORS_ORIGIN ?? "http://localhost:5173",
+  CORS_ORIGINS,
+
+  // CSP só observando (Content-Security-Policy-Report-Only): as violações vão
+  // para o console do navegador e para POST /api/csp-report, sem bloquear.
+  // Ligado por padrão nesta fase; CSP_REPORT_ONLY=false passa a bloquear.
+  CSP_REPORT_ONLY: process.env.CSP_REPORT_ONLY !== "false",
 
   // Endereço público do site, para os links dos e-mails (verificação de
   // e-mail). Em dev, sem a variável, o Vite (5173) — o proxy dele troca o

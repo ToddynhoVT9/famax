@@ -39,9 +39,11 @@ function renderCard(community: CommunityCard): string {
         : "";
 
     // A capa entra como background-image (o tamanho e os cantos são do
-    // cartão). Sem capa: gradiente na cor estável da comunidade + a inicial.
+    // cartão), aplicado depois pelo applyCovers: um style="" no HTML seria
+    // barrado pela CSP (style-src 'self'). Sem capa: gradiente na cor estável
+    // da comunidade + a inicial.
     const cover = community.coverImageUrl
-        ? `<div class="fx-ccard-cover has-image" style="background-image:url('${escapeHtml(community.coverImageUrl)}')"></div>`
+        ? `<div class="fx-ccard-cover has-image" data-cover="${escapeHtml(community.coverImageUrl)}"></div>`
         : `<div class="fx-ccard-cover ${avatarColor(community.communityId)}">
                <span class="fx-ccard-initial" aria-hidden="true">${escapeHtml(community.name.trim().charAt(0).toUpperCase())}</span>
            </div>`;
@@ -56,6 +58,14 @@ function renderCard(community: CommunityCard): string {
             </div>
         </a>
     `;
+}
+
+/** As capas dos cartões, pelo CSSOM (que a CSP permite, ao contrário de style=""). */
+function applyCovers(container: HTMLElement): void {
+    container.querySelectorAll<HTMLElement>("[data-cover]").forEach((el) => {
+        // JSON.stringify gera uma string CSS válida com aspas e barras escapadas.
+        el.style.backgroundImage = `url(${JSON.stringify(el.dataset.cover ?? "")})`;
+    });
 }
 
 function showStatus(message: string, isError = false): void {
@@ -125,6 +135,7 @@ async function loadFeed(): Promise<void> {
                 `,
             )
             .join("")}</div>`;
+        applyCovers(feed);
         feed.querySelectorAll<HTMLElement>("[data-row]").forEach(syncRowNav);
     } catch (err) {
         if (seq !== feedSeq) return;

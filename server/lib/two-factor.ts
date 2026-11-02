@@ -177,7 +177,7 @@ export function signMfaToken(userId: string): string {
 
 export function verifyMfaToken(token: string): string | null {
   try {
-    const payload = jwt.verify(token, config.JWT_SECRET) as { purpose?: string; sub?: string };
+    const payload = jwt.verify(token, config.JWT_SECRET, { algorithms: ["HS256"] }) as { purpose?: string; sub?: string };
     return payload.purpose === MFA_PURPOSE && payload.sub ? payload.sub : null;
   } catch {
     return null;

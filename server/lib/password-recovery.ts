@@ -63,7 +63,7 @@ export function signResetToken(userId: string, recoveryId: string): string {
 
 export function verifyResetToken(token: string): { userId: string; recoveryId: string } | null {
   try {
-    const payload = jwt.verify(token, config.JWT_SECRET) as {
+    const payload = jwt.verify(token, config.JWT_SECRET, { algorithms: ["HS256"] }) as {
       purpose?: string;
       rid?: string;
       sub?: string;

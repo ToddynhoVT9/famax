@@ -1,4 +1,4 @@
-import { api, setToken } from "../shared/api.js";
+import { ApiError, api, setToken } from "../shared/api.js";
 import { redirectIfLoggedIn } from "../shared/auth-guard.js";
 import { pages } from "../shared/pages.js";
 import { trapFocus } from "../shared/focus-trap.js";
@@ -17,6 +17,7 @@ const passwordInput = document.getElementById("password");
 const confirmPasswordInput = document.getElementById("confirm-password");
 const usernameInput = document.getElementById("username");
 const displayNameInput = document.getElementById("display-name");
+const birthDateInput = document.getElementById("birth-date");
 const privateCheckbox = document.getElementById("private-checkbox");
 const termsCheckbox = document.getElementById("terms-checkbox");
 const termsTrigger = document.getElementById("termsTrigger");
@@ -33,6 +34,7 @@ if (
   confirmPasswordInput instanceof HTMLInputElement &&
   usernameInput instanceof HTMLInputElement &&
   displayNameInput instanceof HTMLInputElement &&
+  birthDateInput instanceof HTMLInputElement &&
   privateCheckbox instanceof HTMLInputElement &&
   termsCheckbox instanceof HTMLInputElement &&
   termsTrigger instanceof HTMLElement &&
@@ -65,7 +67,28 @@ if (
   // Regras da senha marcadas ao digitar (quem valida é o servidor).
   bindPasswordRules(document.getElementById("password-rules"), passwordInput);
 
-  const fields = [emailInput, passwordInput, confirmPasswordInput, usernameInput, displayNameInput];
+  // Só impede escolher uma data no futuro; a idade mínima é o servidor quem confere.
+  birthDateInput.max = new Date().toISOString().slice(0, 10);
+
+  const fields = [emailInput, passwordInput, confirmPasswordInput, usernameInput, displayNameInput, birthDateInput];
+
+  // Campo da resposta de validação do servidor (details.fieldErrors) → input.
+  const fieldByName: Record<string, HTMLInputElement> = {
+    email: emailInput,
+    password: passwordInput,
+    username: usernameInput,
+    displayName: displayNameInput,
+    birthDate: birthDateInput,
+  };
+
+  /** Os campos que o servidor recusou, para receberem aria-invalid. */
+  const invalidFromServer = (err: unknown): HTMLInputElement[] => {
+    if (!(err instanceof ApiError) || err.status !== 400) return [];
+    const details = err.body.details as { fieldErrors?: Record<string, unknown> } | undefined;
+    return Object.keys(details?.fieldErrors ?? {})
+      .map((name) => fieldByName[name])
+      .filter((field): field is HTMLInputElement => field !== undefined);
+  };
 
   /** A faixa no topo; os campos com problema (vazios ou as senhas) ficam com aria-invalid. */
   const showError = (message: string, invalid: HTMLInputElement[] = []): void => {
@@ -93,9 +116,11 @@ if (
     const confirmPassword = confirmPasswordInput.value;
     const username = usernameInput.value.trim();
     const displayName = displayNameInput.value.trim();
+    // O input date entrega "AAAA-MM-DD", o formato que a API espera.
+    const birthDate = birthDateInput.value;
     const termsChecked = termsCheckbox.checked;
 
-    if (!email || !password || !confirmPassword || !username || !displayName) {
+    if (!email || !password || !confirmPassword || !username || !displayName || !birthDate) {
       showError("Por favor, preencha todos os campos.", fields.filter((field) => !field.value.trim()));
       return;
     }
@@ -113,12 +138,20 @@ if (
     registerButton.disabled = true;
 
     try {
-      const { token } = await api.auth.register({ email, username, password, displayName, termsAccepted: true, isPrivate: privateCheckbox.checked });
+      const { token } = await api.auth.register({
+        email,
+        username,
+        password,
+        displayName,
+        birthDate,
+        termsAccepted: true,
+        isPrivate: privateCheckbox.checked,
+      });
       setToken(token);
       // Já sai logado do cadastro: vai direto para a home, como no login.
       window.location.href = pages.home;
     } catch (err) {
-      showError(err instanceof Error ? err.message : "Erro ao criar conta");
+      showError(err instanceof Error ? err.message : "Erro ao criar conta", invalidFromServer(err));
     } finally {
       registerButton.disabled = false;
     }
